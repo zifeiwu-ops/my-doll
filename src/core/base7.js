@@ -176,7 +176,8 @@ function piece(d, fill, o = {}) {
   (o.gloss || []).forEach(p => inner += `<path d="${p}" fill="none" stroke="#fff" stroke-width="${o.glossW || 1.4}" stroke-linecap="round" opacity="${o.glossOp ?? .85}"/>`);
   inner += o.over || '';
   const side = armSide(d);
-  if (side) return `<!--arm${side}-->` + pieceOut(id, d, fr, inner, o) + `<!--/arm${side}-->`;
+  // 袖子：描边先画、再用布面盖住里半圈。手肘折得很厉害时袖子自己叠在一起，叠进去的那段轮廓线会被盖掉，只留外轮廓
+  if (side) return `<!--arm${side}-->` + `<path d="${d}" fill="none" stroke="${o.oc || STYLE.line}" stroke-width="${f1((o.sw ?? STYLE.sw) * 1.7)}" stroke-linejoin="round" stroke-linecap="round"/><clipPath id="${id}"><path d="${d}"${fr}/></clipPath><g clip-path="url(#${id})">${inner}</g>` + `<!--/arm${side}-->`;
   return pieceOut(id, d, fr, inner, o);
 }
 /* 自动认出袖子：整块都落在一侧手臂那边（不过中线、贴着手臂）的布片 = 袖子 / 袖口，换姿势时跟着手臂走 */
