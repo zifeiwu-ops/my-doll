@@ -251,6 +251,47 @@ select.name-in{flex:1 1 140px}
 .big-pic p{margin:0;font-family:var(--f-display);font-size:16px}
 @media (prefers-reduced-motion:reduce){.flash.go{animation:none}}
 @media (prefers-reduced-motion:reduce){.spark{display:none}.card-btn,.btn,.toast{transition:none}}
+
+/* ---------- 手机：参考同类换装游戏的竖屏布局 ----------
+   一屏放下：上半屏是娃娃（一直看得见），下半屏是衣橱抽屉；分类一行横着滑、衣服在抽屉里面滚动，整页不再上下滑
+   拍照 / 随机 / 恢复默认变成舞台右侧的一列圆按钮，姿势是舞台下面一条横着滑的胶囊 */
+@media (max-width:879px){
+  html,body{height:100%}
+  body:not(.modal-open){overflow:hidden}
+  .app{height:100vh;height:100dvh;padding:8px 10px calc(8px + env(safe-area-inset-bottom));gap:8px;overflow:hidden}
+  .masthead{flex:0 0 auto;gap:6px 12px;flex-wrap:nowrap}
+  .logo{flex-direction:row;align-items:center;gap:8px}
+  .logo-cn{font-size:30px;-webkit-text-stroke:6px #fff}.logo-cn span{-webkit-text-stroke:6px #fff}
+  .ribbon{font-size:11.5px;padding:2px 12px}
+  .memo,.masthead .stk{display:none}
+  .layout{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:12px}
+  .tape{display:none}
+  .sheet{border-radius:16px;box-shadow:0 0 0 3px #fff,0 0 0 5px var(--aqua-deep),2px 4px 0 3px rgba(74,52,48,.12)}
+  .layout>.sheet:first-child{flex:0 0 auto}
+  .stage{height:calc(50dvh - 70px);min-height:250px;border-radius:14px 14px 0 0}
+  .stage::after{inset:6px}
+  .deco.d3,.deco.d4,.deco.d6{display:none}
+  .deco.d1{top:12px;left:12px;width:30px;height:30px}.deco.d2{top:auto;bottom:40px;left:14px;right:auto;width:26px;height:26px}.deco.d5{bottom:12px;left:10px;width:34px;height:34px}
+  .stage-bar{padding:6px 8px 7px;gap:6px}
+  .ootd{display:none}
+  .pose-line .row-label{display:none}
+  .pose-line .opts{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:3px 2px;-webkit-overflow-scrolling:touch}
+  .pose-line .opts::-webkit-scrollbar{display:none}
+  .pose-line .opt{flex:0 0 auto;font-size:12.5px;padding:2px 10px}
+  .stage-bar .btn{position:absolute;right:12px;z-index:4;width:52px;height:52px;padding:0;border-radius:50%;font-size:10.5px;letter-spacing:-.02em;line-height:1.1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+  #btnShot{top:12px}#btnRandom{top:72px}#btnReset{top:132px}
+  .shot-btn svg{width:18px;height:18px}
+  .closet{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;padding-top:0;overflow:hidden}
+  .tabs{flex:0 0 auto;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:6px;padding:10px 10px 6px;-webkit-overflow-scrolling:touch}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:0 0 auto;font-size:14.5px;padding:4px 11px 3px}
+  .hint-line{display:none}
+  .grid{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:10px 8px;padding:8px 10px 14px}
+  .card-btn{padding:4px 4px 5px;gap:3px;border-radius:12px}
+  .nm{font-size:11px;min-height:2.5em;line-height:1.25}
+  .badge{font-size:10px;padding:3px 6px 2px;top:-7px;left:-5px}
+}
+@media (max-width:879px) and (min-height:760px){.stage{height:calc(52dvh - 70px)}}
 </style>
 </head>
 <body>
@@ -1575,14 +1616,14 @@ Object.assign(TPL, {
     render(F) {
       const body = symS([[150, 192], [140.8, 190.6], [137.4, 188.8, 'c'], [135.6, 171], [129.8, 168.8], [121, 170.6], [114.6, 174], [112, 186], [117, 214], [sideX(230) - 2.2, 230], [sideX(250) - 2.4, 250], [sideX(262) - 2.6, 262, 'c'], [150, 264]]);
       const pep = symS([[150, 260], [sideX(258) - 2.4, 257.6, 'c'], [sideX(270) - 7, 272], [sideX(284) - 12.6, 285, 'c'], [134, 287.4], [126, 285.4], [150, 289]]);
-      const puff = spline([[123.4, 170.2], [112, 170.4], [104.6, 175], [100.4, 184.4], [99.6, 197], [101.8, 208.4], [105.4, 215.6, 'c'], [120, 220.6, 'c'], [122.8, 208], [124, 188]]);
-      const band = spline([[armO(214) - 1.6, 213.4, 'c'], [armI(219) + 1.8, 218.4, 'c'], [armI(223) + 1.8, 222.8, 'c'], [armO(218) - 1.8, 218.2, 'c']]);
+      const P18 = puff18(6.4, 213), puff = P18.d;   // 重画的泡泡袖（接在肩线上）
+      const band = P18.band;
       const gathers = ['M 104 206 Q 107 210 106.6 214', 'M 109.6 208 Q 111.4 213 110.8 216.6', 'M 115 208.6 Q 116 214 115.4 218.4', 'M 105.6 180 Q 109 184 110 190'];
       const ruff = Array.from({ length: 7 }, (_, i) => { const x = 137.6 + i * 3.54; return `<path d="M ${f1(x)} ${f1(189.4 + (i === 0 || i === 6 ? -.8 : .6))} q 1.77 3 3.54 0" fill="#fff" stroke="${INK}" stroke-width=".7"/>`; }).join('');
       const bow = `<path d="M 150 197 C 143 190 136.6 192 137.4 198 C 138 203 144 202.6 150 199.6 C 156 202.6 162 203 162.6 198 C 163.4 192 157 190 150 197 Z" fill="${F.rib || '#E86C94'}" stroke="${INK}" stroke-width=".9"/><path d="M 148.6 199 L 144.6 211 L 148.2 209 L 149.6 212 Z M 151.4 199 L 155.4 211 L 151.8 209 L 150.4 212 Z" fill="${F.rib || '#E86C94'}" stroke="${INK}" stroke-width=".8"/><ellipse cx="150" cy="198" rx="2.2" ry="2.6" fill="${F.rib || '#E86C94'}" stroke="${INK}" stroke-width=".8"/><path d="M 140 195.6 Q 142 193.6 145 194.4" stroke="#fff" stroke-width=".8" fill="none" opacity=".8"/>`;
       return piece(pep, F.fill, { folds: fm('M 124 266 Q 122 276 118 284', 'M 136 266 Q 136 276 134 285') }) +
         piece(body, F.fill, { folds: fm('M 130 214 Q 133 228 131 244', 'M 140 222 Q 142 236 141 252'), lines: [{ d: 'M 150 204 L 150 262', o: .4 }] }) + btn(150, 222, '#fff', 1.3) + btn(150, 240, '#fff', 1.3) +
-        piece(puff, F.alt, { folds: gathers }) + piece(mir(puff), F.alt, { folds: gathers.map(mir) }) + piece(band, F.alt, { rim: false }) + piece(mir(band), F.alt, { rim: false }) + ruff + (F.print === 'bow' ? bow : '');
+        piece(puff, F.alt, { autoFolds: false, folds: P18.ds }) + piece(mir(puff), F.alt, { autoFolds: false, folds: P18.ds.map(mir) }) + piece(band, F.alt, { rim: false }) + piece(mir(band), F.alt, { rim: false }) + ruff + (F.print === 'bow' ? bow : '');
     }
   },
   /* ---------- 斜肩宽松 T 恤（露出一侧肩膀 + 内衣肩带） ---------- */
@@ -1945,7 +1986,7 @@ Object.assign(TPL, {
       const bow = `<path d="M 150 176 C 142 169 135.6 171 136.4 177 C 137 182 143 181.6 150 178.6 C 157 181.6 163 182 163.6 177 C 164.4 171 158 169 150 176 Z" fill="${bw}" stroke="${INK}" stroke-width=".9"/><path d="M 148.6 178 L 141.4 214 L 145.6 211.4 L 147.4 215.4 Z M 151.4 178 L 157.6 212 L 153.6 209.6 L 152.2 213.4 Z" fill="${bw}" stroke="${INK}" stroke-width=".8"/><ellipse cx="150" cy="177" rx="2.3" ry="2.7" fill="${bw}" stroke="${INK}" stroke-width=".8"/><path d="M 140 174.6 Q 142 172.6 145 173.4" stroke="#fff" stroke-width=".8" fill="none" opacity=".8"/>`;
       return piece(body, F.fill, { folds: fm('M 127 238 Q 130 252 128 266'), lines: [{ d: 'M 150 180 L 150 286', o: .45 }, { d: 'M 139.6 186 L 138.6 244 M 143.8 184 L 143.4 246 M 160.4 186 L 161.4 244 M 156.2 184 L 156.6 246', o: .3, w: .7 }] }) +
         [194, 210, 226, 242, 258, 274].map(y => btn(150, y, '#fff', 1.2)).join('') +
-        piece(PUFF_SL, F.alt, { folds: PUFF_G }) + piece(mir(PUFF_SL), F.alt, { folds: PUFF_G.map(mir) }) + piece(puffBand(), F.alt, { rim: false }) + piece(mir(puffBand()), F.alt, { rim: false }) +
+        (P => piece(P.d, F.alt, { autoFolds: false, foldShade: false, folds: P.ds }) + piece(mir(P.d), F.alt, { autoFolds: false, foldShade: false, folds: P.ds.map(mir) }) + piece(P.band, F.alt, { rim: false }) + piece(mir(P.band), F.alt, { rim: false }))(puff18(6)) +
         piece(collar, F.alt, {}) + piece(mir(collar), F.alt, {}) + bow;
     }
   },
@@ -2643,13 +2684,13 @@ function frillD(a, b, depth, n = 4, seed = 1) {
 const frillFolds = (a, b, depth, n) => Array.from({ length: n - 1 }, (_, i) => { const u = (i + 1) / n, x = lerp(a[0], b[0], u), y = lerp(a[1], b[1], u); return [x + .4, y + .6, x, y + depth * .5, 0, 1.6, .1, .8]; });
 
 /* 泡泡短袖（左）：肩上收褶、袖身鼓起、袖口松紧；vol 越大越鼓 */
-function puffShort(vol = 5) {
+var puffShort = function (vol = 5) {
   const k = vol - 4, P = [[123.4, 187], [112 - k * .3, 187.6], [104.2 - k * .7, 192], [100 - k, 200], [99.4 - k, 209], [101.6 - k * .6, 216], [104.6 - k * .2, 220.6, 'c'], [120, 225, 'c'], [122.6, 214], [124, 199]];
   const d = spline(P);
   const band = spline([[armO(217) - 1.4, 216.6, 'c'], [armI(222) + 1.8, 221.4, 'c'], [armI(226) + 1.8, 225.6, 'c'], [armO(221) - 1.6, 221.2, 'c']]);
   const folds = [[106 - k * .4, 190, 102.4 - k * .6, 214, -1.6, 2.6, .5, .5], [112.6, 188.4, 109.6, 219, -.6, 2.4, .5, .5], [118.6, 189, 117, 222, .8, 2.2, .5, .5], [104 - k * .6, 214, 108, 204, 0, 1.6, .2, .3]];
   return { d, band, folds, glow: [`M ${f1(104 - k * .6)} 196 Q ${f1(101.6 - k)} 204 ${f1(103 - k * .6)} 212`] };
-}
+};
 /* 立体缎带蝴蝶结：两个带内褶的蝴蝶结圈 + 打结 + 分叉的飘带 */
 const ribbonBow = (x, y, s, c, tail = 1) => {
   const ln = STYLE.line, sh = `fill="#5A3A4A" opacity=".24" style="mix-blend-mode:multiply"`;
@@ -2721,8 +2762,8 @@ Object.assign(TPL, {
       const P = puffShort(7.2);
       const hemG = gatherD(112, 188, 240.6, 20, 3.4, 1.2);
       const sleeve = m => { const M = m ? mir : x => x;
-        return piece(M(P.d), F.fill, { autoFolds: false, over: drapeSVG(m ? P.folds.map(mf) : P.folds, { op: .6, lo: .4 }) + glowSVG(m ? P.glow.map(mir) : P.glow, .45, 3) }) +
-          piece(M(P.band), F.rib || F.fill, { rim: false, lines: [{ d: M(gatherD(armO(219) - .4, armI(223) + 1, 218.4, 5, 3.4)), o: .4, w: .5 }] }); };
+        return piece(M(P.d), F.fill, { over: glowSVG(m ? P.glow.map(mir) : P.glow, .45, 3) }) +
+          piece(M(P.band), F.rib || F.fill, { rim: false }); };
       return piece(body, F.fill, { autoFolds: false, over: drapeSVG(fm2([[134, 204, 132, 240, 1, 2.4, .3]]), { op: .5, lo: .35 }) + (F.print ? printMotif(F.print, 150, 224, 1) : ''), lines: [{ d: hemG, o: .35, w: .5 }] }) +
         sleeve(false) + sleeve(true) + ribbonBow(150, 199.4, .5, F.alt === F.fill ? '#E8454F' : F.alt, 1);
     }
@@ -3665,6 +3706,26 @@ Object.assign(TPL.cropSweat, {
       pc(cf, rc, rib) + pc(mir(cf), rc, mirO(rib)) + pc(neck, rc, { rim: false });
   }
 });
+
+/* ---------- 泡泡袖（重画）：袖山沿着肩线 / 袖窿接在衣身上，不是贴在肩膀外面的半圆
+   · 顶端从肩线上长出来，只在靠近肩点的地方微微鼓起（抽褶把布推高了）
+   · 最鼓的地方在袖子下半截，再收进袖口；靠身体那侧是一条顺着袖窿往腋下走的弧
+   · 两处抽褶：袖山一小撮往下散开、袖口一圈往上散开；下半圈背光 ---------- */
+function puff18(vol = 5, yb = 216) {
+  const k = (vol - 5) * .8, lift = 1 + vol * .22;
+  const bo = [armO(yb) - 2.4, yb], bi = [armI(yb + 5) + 2.2, yb + 5.4];
+  const d = spline([[126.4, 169.4], [120.6, 170 - lift * .5], [114.6, 171.2 - lift * .3], [109.2, 174.4], [105 - k * .5, 180.4], [102 - k, 188.6], [100.6 - k * 1.1, 198], [101 - k, 207], [bo[0] - k * .3, bo[1] - 1.4], [bo[0] + .4, bo[1] + .6, 'c'],
+    [lerp(bo[0], bi[0], .5), lerp(bo[1], bi[1], .5) + 1.8], [bi[0], bi[1], 'c'], [bi[0] + 1.2, 212], [122.8, 202], [123.8, 190], [124.8, 180]]);
+  const X = (y, u) => lerp(y < 196 ? 108 - (196 - y) * .15 - k * .6 : 101.6 - k, 122.6, u);
+  const top = [[.3, 176], [.52, 175], [.72, 175.4]].map(([u, y]) => `M ${f1(X(y, u) + 1.6)} ${f1(y - 3)} Q ${f1(X(y + 5, u))} ${f1(y + 3)} ${f1(X(y + 10, u) - 1.4)} ${f1(y + 9)}`);
+  const bot = [.18, .4, .62, .82].map(u => { const x1 = lerp(bo[0], bi[0], u), y1 = lerp(bo[1], bi[1], u) - .4; return `M ${f1(x1 + (u - .5) * -3)} ${f1(y1 - 11 + Math.abs(u - .5) * 4)} Q ${f1(x1 + (u - .5) * -1)} ${f1(y1 - 5)} ${f1(x1)} ${f1(y1)}`; });
+  const cel = [`M ${f1(101.2 - k)} 204 Q ${f1(lerp(bo[0], bi[0], .5))} ${f1(yb - 2.4)} ${f1(bi[0] + 1)} 208 L ${f1(bi[0] + 2)} ${f1(bi[1] + 2)} L ${f1(bo[0] - 2)} ${f1(bo[1] + 2)} Z`,
+    `M 124.8 184 Q 122.4 198 ${f1(bi[0] + 1.4)} ${f1(bi[1] - 1)} L 126 ${f1(bi[1])} L 127 184 Z`];                       // 下半圈 + 靠腋下那侧的背光
+  const band = spline([[bo[0] + .6, bo[1] - .6, 'c'], [lerp(bo[0], bi[0], .5), lerp(bo[1], bi[1], .5) + 1.6], [bi[0] - .4, bi[1] - .2, 'c'], [bi[0] - .2, bi[1] + 4.6, 'c'], [lerp(bo[0], bi[0], .5), lerp(bo[1], bi[1], .5) + 6.4], [bo[0] + .8, bo[1] + 4.4, 'c']]);
+  const ds = top.concat(bot);
+  return { d: withFolds(d, ds, cel), band, ds, cel, folds: [], glow: [`M ${f1(105 - k * .6)} 186 Q ${f1(102.4 - k)} 196 ${f1(103.4 - k * .8)} 205`] };
+}
+puffShort = function (vol = 5) { return puff18(vol + 1, 216); };
 
 /* =====================================================================
    垂坠轮廓（第 19 版）：衣服不再是「身体轮廓往外扩几像素」，而是从撑起它的地方（肩、胸、胯）往下垂
@@ -7674,7 +7735,7 @@ function showErr(msg) { const s = $('#status'); s.className = 'status err'; s.te
 
 /* ---------------- 事件 ---------------- */
 function bind() {
-  $('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (!b) return; state.tab = b.dataset.tab; renderTabs(); renderGrid(); });
+  $('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (!b) return; state.tab = b.dataset.tab; renderTabs(); renderGrid(); $('#grid').scrollTop = 0; const t = $(`[data-tab="${state.tab}"]`); if (t && t.scrollIntoView) t.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' }); });   // 手机上分类是一行横着滑的：点到的那个滑进来
   $('#tabs').addEventListener('keydown', e => {
     if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
     const i = TABS.findIndex(t => t[0] === state.tab), j = (i + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length;

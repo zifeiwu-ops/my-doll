@@ -290,7 +290,7 @@ function showErr(msg) { const s = $('#status'); s.className = 'status err'; s.te
 
 /* ---------------- 事件 ---------------- */
 function bind() {
-  $('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (!b) return; state.tab = b.dataset.tab; renderTabs(); renderGrid(); });
+  $('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (!b) return; state.tab = b.dataset.tab; renderTabs(); renderGrid(); $('#grid').scrollTop = 0; const t = $(`[data-tab="${state.tab}"]`); if (t && t.scrollIntoView) t.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' }); });   // 手机上分类是一行横着滑的：点到的那个滑进来
   $('#tabs').addEventListener('keydown', e => {
     if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
     const i = TABS.findIndex(t => t[0] === state.tab), j = (i + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length;

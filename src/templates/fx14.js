@@ -134,13 +134,13 @@ function frillD(a, b, depth, n = 4, seed = 1) {
 const frillFolds = (a, b, depth, n) => Array.from({ length: n - 1 }, (_, i) => { const u = (i + 1) / n, x = lerp(a[0], b[0], u), y = lerp(a[1], b[1], u); return [x + .4, y + .6, x, y + depth * .5, 0, 1.6, .1, .8]; });
 
 /* 泡泡短袖（左）：肩上收褶、袖身鼓起、袖口松紧；vol 越大越鼓 */
-function puffShort(vol = 5) {
+var puffShort = function (vol = 5) {
   const k = vol - 4, P = [[123.4, 187], [112 - k * .3, 187.6], [104.2 - k * .7, 192], [100 - k, 200], [99.4 - k, 209], [101.6 - k * .6, 216], [104.6 - k * .2, 220.6, 'c'], [120, 225, 'c'], [122.6, 214], [124, 199]];
   const d = spline(P);
   const band = spline([[armO(217) - 1.4, 216.6, 'c'], [armI(222) + 1.8, 221.4, 'c'], [armI(226) + 1.8, 225.6, 'c'], [armO(221) - 1.6, 221.2, 'c']]);
   const folds = [[106 - k * .4, 190, 102.4 - k * .6, 214, -1.6, 2.6, .5, .5], [112.6, 188.4, 109.6, 219, -.6, 2.4, .5, .5], [118.6, 189, 117, 222, .8, 2.2, .5, .5], [104 - k * .6, 214, 108, 204, 0, 1.6, .2, .3]];
   return { d, band, folds, glow: [`M ${f1(104 - k * .6)} 196 Q ${f1(101.6 - k)} 204 ${f1(103 - k * .6)} 212`] };
-}
+};
 /* 立体缎带蝴蝶结：两个带内褶的蝴蝶结圈 + 打结 + 分叉的飘带 */
 const ribbonBow = (x, y, s, c, tail = 1) => {
   const ln = STYLE.line, sh = `fill="#5A3A4A" opacity=".24" style="mix-blend-mode:multiply"`;

@@ -35,14 +35,14 @@ Object.assign(TPL, {
     render(F) {
       const body = symS([[150, 192], [140.8, 190.6], [137.4, 188.8, 'c'], [135.6, 171], [129.8, 168.8], [121, 170.6], [114.6, 174], [112, 186], [117, 214], [sideX(230) - 2.2, 230], [sideX(250) - 2.4, 250], [sideX(262) - 2.6, 262, 'c'], [150, 264]]);
       const pep = symS([[150, 260], [sideX(258) - 2.4, 257.6, 'c'], [sideX(270) - 7, 272], [sideX(284) - 12.6, 285, 'c'], [134, 287.4], [126, 285.4], [150, 289]]);
-      const puff = spline([[123.4, 170.2], [112, 170.4], [104.6, 175], [100.4, 184.4], [99.6, 197], [101.8, 208.4], [105.4, 215.6, 'c'], [120, 220.6, 'c'], [122.8, 208], [124, 188]]);
-      const band = spline([[armO(214) - 1.6, 213.4, 'c'], [armI(219) + 1.8, 218.4, 'c'], [armI(223) + 1.8, 222.8, 'c'], [armO(218) - 1.8, 218.2, 'c']]);
+      const P18 = puff18(6.4, 213), puff = P18.d;   // 重画的泡泡袖（接在肩线上）
+      const band = P18.band;
       const gathers = ['M 104 206 Q 107 210 106.6 214', 'M 109.6 208 Q 111.4 213 110.8 216.6', 'M 115 208.6 Q 116 214 115.4 218.4', 'M 105.6 180 Q 109 184 110 190'];
       const ruff = Array.from({ length: 7 }, (_, i) => { const x = 137.6 + i * 3.54; return `<path d="M ${f1(x)} ${f1(189.4 + (i === 0 || i === 6 ? -.8 : .6))} q 1.77 3 3.54 0" fill="#fff" stroke="${INK}" stroke-width=".7"/>`; }).join('');
       const bow = `<path d="M 150 197 C 143 190 136.6 192 137.4 198 C 138 203 144 202.6 150 199.6 C 156 202.6 162 203 162.6 198 C 163.4 192 157 190 150 197 Z" fill="${F.rib || '#E86C94'}" stroke="${INK}" stroke-width=".9"/><path d="M 148.6 199 L 144.6 211 L 148.2 209 L 149.6 212 Z M 151.4 199 L 155.4 211 L 151.8 209 L 150.4 212 Z" fill="${F.rib || '#E86C94'}" stroke="${INK}" stroke-width=".8"/><ellipse cx="150" cy="198" rx="2.2" ry="2.6" fill="${F.rib || '#E86C94'}" stroke="${INK}" stroke-width=".8"/><path d="M 140 195.6 Q 142 193.6 145 194.4" stroke="#fff" stroke-width=".8" fill="none" opacity=".8"/>`;
       return piece(pep, F.fill, { folds: fm('M 124 266 Q 122 276 118 284', 'M 136 266 Q 136 276 134 285') }) +
         piece(body, F.fill, { folds: fm('M 130 214 Q 133 228 131 244', 'M 140 222 Q 142 236 141 252'), lines: [{ d: 'M 150 204 L 150 262', o: .4 }] }) + btn(150, 222, '#fff', 1.3) + btn(150, 240, '#fff', 1.3) +
-        piece(puff, F.alt, { folds: gathers }) + piece(mir(puff), F.alt, { folds: gathers.map(mir) }) + piece(band, F.alt, { rim: false }) + piece(mir(band), F.alt, { rim: false }) + ruff + (F.print === 'bow' ? bow : '');
+        piece(puff, F.alt, { autoFolds: false, folds: P18.ds }) + piece(mir(puff), F.alt, { autoFolds: false, folds: P18.ds.map(mir) }) + piece(band, F.alt, { rim: false }) + piece(mir(band), F.alt, { rim: false }) + ruff + (F.print === 'bow' ? bow : '');
     }
   },
   /* ---------- 斜肩宽松 T 恤（露出一侧肩膀 + 内衣肩带） ---------- */

@@ -138,7 +138,7 @@ Object.assign(TPL, {
       const bow = `<path d="M 150 176 C 142 169 135.6 171 136.4 177 C 137 182 143 181.6 150 178.6 C 157 181.6 163 182 163.6 177 C 164.4 171 158 169 150 176 Z" fill="${bw}" stroke="${INK}" stroke-width=".9"/><path d="M 148.6 178 L 141.4 214 L 145.6 211.4 L 147.4 215.4 Z M 151.4 178 L 157.6 212 L 153.6 209.6 L 152.2 213.4 Z" fill="${bw}" stroke="${INK}" stroke-width=".8"/><ellipse cx="150" cy="177" rx="2.3" ry="2.7" fill="${bw}" stroke="${INK}" stroke-width=".8"/><path d="M 140 174.6 Q 142 172.6 145 173.4" stroke="#fff" stroke-width=".8" fill="none" opacity=".8"/>`;
       return piece(body, F.fill, { folds: fm('M 127 238 Q 130 252 128 266'), lines: [{ d: 'M 150 180 L 150 286', o: .45 }, { d: 'M 139.6 186 L 138.6 244 M 143.8 184 L 143.4 246 M 160.4 186 L 161.4 244 M 156.2 184 L 156.6 246', o: .3, w: .7 }] }) +
         [194, 210, 226, 242, 258, 274].map(y => btn(150, y, '#fff', 1.2)).join('') +
-        piece(PUFF_SL, F.alt, { folds: PUFF_G }) + piece(mir(PUFF_SL), F.alt, { folds: PUFF_G.map(mir) }) + piece(puffBand(), F.alt, { rim: false }) + piece(mir(puffBand()), F.alt, { rim: false }) +
+        (P => piece(P.d, F.alt, { autoFolds: false, foldShade: false, folds: P.ds }) + piece(mir(P.d), F.alt, { autoFolds: false, foldShade: false, folds: P.ds.map(mir) }) + piece(P.band, F.alt, { rim: false }) + piece(mir(P.band), F.alt, { rim: false }))(puff18(6)) +
         piece(collar, F.alt, {}) + piece(mir(collar), F.alt, {}) + bow;
     }
   },

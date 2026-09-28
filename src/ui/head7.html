@@ -246,6 +246,47 @@ select.name-in{flex:1 1 140px}
 .big-pic p{margin:0;font-family:var(--f-display);font-size:16px}
 @media (prefers-reduced-motion:reduce){.flash.go{animation:none}}
 @media (prefers-reduced-motion:reduce){.spark{display:none}.card-btn,.btn,.toast{transition:none}}
+
+/* ---------- 手机：参考同类换装游戏的竖屏布局 ----------
+   一屏放下：上半屏是娃娃（一直看得见），下半屏是衣橱抽屉；分类一行横着滑、衣服在抽屉里面滚动，整页不再上下滑
+   拍照 / 随机 / 恢复默认变成舞台右侧的一列圆按钮，姿势是舞台下面一条横着滑的胶囊 */
+@media (max-width:879px){
+  html,body{height:100%}
+  body:not(.modal-open){overflow:hidden}
+  .app{height:100vh;height:100dvh;padding:8px 10px calc(8px + env(safe-area-inset-bottom));gap:8px;overflow:hidden}
+  .masthead{flex:0 0 auto;gap:6px 12px;flex-wrap:nowrap}
+  .logo{flex-direction:row;align-items:center;gap:8px}
+  .logo-cn{font-size:30px;-webkit-text-stroke:6px #fff}.logo-cn span{-webkit-text-stroke:6px #fff}
+  .ribbon{font-size:11.5px;padding:2px 12px}
+  .memo,.masthead .stk{display:none}
+  .layout{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:12px}
+  .tape{display:none}
+  .sheet{border-radius:16px;box-shadow:0 0 0 3px #fff,0 0 0 5px var(--aqua-deep),2px 4px 0 3px rgba(74,52,48,.12)}
+  .layout>.sheet:first-child{flex:0 0 auto}
+  .stage{height:calc(50dvh - 70px);min-height:250px;border-radius:14px 14px 0 0}
+  .stage::after{inset:6px}
+  .deco.d3,.deco.d4,.deco.d6{display:none}
+  .deco.d1{top:12px;left:12px;width:30px;height:30px}.deco.d2{top:auto;bottom:40px;left:14px;right:auto;width:26px;height:26px}.deco.d5{bottom:12px;left:10px;width:34px;height:34px}
+  .stage-bar{padding:6px 8px 7px;gap:6px}
+  .ootd{display:none}
+  .pose-line .row-label{display:none}
+  .pose-line .opts{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:3px 2px;-webkit-overflow-scrolling:touch}
+  .pose-line .opts::-webkit-scrollbar{display:none}
+  .pose-line .opt{flex:0 0 auto;font-size:12.5px;padding:2px 10px}
+  .stage-bar .btn{position:absolute;right:12px;z-index:4;width:52px;height:52px;padding:0;border-radius:50%;font-size:10.5px;letter-spacing:-.02em;line-height:1.1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+  #btnShot{top:12px}#btnRandom{top:72px}#btnReset{top:132px}
+  .shot-btn svg{width:18px;height:18px}
+  .closet{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;padding-top:0;overflow:hidden}
+  .tabs{flex:0 0 auto;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:6px;padding:10px 10px 6px;-webkit-overflow-scrolling:touch}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:0 0 auto;font-size:14.5px;padding:4px 11px 3px}
+  .hint-line{display:none}
+  .grid{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:10px 8px;padding:8px 10px 14px}
+  .card-btn{padding:4px 4px 5px;gap:3px;border-radius:12px}
+  .nm{font-size:11px;min-height:2.5em;line-height:1.25}
+  .badge{font-size:10px;padding:3px 6px 2px;top:-7px;left:-5px}
+}
+@media (max-width:879px) and (min-height:760px){.stage{height:calc(52dvh - 70px)}}
 </style>
 
 <svg width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false">

@@ -48,8 +48,8 @@ Object.assign(TPL, {
       const P = puffShort(7.2);
       const hemG = gatherD(112, 188, 240.6, 20, 3.4, 1.2);
       const sleeve = m => { const M = m ? mir : x => x;
-        return piece(M(P.d), F.fill, { autoFolds: false, over: drapeSVG(m ? P.folds.map(mf) : P.folds, { op: .6, lo: .4 }) + glowSVG(m ? P.glow.map(mir) : P.glow, .45, 3) }) +
-          piece(M(P.band), F.rib || F.fill, { rim: false, lines: [{ d: M(gatherD(armO(219) - .4, armI(223) + 1, 218.4, 5, 3.4)), o: .4, w: .5 }] }); };
+        return piece(M(P.d), F.fill, { over: glowSVG(m ? P.glow.map(mir) : P.glow, .45, 3) }) +
+          piece(M(P.band), F.rib || F.fill, { rim: false }); };
       return piece(body, F.fill, { autoFolds: false, over: drapeSVG(fm2([[134, 204, 132, 240, 1, 2.4, .3]]), { op: .5, lo: .35 }) + (F.print ? printMotif(F.print, 150, 224, 1) : ''), lines: [{ d: hemG, o: .35, w: .5 }] }) +
         sleeve(false) + sleeve(true) + ribbonBow(150, 199.4, .5, F.alt === F.fill ? '#E8454F' : F.alt, 1);
     }
