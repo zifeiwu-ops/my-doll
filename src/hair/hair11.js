@@ -10,7 +10,7 @@ function wavyLen(id, name, c, ln, hi, len, amp = 2.4) {
       const wl = [`M 108 150 C 104 162 111 172 107 186`, `M 106 ${f1(100 + 110 * k)} C 102 ${f1(112 + 110 * k)} 109 ${f1(122 + 110 * k)} 105 ${f1(136 + 110 * k)}`, 'M 113 170 C 110 182 116 192 113 206'];
       return [
         { z: 2, svg: hairPiece(back, c, { lines: strands([`M 100 160 C 96 ${f1(160 + 40 * k)} 102 ${f1(180 + 60 * k)} 97 ${f1(len - 20)}`, mir(`M 100 160 C 96 ${f1(160 + 40 * k)} 102 ${f1(180 + 60 * k)} 97 ${f1(len - 20)}`)], ln) }) },
-        { z: 50, svg: capHair(c, ln, shine([[130, 73, -20], [170, 73, 20]], hi)) + hairPiece(side, c, { lines: strands(wl, ln) }) + hairPiece(mir(side), c, { lines: strands(wl.map(mir), ln) }) + locks(PART_LOCKS, c, ln) }
+        { z: 50, svg: capHair(c, ln, shine([[130, 73, -20], [170, 73, 20]], hi)) + (len > 180 ? frontLocks(c, ln, len - 10, amp * .8, Math.round(len)) : hairPiece(side, c, { lines: strands(wl, ln) }) + hairPiece(mir(side), c, { lines: strands(wl.map(mir), ln) })) + locks(PART_LOCKS, c, ln) }
       ];
     }
   };

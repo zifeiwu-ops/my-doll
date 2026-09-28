@@ -36,12 +36,13 @@ function hairShape(d, c) {
   if (run.length < 5) return null;
   const base = f => { const t = f * (run.length - 1), j = Math.min(run.length - 2, Math.floor(t)), u = t - j, a = out[run[j]], b = out[run[j + 1]]; return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u]; };
   const rw = Math.hypot(base(1)[0] - base(0)[0], base(1)[1] - base(0)[1]), n = Math.max(2, Math.min(5, Math.round(rw / 13)));
-  const LEN = [1, .62, .86, .55, .78], tips = [], splits = [];
+  const LEN = [1, .7, .88, .62, .8], tips = [], splits = [];
   for (let j = 0; j < n; j++) {
-    const f0 = j / n, f1 = (j + 1) / n, fm = (f0 + f1) / 2, len = (9 + r() * 5) * scale * LEN[(j + (r() < .5 ? 0 : 1)) % 5], curl = flow * (1.4 + r() * 1.8) * scale;
+    const f0 = j / n, f1 = (j + 1) / n, fm = (f0 + f1) / 2, len = (16 + r() * 8) * scale * LEN[(j + (r() < .5 ? 0 : 1)) % 5], curl = flow * (1 + r() * 1.4) * scale;
     const nb = base(f0), tp = base(fm), s1 = base(f0 + (f1 - f0) * .3), s2 = base(f0 + (f1 - f0) * .72);
     if (j) { tips.push([nb[0], nb[1] - 2.2 * scale, 'c']); splits.push(nb); }
-    tips.push([s1[0] + curl * .25, s1[1] + len * .42], [tp[0] + curl, tp[1] + len, 'c'], [s2[0] + curl * .45, s2[1] + len * .5]);
+    const q1 = base(fm - (f1 - f0) * .14), q2 = base(fm + (f1 - f0) * .14);   // 两侧往里凹：尖梢细长，不是钝三角
+    tips.push([s1[0] + curl * .15, s1[1] + len * .22], [q1[0] + curl * .6, q1[1] + len * .66], [tp[0] + curl, tp[1] + len, 'c'], [q2[0] + curl * .6, q2[1] + len * .7], [s2[0] + curl * .2, s2[1] + len * .26]);
   }
   const pts = [], set = new Set(run);
   for (let i = 0; i < N; i++) { const q = (st + run.length + i) % N; if (set.has(q)) continue; pts.push(out[q]); }
@@ -94,3 +95,32 @@ ringletLines = function (x0, y0, x1, y1, w, n, amp = 2.4) {
   const { P } = ringCenter(x0, y0, x1, y1, w, n, amp);
   return 'M ' + P.slice(2, -3).map(p => `${f1(p[0] - p[3] * .35 * p[2])} ${f1(p[1])}`).join(' L ');
 };
+
+/* ---------- 长发前面那片（重画）：按真实的垂坠来走，不再是一整条从太阳穴直通到腰的直板
+   · 从太阳穴出来，贴着脸颊往下（被下巴轻轻挡住）
+   · 落到肩膀上时被肩膀托住、往外摊开一点（肩膀这里最宽）
+   · 过了肩膀顺着胸口往下垂，受重力越往下越直，发尾微微往里收
+   · 分成 3 缕，长短错开、互相压一点；每缕发尾都是细长的尖梢（尖的那段占整缕的 1/4） ---------- */
+function frontLocks(c, ln, len, wave = 0, seed = 1) {
+  const r = RNG(seed * 97 + Math.round(len));
+  const lock = (k, m) => {
+    const L = len * [1, .93, .84][k] - r() * 6, sx = x => (m ? 300 - x : x);
+    // 中心线：太阳穴 → 脸颊 → 肩上 → 胸前
+    const C = [[111.5 + 4.2 * k, 98 + 5 * k], [110.4 + 4.6 * k, 128], [112 + 5 * k, 152], [115.4 + 7.4 * k, 170], [117.6 + 8 * k, 186], [118.4 + 8.2 * k, 214]];
+    for (let y = 244; y < L - 4; y += 30) C.push([118.8 + 8.2 * k + (y - 214) * .012, y]);
+    C.push([120.4 + 8.2 * k + 2.4, L]);                                    // 发尾微微往里收
+    const Pc = resamp(C, 40), W = [8.6, 10.2, 9.4][k];
+    const pts = Pc.map((p, i) => { const t = i / 40, y = p[1];
+      const w = W * (y < 150 ? .82 : y < 170 ? .82 + (y - 150) / 20 * .36 : 1.18 - Math.min(.16, (y - 170) / 120)) * (t < .74 ? 1 : Math.pow(1 - (t - .74) / .26, 1.35));
+      const wv = wave * ss18(150, 230, y) * Math.sin((y - 150) / 38 * Math.PI + k * 1.3);
+      return [p[0] + wv, y, w / 2]; });
+    const Lh = [], Rh = []; pts.forEach((p, i) => { const a = pts[Math.max(0, i - 1)], b = pts[Math.min(40, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1;
+      Lh.push([p[0] + dy / l * p[2], p[1] - dx / l * p[2]]); Rh.push([p[0] - dy / l * p[2], p[1] + dx / l * p[2]]); });
+    const e = pts[40], tip = [e[0] + 1.2, e[1] + 2, 'c'];
+    const d = spline([...Lh.slice(0, 39), tip, ...Rh.slice(0, 39).reverse(), [pts[0][0], pts[0][1] - 4]].map(p => [sx(p[0]), p[1], p[2]]));
+    // 一条顺着这缕往下的分缕阴影（从肩膀开始，到尖梢前收掉）
+    const sh = pts.slice(14, 34).map(p => [sx(p[0] + p[2] * .25), p[1]]);
+    return hairPiece(d, c, { shape: false, rim: [1.6, 1.2], over: `<path d="${taperD(sh, 1.6, .3)}" fill="${hairInk(c)}" opacity=".32"/>` });
+  };
+  return [0, 1, 2].map(k => lock(k, false) + lock(k, true)).join('');
+}

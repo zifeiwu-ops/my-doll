@@ -74,7 +74,7 @@ function straightLong(id, name, c, ln, hi) {
       const sl = ['M 110 130 C 108.6 170 108.6 220 109.6 270', 'M 113.6 150 C 112.6 190 112.8 236 113.6 280'];
       return [
         { z: 2, svg: hairPiece(back, c, { lines: strands(['M 102 160 C 101 200 101 240 102 280', mir('M 102 160 C 101 200 101 240 102 280')], ln) }) },
-        { z: 50, svg: capHair(c, ln, shine([[130, 73, -20], [170, 73, 20]], hi)) + hairPiece(side, c, { lines: strands(sl, ln) }) + hairPiece(mir(side), c, { lines: strands(sl.map(mir), ln) }) + locks(PART_LOCKS, c, ln) }
+        { z: 50, svg: capHair(c, ln, shine([[130, 73, -20], [170, 73, 20]], hi)) + frontLocks(c, ln, 286, 0, 3) + locks(PART_LOCKS, c, ln) }
       ];
     }
   };
@@ -89,7 +89,7 @@ function wavyLong(id, name, c, ln, hi, bangs) {
       const B = bangs ? [[124, 88, 121.4, 116, 9.6, -2.2], [176, 88, 178.6, 116, 9.6, 2.2], [132.6, 85, 131, 112.6, 10, -1.6], [167.4, 85, 169, 112.6, 10, 1.6], [141.4, 83.4, 140.4, 110.4, 10, -.8], [158.6, 83.4, 159.6, 110.4, 10, .8], [150, 83, 150, 111.4, 9, 0]] : PART_LOCKS;
       return [
         { z: 2, svg: hairPiece(back, c, { lines: strands(['M 100 160 C 96 190 102 220 97 250', mir('M 100 160 C 96 190 102 220 97 250')], ln) }) },
-        { z: 50, svg: capHair(c, ln, shine([[130, 73, -20], [170, 73, 20]], hi)) + hairPiece(side, c, { lines: strands(wl, ln) }) + hairPiece(mir(side), c, { lines: strands(wl.map(mir), ln) }) + locks(B, c, ln) }
+        { z: 50, svg: capHair(c, ln, shine([[130, 73, -20], [170, 73, 20]], hi)) + frontLocks(c, ln, 270, 2.2, 5) + locks(B, c, ln) }
       ];
     }
   };
