@@ -64,7 +64,7 @@ const line = (pts, t) => spline(pts, false, t);
    --------------------------------------------------------------------- */
 /* 统一画风（对齐 Y2K COLLECTION SPRITE SHEET）：和身体一样的深棕描边、偏暖的粉紫阴影（边缘略柔）、
    很淡的内侧高光；褶皱线画成两头尖的笔触（像手绘勾线），不再是一样粗的死线 */
-const STYLE = { line: '#3D3134', sw: .62, shade: '#E2C0CE', lit: false, litOp: .2, foldW: .52, foldOp: .36, foldShadeW: 4.4, foldShadeOp: .62, brush: true, volOp: .95 };
+const STYLE = { line: '#3D3134', sw: .62, shade: '#E2C0CE', lit: false, litOp: .2, foldW: .52, foldOp: .36, foldShadeW: 4.4, foldShadeOp: .62, brush: true, volOp: .95, crisp: true };
 /* 布料的底色（给褶皱线配同色系的深色） */
 function baseOf(fill) {
   if (!fill || typeof fill !== 'string') return null;
@@ -166,10 +166,13 @@ function piece(d, fill, o = {}) {
   (o.deep || []).forEach(p => inner += `<path d="${p}" fill="${o.dc || SH_DEEP}" style="mix-blend-mode:multiply" filter="url(#shsoft)" opacity=".85"/>`);
   if (o.sheen) inner += `<g filter="url(#soft)">${o.sheen.map(p => `<path d="${p}" fill="none" stroke="#fff" stroke-width="${o.sheenW || 4}" stroke-linecap="round" opacity="${o.sheenOp ?? .5}"/>`).join('')}</g>`;
   if ((o.folds || []).length) {
-    if (o.foldShade !== false) inner += `<g filter="url(#shsoft2)" style="mix-blend-mode:multiply" opacity="${STYLE.foldShadeOp}">${o.folds.map(p => `<path d="${p}" fill="none" stroke="${sc}" stroke-width="${STYLE.foldShadeW}" stroke-linecap="round" transform="translate(1.4 .6)"/>`).join('')}</g>`;
+    const crisp = STYLE.crisp && o.foldShade !== true;
+    /* 统一成重画后的画法：褶子 = 一条细实线 + 旁边一块硬边阴影（不再是一团糊掉的软阴影） */
+    if (crisp && o.foldCel !== false && typeof foldCel === 'function') inner += o.folds.map(p => { const c = foldCel(p, o.foldCelW || 2.8); return c ? `<path d="${c}" fill="${CEL}" style="mix-blend-mode:multiply" opacity=".42"/>` : ''; }).join('');
+    if (!crisp && o.foldShade !== false) inner += `<g filter="url(#shsoft2)" style="mix-blend-mode:multiply" opacity="${STYLE.foldShadeOp}">${o.folds.map(p => `<path d="${p}" fill="none" stroke="${sc}" stroke-width="${STYLE.foldShadeW}" stroke-linecap="round" transform="translate(1.4 .6)"/>`).join('')}</g>`;
     const fc = o.fc || foldInk(fill);
-    inner += o.folds.map(p => { const b = STYLE.brush && o.brush !== false ? foldBrush(p, (o.fw || STYLE.foldW) * 1.9) : null;
-      return b ? `<path d="${b}" fill="${fc}" opacity="${o.foldOp ?? STYLE.foldOp}"/>` : `<path d="${p}" fill="none" stroke="${fc}" stroke-width="${o.fw || STYLE.foldW}" stroke-linecap="round" opacity="${o.foldOp ?? STYLE.foldOp}"/>`; }).join('');
+    inner += o.folds.map(p => { const b = STYLE.brush && o.brush !== false && !crisp ? foldBrush(p, (o.fw || STYLE.foldW) * 1.9) : null;
+      return b ? `<path d="${b}" fill="${fc}" opacity="${o.foldOp ?? STYLE.foldOp}"/>` : `<path d="${p}" fill="none" stroke="${fc}" stroke-width="${o.fw || (crisp ? .55 : STYLE.foldW)}" stroke-linecap="round" opacity="${o.foldOp ?? (crisp ? .5 : STYLE.foldOp)}"/>`; }).join('');
   }
   (o.lines || []).forEach(l => { const b = !STYLE.brush || l.dash ? null : l.taper ? brushD(l.d, (l.w || 1) * 1.9, l.head ?? .4) : inkLine(l.d, (l.w || 1) * 1.45, l.fade);
     inner += b ? `<path d="${b}" fill="${l.c || (l.taper ? INK : o.oc)}" opacity="${l.o ?? .8}"/>` : `<path d="${l.d}" fill="none" stroke="${l.c || STYLE.line}" stroke-width="${f1((l.w || 1) * .78)}" stroke-linecap="round" stroke-linejoin="round"${l.dash ? ` stroke-dasharray="${l.dash}"` : ''} opacity="${l.o ?? .8}"/>`; });

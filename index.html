@@ -499,7 +499,7 @@ const line = (pts, t) => spline(pts, false, t);
    --------------------------------------------------------------------- */
 /* 统一画风（对齐 Y2K COLLECTION SPRITE SHEET）：和身体一样的深棕描边、偏暖的粉紫阴影（边缘略柔）、
    很淡的内侧高光；褶皱线画成两头尖的笔触（像手绘勾线），不再是一样粗的死线 */
-const STYLE = { line: '#3D3134', sw: .62, shade: '#E2C0CE', lit: false, litOp: .2, foldW: .52, foldOp: .36, foldShadeW: 4.4, foldShadeOp: .62, brush: true, volOp: .95 };
+const STYLE = { line: '#3D3134', sw: .62, shade: '#E2C0CE', lit: false, litOp: .2, foldW: .52, foldOp: .36, foldShadeW: 4.4, foldShadeOp: .62, brush: true, volOp: .95, crisp: true };
 /* 布料的底色（给褶皱线配同色系的深色） */
 function baseOf(fill) {
   if (!fill || typeof fill !== 'string') return null;
@@ -601,10 +601,13 @@ function piece(d, fill, o = {}) {
   (o.deep || []).forEach(p => inner += `<path d="${p}" fill="${o.dc || SH_DEEP}" style="mix-blend-mode:multiply" filter="url(#shsoft)" opacity=".85"/>`);
   if (o.sheen) inner += `<g filter="url(#soft)">${o.sheen.map(p => `<path d="${p}" fill="none" stroke="#fff" stroke-width="${o.sheenW || 4}" stroke-linecap="round" opacity="${o.sheenOp ?? .5}"/>`).join('')}</g>`;
   if ((o.folds || []).length) {
-    if (o.foldShade !== false) inner += `<g filter="url(#shsoft2)" style="mix-blend-mode:multiply" opacity="${STYLE.foldShadeOp}">${o.folds.map(p => `<path d="${p}" fill="none" stroke="${sc}" stroke-width="${STYLE.foldShadeW}" stroke-linecap="round" transform="translate(1.4 .6)"/>`).join('')}</g>`;
+    const crisp = STYLE.crisp && o.foldShade !== true;
+    /* 统一成重画后的画法：褶子 = 一条细实线 + 旁边一块硬边阴影（不再是一团糊掉的软阴影） */
+    if (crisp && o.foldCel !== false && typeof foldCel === 'function') inner += o.folds.map(p => { const c = foldCel(p, o.foldCelW || 2.8); return c ? `<path d="${c}" fill="${CEL}" style="mix-blend-mode:multiply" opacity=".42"/>` : ''; }).join('');
+    if (!crisp && o.foldShade !== false) inner += `<g filter="url(#shsoft2)" style="mix-blend-mode:multiply" opacity="${STYLE.foldShadeOp}">${o.folds.map(p => `<path d="${p}" fill="none" stroke="${sc}" stroke-width="${STYLE.foldShadeW}" stroke-linecap="round" transform="translate(1.4 .6)"/>`).join('')}</g>`;
     const fc = o.fc || foldInk(fill);
-    inner += o.folds.map(p => { const b = STYLE.brush && o.brush !== false ? foldBrush(p, (o.fw || STYLE.foldW) * 1.9) : null;
-      return b ? `<path d="${b}" fill="${fc}" opacity="${o.foldOp ?? STYLE.foldOp}"/>` : `<path d="${p}" fill="none" stroke="${fc}" stroke-width="${o.fw || STYLE.foldW}" stroke-linecap="round" opacity="${o.foldOp ?? STYLE.foldOp}"/>`; }).join('');
+    inner += o.folds.map(p => { const b = STYLE.brush && o.brush !== false && !crisp ? foldBrush(p, (o.fw || STYLE.foldW) * 1.9) : null;
+      return b ? `<path d="${b}" fill="${fc}" opacity="${o.foldOp ?? STYLE.foldOp}"/>` : `<path d="${p}" fill="none" stroke="${fc}" stroke-width="${o.fw || (crisp ? .55 : STYLE.foldW)}" stroke-linecap="round" opacity="${o.foldOp ?? (crisp ? .5 : STYLE.foldOp)}"/>`; }).join('');
   }
   (o.lines || []).forEach(l => { const b = !STYLE.brush || l.dash ? null : l.taper ? brushD(l.d, (l.w || 1) * 1.9, l.head ?? .4) : inkLine(l.d, (l.w || 1) * 1.45, l.fade);
     inner += b ? `<path d="${b}" fill="${l.c || (l.taper ? INK : o.oc)}" opacity="${l.o ?? .8}"/>` : `<path d="${l.d}" fill="none" stroke="${l.c || STYLE.line}" stroke-width="${f1((l.w || 1) * .78)}" stroke-linecap="round" stroke-linejoin="round"${l.dash ? ` stroke-dasharray="${l.dash}"` : ''} opacity="${l.o ?? .8}"/>`; });
@@ -3201,8 +3204,9 @@ const ss18 = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))
 function foldCel(d, w, side = 1, p = 1.3) {
   const S = pathPolys(d); if (!S) return '';
   return S.filter(q => q.length > 1).map(q => {
-    let Q = resamp(q, 12); if (Q[12][1] < Q[0][1]) Q = Q.reverse();
-    const off = Q.map((c, i) => { const t = i / 12, k = w * Math.pow(t, p) * (1 - .25 * Math.pow(t, 8)); return [c[0] + side * k, c[1] + k * .18]; });
+    let Q = resamp(q, 12); const hz = Math.abs(Q[12][0] - Q[0][0]) > Math.abs(Q[12][1] - Q[0][1]) * 1.2;   // 横着的褶：阴影落在下面
+    if (hz ? Q[12][0] < Q[0][0] : Q[12][1] < Q[0][1]) Q = Q.reverse();
+    const off = Q.map((c, i) => { const t = i / 12, k = w * Math.pow(t, p) * (1 - .25 * Math.pow(t, 8)); return hz ? [c[0] + k * .15, c[1] + k * .7] : [c[0] + side * k, c[1] + k * .18]; });
     return 'M ' + Q.map(P2).join(' L ') + ' L ' + off.reverse().map(P2).join(' L ') + ' Z';
   }).join(' ');
 }
@@ -3211,7 +3215,7 @@ function foldSet(ds, w = 3, side = 1) { return { folds: ds, cel: ds.map(d => fol
 const joinO = (...os) => os.reduce((a, o) => ({ ...a, ...o, folds: (a.folds || []).concat(o.folds || []), cel: (a.cel || []).concat(o.cel || []), lines: (a.lines || []).concat(o.lines || []) }), {});
 const mirO = o => ({ ...o, folds: (o.folds || []).map(mir), cel: (o.cel || []).map(c => c && mir(c)), lines: (o.lines || []).map(l => ({ ...l, d: mir(l.d) })) });
 /* 重画的布片：褶子不再叠一层糊掉的软阴影，只留硬边色块 + 细笔触 */
-const pc = (d, fill, o = {}) => piece(d, fill, { foldShade: false, brush: false, fw: .55, foldOp: .5, ...o });   // 褶线细而实，正好压在阴影块的边上
+const pc = (d, fill, o = {}) => piece(d, fill, { foldShade: false, foldCel: false, brush: false, fw: .55, foldOp: .5, ...o });   // 褶线细而实，正好压在阴影块的边上
 const darkOf = (fill, k = .34) => mix(baseOf(fill) || '#C9A4B4', '#3A2436', k);
 
 /* ---------- 袖子：袖口上方鼓一圈再收进袖口（落肩卫衣 / 毛衣那种），手肘内侧两道挤出来的褶 ---------- */
@@ -3562,6 +3566,64 @@ Object.assign(TPL.tierSkirt, {
     const t1 = frillTier(286.6, 308, 109.6, 103.6, 9, 301, F.fill, F, { amp: 2.2 });
     const wb = bandD(282, 6.6, 3.6, 2.6, 2.8);
     return t3.svg + t2.svg + t1.svg + pc(wb, F.rib || F.fill, {}) + (F.print === 'bow' ? `<path d="M 150 286 C 145 281 140 282 140.6 286.6 C 141 290 146 289.6 150 287.6 C 154 289.6 159 290 159.4 286.6 C 160 282 155 281 150 286 Z" fill="${F.rib || '#F48FB1'}" stroke="${INK}" stroke-width=".8"/><circle cx="150" cy="286.6" r="1.7" fill="${F.rib || '#F48FB1'}" stroke="${INK}" stroke-width=".7"/>` : '');
+  }
+});
+
+/* ---------- 长裤：裆部两道 V 形拉扯、膝盖内侧两道挤褶、裤脚堆在鞋面上的几道横褶 ---------- */
+function pantFolds18(hem, ease, inE, o = {}) {
+  const { knee = true, stack = 3 } = o, xo = y => outerX(y) - ease(y), xi = y => Math.min(149.3, legID(y) + inE(y)), X = (y, u) => lerp(xo(y), xi(y), u);
+  const ds = ['M 147 330 Q 140.6 324.6 132 322.4', 'M 145.6 340 Q 139.4 337 131.4 337.6'];
+  if (knee) ds.push(`M ${f1(X(424, .9))} 424 Q ${f1(X(428, .7))} 428.4 ${f1(X(433, .5))} 433.6`, `M ${f1(X(436, .92))} 436 Q ${f1(X(439, .76))} 439.6 ${f1(X(443, .6))} 444`);
+  for (let i = 0; i < stack; i++) { const y = hem - 9 - i * 9, a = i % 2 ? .12 : .3, b = i % 2 ? .7 : .88;
+    ds.push(`M ${f1(X(y, a))} ${f1(y - 2)} Q ${f1(X(y, (a + b) / 2))} ${f1(y + 3.2)} ${f1(X(y, b))} ${f1(y - .6)}`); }
+  return foldSet(ds.concat(ds.map(mir)), 2.6);
+}
+const pantsO = (P, lines) => ({ ...P, lines, autoFolds: false });
+
+Object.assign(TPL.flareJeans, {
+  render(F) {
+    const ease = y => 2.4 + Math.max(0, y - 440) * .1, inE = y => 1.8 + Math.max(0, y - 440) * .075;
+    const d = pantsD({ top: 283, hem: 578, ease, inE }), wb = bandD(283, 7, 4, 2.4, 2.5);
+    const hearts = F.print === 'hearts' ? heart(128, 318, 5, '#F4A3C0', .9) + heart(172, 318, 5, '#F4A3C0', .9) : '';
+    const rips = F.print === 'hearts' ? fm('M 122 414 L 134 413 M 122.5 419 L 135 420 M 124 424 L 133 424').map(p => ({ d: p, c: '#F4F1EC', w: 1.4, o: .95 })) : [];
+    return pc(d, F.fill, { under: hearts, ...pantsO(pantFolds18(PANT_HEM, ease, inE), [...rips, { d: FLY, c: F.stitch, dash: '2 1.6', o: .9 }, { d: POCKET, c: F.stitch, dash: '2 1.6', o: .9 }, { d: mir(POCKET), c: F.stitch, dash: '2 1.6', o: .9 }]) }) +
+      pc(wb, F.fill, { lines: [{ d: 'M 118 286.6 Q 150 292.6 182 286.6', c: F.stitch, dash: '2 1.6', o: .9 }] });
+  }
+});
+Object.assign(TPL.widePants, {
+  render(F) {
+    const ease = y => 3 + Math.max(0, y - 320) * .014 + Math.pow(Math.max(0, y - 400) / 178, 1.6) * 17;
+    const inE = y => 2.2 + Math.pow(Math.max(0, y - 400) / 178, 1.6) * 11;
+    const d = pantsD({ top: 282, hem: 578, ease, inE }), wb = bandD(282, 7, 4, 3, 3.1);
+    const P = pantFolds18(PANT_HEM, ease, inE, { knee: false, stack: 2 }), drop = foldSet(fm('M 118 470 Q 116 512 113 552', 'M 136 480 Q 138 520 137 556'), 3.4);
+    return pc(d, F.fill, { ...pantsO(joinO(P, drop), [{ d: FLY, c: F.detail, o: .8 }, { d: POCKET, c: F.detail, o: .8 }, { d: mir(POCKET), c: F.detail, o: .8 }]) }) +
+      pc(wb, F.fill, { lines: [{ d: 'M 131.5 284.4 L 131.5 291.2 M 168.5 284.4 L 168.5 291.2', o: .6 }] });
+  }
+});
+
+Object.assign(TPL.tierMidi, {
+  /* 三层蛋糕长裙：每层都是抽褶荷叶，一层比一层张开 */
+  render(F) {
+    const t3 = frillTier(398, 470, 97, 82, 15, 313, F.fill, F, { amp: 3.4, curve: 5 });
+    const t2 = frillTier(338, 404, 104.4, 95, 13, 312, F.fill, F, { amp: 3, curve: 4.4 });
+    const t1 = frillTier(286.6, 344, 109.6, 103, 11, 311, F.fill, F, { amp: 2.6, curve: 4 });
+    return t3.svg + t2.svg + t1.svg + pc(bandD(282, 6.6, 3.6, 2.6, 2.8), F.rib || F.fill, {});
+  }
+});
+
+Object.assign(TPL.buttonShirt, {
+  render(F) {
+    const y1 = 316, S = sleeve18({ y1: y1 - 9, puff: 2.6, bell: 2.2, eo: 3.4, ei: 3, se: 3.2 });
+    const cfx = y => S.xo(Math.min(y, y1 - 9)) + 2.2, cfi = y => S.xi(Math.min(y, y1 - 9)) - 1.4, cf = cuff18(y1, 9, cfx, cfi);
+    const cv = 5, body = bodyD({ hem: 306, e: 4.2, hemE: 5, neckY: 172, neckW: 6, se: 3, curve: cv });
+    const pocket = spline([[124.6, 196, 'c'], [138.4, 196.4, 'c'], [138.2, 210], [131.4, 213.4, 'c'], [124.6, 210]]);
+    const tf = torsoFolds(306, cv, { e: 5 });
+    return pc(body, F.fill, { ...tf, autoFolds: false, lines: [{ d: 'M 150 176 L 150 310', o: .55 }, { d: 'M 153.4 178 L 153.4 309', o: .3, w: .7 }] }) +
+      [188, 206, 224, 242, 260, 278, 296].map(y => btn(151.6, y, '#FFFDF8', 1.25)).join('') + pc(pocket, F.fill, { cel: ['M 124.8 197.6 L 138.2 198 L 138.2 200.6 L 124.8 200.2 Z'], lines: [{ d: 'M 125 199.6 L 138.2 200', o: .45 }] }) +
+      pc(S.d, F.fill, { folds: S.folds, cel: S.cel }) + pc(mir(S.d), F.fill, { folds: S.folds.map(mir), cel: S.cel.map(mir) }) +
+      pc(cf, F.fill, { cel: [cf], celOp: .25 }) + pc(mir(cf), F.fill, { cel: [mir(cf)], celOp: .25 }) +
+      btn(cfi(311) - 2.6, 311.4, '#FFFDF8', 1) + btn(300 - cfi(311) + 2.6, 311.4, '#FFFDF8', 1) +
+      pc(SHIRT_COLLAR, F.fill, { lit: [1, 1], litOp: .5, cel: [`M 138 172 Q 150 186 162 172 L 162 176 Q 150 190 138 176 Z`] }) + pc(mir(SHIRT_COLLAR), F.fill, { lit: [1, 1], litOp: .5 });
   }
 });
 
