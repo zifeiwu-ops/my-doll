@@ -18,13 +18,21 @@ const WARP_GAP = (() => {
   }
   return { T, A };
 })();
-function armZone(x, y) {           // 1 = 手臂上，0 = 身体上（在两者之间的空隙里平滑过渡）
+/* 手臂蒙皮权重（左半边坐标）：1 = 手臂上，0 = 身体上。腋下以上按肩线分，腋下以下在手臂和身体之间的空隙里平滑过渡 */
+function armMember(xl, y) {
+  const bnd = 121 + (armI0(222) + 5 - 121) * Math.max(0, Math.min(1, (y - 206) / 16));
+  const hTop = sstep(bnd + 2, bnd - 2, xl);
   const yi = Math.round(Math.max(222, Math.min(350, y))), dT = WARP_GAP.T[yi], dA = WARP_GAP.A[yi];
-  if (dT == null || dA == null) return 0;
-  const lo = Math.min(dT + 1, dA - 1.4), hi = Math.max(dA - 1, lo + 1.2);
-  return sstep(lo, hi, Math.abs(x - 150)) * sstep(206, 232, y) * (1 - sstep(354, 372, y));
+  let hGap = 0;
+  if (dT != null && dA != null) { const mid = (dT + dA) / 2; hGap = sstep(mid - .7, mid + .7, 150 - xl); }     // 分界放在空隙正中间，干脆利落，大角度转手时身体边缘不会被扯出尖角
+  return hTop + (hGap - hTop) * sstep(216, 230, y);
 }
-function warpAt(W, x, y) {
+const armV = y => sstep(186, 210, y) * (1 - sstep(360, 376, y));          // 肩膀顶上和手指以下不算手臂
+const rotP = (x, y, c, deg) => { const a = deg * Math.PI / 180, cs = Math.cos(a), sn = Math.sin(a), dx = x - c[0], dy = y - c[1]; return [c[0] + dx * cs - dy * sn, c[1] + dx * sn + dy * cs]; };
+const sideJ = (k, p) => (k === 'L' ? p : [300 - p[0], p[1]]);
+/* o.arms = false：这一层不跟手臂走（头发、斜挎包）；o.leg = false：不跟踢腿；o.force：这块布片认定是哪只手的袖子；
+   o.garment：衣服图层——只有认出来的袖子跟手走，身片、裙子、裤子都留在身上；o.small：扣子这类小零件，长在哪儿就跟着哪儿走 */
+function warpAt(W, x, y, o = {}) {
   const H = W.hip;
   // 1) 脊柱：头 → 胯逐渐往右送，腿再收回到脚（脚不离地）
   let sx;
@@ -38,11 +46,11 @@ function warpAt(W, x, y) {
     sx = left * (1 - w) + right * w;
   }
   let ux = sx, uy = 0;
+  const k = o.force || (x < 150 ? 'L' : 'R'), m = o.arms === false ? 0 : (o.force ? 1 : o.garment && !o.small ? 0 : armMember(k === 'L' ? x : 300 - x, y)) * armV(y);
   // 2) 手臂：左手往外摆一点，右手稍微离开被推出来的胯
-  const az = armZone(x, y);
-  if (az) { const k = sstep(205, 345, y) * az; ux += x < 150 ? -W.armL * k : W.armR * k; }
+  if (m) { const q = sstep(205, 345, y) * m; ux += k === 'L' ? -W.armL * q : W.armR * q; }
   // 3) 肩膀一高一低（右肩略低，左肩略高）：只作用在肩膀和手臂上，胯以下不动
-  const wv = sstep(160, 205, y) * Math.max(1 - sstep(248, 296, y), az);
+  const wv = sstep(160, 205, y) * Math.max(1 - sstep(248, 296, y), m);
   uy += W.tilt * (x - 150) * wv;
   // 4) 歪头：绕下巴转，脖子以下渐变消失
   const wh = 1 - sstep(140, 174, y);
@@ -50,18 +58,19 @@ function warpAt(W, x, y) {
     const a = W.head * Math.PI / 180, dx = x - 150, dy = y - 154;
     ux += wh * (dx * Math.cos(a) - dy * Math.sin(a) - dx); uy += wh * (dx * Math.sin(a) + dy * Math.cos(a) - dy);
   }
-  return [ux, uy];
+  // 5) 抬手 / 弯手肘：先绕手肘弯小臂，再绕肩膀转整条手臂。关节附近按权重一点点转过去，所以是弯过去的，不是折过去的
+  let px = x, py = y;
+  const A = W.arms && W.arms[k];
+  if (m && A) {
+    const we = m * sstep(RIG.yE - 7, RIG.yE + 7, y);
+    if (A.fore && we) [px, py] = rotP(px, py, sideJ(k, RIG.E), A.fore * we);
+    if (A.up) [px, py] = rotP(px, py, sideJ(k, RIG.S), A.up * m);
+  }
+  // 6) 踢腿：右腿膝盖以下绕膝盖转
+  if (W.leg && o.leg !== false) { const wl = ((o.legSide ? o.legSide === 'R' : x > 150) ? 1 : 0) * sstep(RIG.yK - 18, RIG.yK + 8, y); if (wl) [px, py] = rotP(px, py, RIG.K, W.leg * wl); }
+  return [ux + px - x, uy + py - y];
 }
 
-/* 手上拎的包整只跟着手平移（不跟着变形，免得包被拉斜）；其余图层逐层变形 */
-function warpLayers(list, W) {
-  return list.sort((a, b) => a.z - b.z).map(l => {
-    const side = l.id && HELD[l.id];
-    if (!side) return warpSVG(l.svg, W);
-    const u = warpAt(W, side === 'L' ? 84 : 216, 336);
-    return `<g transform="translate(${f2(u[0])} ${f2(u[1])})">${l.svg}</g>`;
-  }).join('');
-}
 /* ---------- 矢量变形：逐个元素把坐标换到画布坐标 → 加位移 → 换回元素自己的坐标 ---------- */
 const WARP_SKIP = new Set(['pattern', 'linearGradient', 'radialGradient', 'filter']);
 const mMul = (A, B) => [A[0] * B[0] + A[2] * B[1], A[1] * B[0] + A[3] * B[1], A[0] * B[2] + A[2] * B[3], A[1] * B[2] + A[3] * B[3], A[0] * B[4] + A[2] * B[5] + A[4], A[1] * B[4] + A[3] * B[5] + A[5]];
@@ -80,23 +89,31 @@ function parseTf(t) {
   return M;
 }
 const f2 = v => { const r = Math.round(v * 100) / 100; return Object.is(r, -0) ? '0' : String(r); };
-function warpSVG(svg, W) {
-  const stack = [[1, 0, 0, 1, 0, 0]]; let skip = 0;
-  const mkP = M => {                     // 局部坐标点 → 变形后的局部坐标点
+function warpSVG(svg, W, o = {}) {
+  const stack = [[1, 0, 0, 1, 0, 0]]; let skip = 0, force = null;
+  const mkP = (M, legSide, small) => {
+    const opt = { ...o, force: o.force || force, legSide, small };                     // 局部坐标点 → 变形后的局部坐标点
     const id = M[0] === 1 && M[1] === 0 && M[2] === 0 && M[3] === 1;
     const det = M[0] * M[3] - M[1] * M[2] || 1, i0 = M[3] / det, i1 = -M[1] / det, i2 = -M[2] / det, i3 = M[0] / det;
     return (x, y) => {
       const X = id ? x + M[4] : M[0] * x + M[2] * y + M[4], Y = id ? y + M[5] : M[1] * x + M[3] * y + M[5];
-      const u = warpAt(W, X, Y);
+      const u = warpAt(W, X, Y, opt);
       return id ? [x + u[0], y + u[1]] : [x + i0 * u[0] + i2 * u[1], y + i1 * u[0] + i3 * u[1]];
     };
   };
-  return svg.replace(/<(\/?)([a-zA-Z]+)((?:[^>"]|"[^"]*")*?)(\/?)>/g, (m, close, tag, attrs, self) => {
+  // <!--armL--> … <!--/armL--> 包着的是认出来的袖子：整块跟着那只手走
+  return svg.replace(/<!--(\/?)arm([LR])-->|<(\/?)([a-zA-Z]+)((?:[^>"]|"[^"]*")*?)(\/?)>/g, (m, ac, ak, close, tag, attrs, self) => {
+    if (ak) { force = ac ? null : ak; return m; }
     if (close) { stack.pop(); if (WARP_SKIP.has(tag)) skip--; return m; }
     const tf = /\stransform="([^"]*)"/.exec(attrs), M = tf ? mMul(stack[stack.length - 1], parseTf(tf[1])) : stack[stack.length - 1];
     if (!self) { stack.push(M); if (WARP_SKIP.has(tag)) skip++; }
     if (skip || WARP_SKIP.has(tag)) return m;
-    const P = mkP(M);
+    // 只属于一条腿的小布片（鞋、袜子）整块归到那条腿；两只鞋底在中线碰在一起，逐点判断会把另一只也扯过去
+    let legSide = null;
+    if (!M[1] && !M[2] && M[0] > 0) { const d = tag === 'path' && /\sd="([^"]*)"/.exec(attrs); if (d && !/[a-y]/.test(d[1].replace(/e[-+]?\d/g, ''))) { const n = d[1].match(/-?\d*\.?\d+/g) || []; let x0 = 1e9, x1 = -1e9, y0 = 1e9; for (let j = 0; j + 1 < n.length; j += 2) { const X = M[0] * n[j] + M[4], Y = M[3] * n[j + 1] + M[5]; x0 = Math.min(x0, X); x1 = Math.max(x1, X); y0 = Math.min(y0, Y); } if (y0 > 380 && x1 - x0 < 60) legSide = (x0 + x1) / 2 > 150 ? 'R' : 'L'; } }
+    const num = k => +(new RegExp(`\\s${k}="([^"]*)"`).exec(attrs) || [0, 0])[1];
+    const small = tag === 'circle' || tag === 'ellipse' ? Math.max(num('r'), num('rx'), num('ry')) < 5 : tag === 'rect' ? num('width') < 12 && num('height') < 12 : false;
+    const P = mkP(M, legSide, small);
     let a = attrs;
     if (tag === 'path') a = a.replace(/(\sd=")([^"]*)"/, (q, pre, d) => pre + warpPath(d, P) + '"');
     else if (tag === 'circle' || tag === 'ellipse') {

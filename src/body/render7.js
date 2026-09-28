@@ -52,110 +52,93 @@ function dollSVG(outfit, over = {}, pose = null) {
   if (!top && !fullDress) L.push({ z: 12, svg: cami });
   if (!bottom && !dress) L.push({ z: 12, svg: shorts });
   [slot('hair'), top, slot('outer'), bottom, dress, slot('legs'), dress && tplOf(dress) && tplOf(dress).long ? null : slot('warmer'), slot('shoes')].forEach(it => { if (it) (isHead(it) ? H : L).push(...partsOf(it).map(l => ({ ...l, cat: it.cat, drawn: !!it.shape }))); });
-  const accL = [], P = pose && pose !== 'stand' ? POSES[pose] : null, rig = P && !P.warp;
-  (outfit.acc || []).forEach(id => { const it = byId(id); if (it) { const Q = partsOf(it); if (isHead(it)) H.push(...Q); else if (rig && (BAGS.has(id) || it.sub === 'bag' || it.sub === 'waist')) accL.push(...Q.map(l => ({ ...l, bag: id }))); else L.push(...Q.map(l => ({ ...l, cat: 'acc', id }))); } });
+  const accL = [], P = pose && pose !== 'stand' ? POSES[pose] : null;
+  (outfit.acc || []).forEach(id => { const it = byId(id); if (it) { const Q = partsOf(it); if (isHead(it)) H.push(...Q); else if (P && (BAGS.has(id) || HELD[id] || it.sub === 'bag' || it.sub === 'waist')) accL.push(...Q.map(l => ({ ...l, bag: id }))); else L.push(...Q.map(l => ({ ...l, cat: 'acc', id }))); } });
   L.push(...pantsOverShoes(bottom, slot('shoes')));
-  if (rig) return posedSVG(P, L, H, accL, { bottom, dress, outer: slot('outer') });
-  if (P && P.warp) return warpLayers(L.concat(H), WARP_POSES[P.warp]);
+  if (P) return posedSVG(P, L, H, accL, { bottom });
   return layersSVG(L.concat(headWrap(H)));
 }
 
 /* =====================================================================
-   姿势：把身体 + 衣服按关节切开再转动（肩 / 肘 / 膝 / 脖子），衣服跟着手脚一起动。
-   手臂区域 = 手臂外侧到「手臂内缘 + 5」的一条带子；关节处带一个圆盘，转动时圆盘绕自己的圆心转，接缝不露白。
+   姿势：整个人（身体 + 衣服）用同一个位移场做矢量变形，和 Live2D / Spine 的蒙皮一个道理——
+   手臂绕肩膀、小臂绕手肘、小腿绕膝盖转，关节附近按权重一点点弯过去，不切开，所以没有断口，袖子也不会碎。
+   手挡在身体前面时，把「手臂那一片」按同样的变形在上层再画一遍（肩膀处两层完全重合，看不出接缝）；背手时反过来，把身体再画一遍盖住手。
    角度：SVG 顺时针为正；左手（画面左）向外摆为正，向里收为负；右手相反
+   body：身体的重心（和「自然站立」一样的 S 形）：hip 胯往右送，kneeL / kneeR 膝盖内扣，footL / footR 脚往外撇，tilt 肩膀一高一低
    ===================================================================== */
+const LEAN = { hip: 4.6, kneeL: 3.4, footL: 1.4, tilt: .02 };            // 重心放在右腿上
+const LEAN_L = { hip: -4.2, kneeR: 3.2, footR: 1.4, tilt: -.018 };       // 重心放在左腿上
 const POSES = {
   relax: { name: '自然站立', warp: 'relax' },
   shy: { name: '内八俏皮', warp: 'shy', isNew: true },
   stand: { name: '立正' },
-  clasp: { name: '乖巧', head: -3, L: { fore: -38 }, R: { fore: 38 } },
-  behind: { name: '背手', head: 3.5, L: { up: 5, fore: -34, back: true }, R: { up: -5, fore: 34, back: true } },
-  hip: { name: '叉腰', head: -3.5, L: { up: 22, fore: -76 }, R: { up: -3 } },
-  wave: { name: '打招呼', head: 4, R: { up: -14, fore: -156, over: true }, L: { up: 3 } },
-  kick: { name: '踢腿', head: 3, leg: -28, L: { up: 7, fore: 6 }, R: { up: -7, fore: -6 } },
+  clasp: { name: '乖巧', head: -4, body: LEAN, L: { up: -4, fore: -44 }, R: { up: 4, fore: 44 } },
+  behind: { name: '背手', head: 4, body: LEAN_L, L: { up: 6, fore: -30, back: true }, R: { up: -6, fore: 30, back: true } },
+  hip: { name: '叉腰', head: -5, body: LEAN, L: { up: 24, fore: -78 }, R: { up: -4, fore: -6 } },
+  wave: { name: '打招呼', head: 5, body: LEAN_L, R: { up: -16, fore: -150, over: true }, L: { up: 4, fore: 6 } },
+  kick: { name: '踢腿', head: 4, body: { hip: -3, tilt: -.02 }, leg: -30, L: { up: 10, fore: 12 }, R: { up: -12, fore: -14 } },
   /* Coquette 芭蕾甜心 */
-  curtsy: { name: '提裙', head: -5, L: { up: 13, fore: 10 }, R: { up: -13, fore: -10 } },
-  heart: { name: '比心', head: 4, L: { fore: -152 }, R: { fore: 152 }, extra: `<path d="${heartD(150, 199, 6)}" fill="#F48FB1" stroke="#fff" stroke-width="2" paint-order="stroke"/><path d="M 146.4 196 Q 147 194 149 194" fill="none" stroke="#fff" stroke-width="1" stroke-linecap="round"/>` },
-  spread: { name: '芭蕾展臂', head: -4, L: { up: 50, fore: 14 }, R: { up: -50, fore: -14 } }
+  curtsy: { name: '提裙', head: -6, body: LEAN, L: { up: 14, fore: 16 }, R: { up: -14, fore: -16 } },
+  heart: { name: '比心', head: 5, body: LEAN_L, L: { up: -8, fore: -140 }, R: { up: 8, fore: 140 }, extra: `<path d="${heartD(150, 199, 6)}" fill="#F48FB1" stroke="#fff" stroke-width="2" paint-order="stroke"/><path d="M 146.4 196 Q 147 194 149 194" fill="none" stroke="#fff" stroke-width="1" stroke-linecap="round"/>` },
+  spread: { name: '芭蕾展臂', head: -5, body: LEAN, L: { up: 52, fore: 18 }, R: { up: -52, fore: -18 } }
 };
-const BAGS = new Set(['a4', 'a27', 'a33', 'a34', 'a47', 'a58', 'a42', 'a53', 'a48', 'a49', 'a50']);        // 包不跟着切，整只保留在原处
+const BAGS = new Set(['a4', 'a27', 'a33', 'a34', 'a47', 'a58', 'a42', 'a53', 'a48', 'a49', 'a50']);        // 包不跟着手臂变形，整只保留在原处
 const HELD = { a47: 'L', a34: 'R', a73: 'L', a90: 'L' };                                               // 拎在手上的包跟着那只手走
 const PANTS_TPL = new Set(['widePants', 'cargo', 'flareJeans', 'skinnyJeans', 'slacks', 'sashPants', 'skirtJeans', 'wideFlare', 'wrapCargo', 'balloonPants', 'shorts', 'capris', 'bermuda', 'culottes', 'beltShorts']);
 const RIG = (() => {
   const yE = 266, yK = 432;
   const b = y => (y < 222 ? 121 + (armI0(222) + 5 - 121) * (y - 206) / 16 : armI0(Math.min(y, 346)) + 5);
-  const arm = (y0, y1) => { const pts = [[18, y0]]; for (let y = y0; y <= y1; y += 4) pts.push([b(y), y]); pts.push([b(y1), y1], [18, y1]); return 'M ' + pts.map(p => `${f1(p[0])} ${f1(p[1])}`).join(' L ') + ' Z'; };
-  const E = [(armO0(yE) + armI0(yE)) / 2, yE], rE = (armI0(yE) - armO0(yE)) / 2 + 1.8;
-  const K = [300 - (legO(yK) + legI(yK)) / 2, yK], rK = (legI(yK) - legO(yK)) / 2 + 7;
-  const disc = (c, r) => `M ${f1(c[0] - r)} ${f1(c[1])} a ${f1(r)} ${f1(r)} 0 1 0 ${f1(2 * r)} 0 a ${f1(r)} ${f1(r)} 0 1 0 ${f1(-2 * r)} 0 Z`;
-  // 腋下补片：手臂向外抬时，腋下原位置留一条窄窄的袖子内侧，免得肩膀和身体之间露出一道缝
-  const gus = (() => { const a = [], c = []; for (let y = 206; y <= 244; y += 4) { a.push([b(y), y]); c.push([b(y) - 8 - (y - 206) * .12, y]); } return 'M ' + a.concat(c.reverse()).map(p => `${f1(p[0])} ${f1(p[1])}`).join(' L ') + ' Z'; })();
-  // 袖子用的上臂区域：连肩膀一起（只作用在认出来的袖子布片上，不会带走身体上的衣服）
-  const uax = (() => { const pts = [[18, 150], [127, 150], [127, 206]]; for (let y = 206; y <= yE; y += 4) pts.push([b(y), y]); pts.push([b(yE), yE], [18, yE]); return 'M ' + pts.map(p => `${f1(p[0])} ${f1(p[1])}`).join(' L ') + ' Z'; })();
-  // 手和袖口附近（上衣 / 外套上没被认成袖子的小零件，比如袖扣，跟着手走时在原处擦掉）
-  const hand = (() => { const pts = []; for (let y = 300; y <= 328; y += 4) pts.push([armI0(y) + 1.5, y]); return `M 18 300 L ${pts.map(p => `${f1(p[0])} ${f1(p[1])}`).join(' L ')} L 18 328 Z`; })();
-  return { yE, yK, S: [113, 198], rS: 11.5, E, rE, K, rK, UA: arm(206, yE), UAX: uax, HAND: hand, FA: arm(yE, 374), GUS: gus, LEG: `M 150.6 ${yK} L 262 ${yK} L 262 612 L 150.6 612 Z`, disc };
+  const band = (y0, y1, f) => { const pts = [[10, y0]]; for (let y = y0; y <= y1; y += 4) pts.push([f(y), y]); pts.push([f(y1), y1], [10, y1]); return 'M ' + pts.map(p => `${f1(p[0])} ${f1(p[1])}`).join(' L ') + ' Z'; };
+  const E = [(armO0(yE) + armI0(yE)) / 2, yE], K = [300 - (legO(yK) + legI(yK)) / 2, yK];
+  // 单独一条手臂的皮肤（腋下往下，按底模轮廓逐行描出来），手挡在身前时叠画用；BACK：连肩膀的整条手臂，背手时从身体上挖掉
+  const O = [], I = [];
+  for (let y = 226; y <= 352; y++) { const r = profRow(y).filter(g => g[0] < 106); if (!r.length) continue; O.push([r[0][0], y]); I.push([Math.max(...r.map(g => g[1])), y]); }
+  const edge = 'M ' + O.map(P2).join(' L ') + ' L ' + I.slice().reverse().map(P2).join(' L '), skin = edge + ' Z';   // 描边不描顶上那条横切线
+  const handBits = d => (String(d).match(/M[^M]*/g) || []).filter(q => { const n = q.match(/-?\d*\.?\d+/g); return n && +n[0] < 104 && +n[1] > 296 && +n[1] < 362; }).join('');
+  const armSkin = () => { const m = uid('m');
+    return `<path d="${skin}" fill="${SKIN}"/><mask id="${m}" maskUnits="userSpaceOnUse" x="-20" y="-20" width="340" height="640"><rect x="-20" y="-20" width="340" height="640" fill="#fff"/><path d="${skin}" transform="translate(-2.6 -1)" fill="#000"/></mask><path d="${skin}" fill="#F7D9CF" mask="url(#${m})"/>` +
+      `<path d="${edge}" fill="none" stroke="${INK}" stroke-width="1.45" stroke-linejoin="round"/>` +
+      `<path d="${handBits(DETAIL_SOFT)}" fill="${SKIN_LINE}" opacity=".78"/><path d="${handBits(DETAIL_DARK)}" fill="${INK}"/>`; };
+  const back = band(200, 384, b);
+  return { yE, yK, S: [113, 198], E, K, SKIN: { L: () => armSkin(), R: () => `<g transform="translate(300 0) scale(-1 1)">${armSkin()}</g>` }, BACK: { L: back, R: mir(back) } };
 })();
-function posedSVG(P, L, H, bags, W) {
-  const sides = ['L', 'R'].filter(k => P[k]);
+const HAND = { L: [84, 336], R: [216, 336] };
+function posedSVG(P, L, H, bags, W0) {
   // 裙子 / 连衣裙 / 长外套盖过膝盖（裤子除外）就不踢腿：直接看这一层的布片有没有伸到膝盖以下
   const reachesKnee = l => { let hit = false; l.svg.replace(/ d="([^"]*)"/g, (m, d) => { if (hit || /[a-y]/.test(d)) return m; const n = d.match(/-?\d*\.?\d+/g) || []; for (let i = 0; i + 1 < n.length; i += 2) if (+n[i + 1] > RIG.yK - 4 && +n[i] > 150.6) { hit = true; break; } return m; }); return hit; };
-  const legOK = P.leg && !L.some(l => (l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W.bottom && PANTS_TPL.has(W.bottom.tpl)))) && reachesKnee(l));
-  const Mx = k => (k === 'L' ? d => d : mir), J = (k, p) => (k === 'L' ? p : mx(p));
-  const moves = k => P[k] && (P[k].up || P[k].fore);
-  const defs = [], mk = (holes) => { const m = uid('pm'); defs.push(`<mask id="${m}" maskUnits="userSpaceOnUse" x="-60" y="-60" width="420" height="740"><rect x="-60" y="-60" width="420" height="740" fill="#fff"/><g fill="#000">${holes}</g></mask>`); return m; };
-  const cp = (...ds) => { const c = uid('pc'); defs.push(`<clipPath id="${c}">${ds.map(d => `<path d="${d}"/>`).join('')}</clipPath>`); return c; };
-  const wrapM = (m, x) => (m ? `<g mask="url(#${m})">${x}</g>` : x), wrapC = (c, x) => `<g clip-path="url(#${c})">${x}</g>`;
-  // 各区域
-  const legHole = legOK ? `<path d="${RIG.LEG}"/>` : '';
-  let bandHoles = '', tightHoles = '';
-  sides.filter(moves).forEach(k => { const A = P[k], M = Mx(k); bandHoles += `<path d="${M(RIG.FA)}"/>` + (A.up ? `<path d="${M(RIG.UA)}"/>` : ''); tightHoles += `<path d="${M(RIG.HAND)}"/>`; });
-  const mBand = (bandHoles || legHole) ? mk(bandHoles + legHole) : null, mTight = (tightHoles || legHole) ? mk(tightHoles + legHole) : null, mLeg = legHole ? mk(legHole) : null;
-  const C = {};
-  sides.filter(moves).forEach(k => { const M = Mx(k), S = J(k, RIG.S), E = J(k, RIG.E); C[k] = { ua: cp(M(RIG.UA), RIG.disc(S, RIG.rS)), uax: cp(M(RIG.UAX)), fa: cp(M(RIG.FA), RIG.disc(E, RIG.rE)), gus: cp(M(RIG.GUS)) }; });
-  // 按层分类：身体 / 小物 → 按手臂带子切；上衣 / 外套 / 连衣裙 → 按「认出来的袖子」切；下装 / 袜子 / 鞋 → 不动
+  const legOK = P.leg && !L.some(l => (l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(W0.bottom.tpl)))) && reachesKnee(l));
+  const base = P.warp ? WARP_POSES[P.warp] : {};
+  const W = { head: 0, hip: 0, kneeL: 0, footL: 0, kneeR: 0, footR: 0, armL: 0, armR: 0, tilt: 0, ...base, ...(P.body || {}), head: P.head ?? base.head ?? 0, arms: { L: P.L, R: P.R }, leg: legOK ? P.leg : 0 };
+  const moves = k => !!(P[k] && (P[k].up || P[k].fore));
+  const inward = k => (k === 'L' ? -1 : 1) * ((P[k].up || 0) + (P[k].fore || 0)) > 20;
+  const front = ['L', 'R'].filter(k => moves(k) && !P[k].back && (inward(k) || P[k].over)), back = ['L', 'R'].filter(k => moves(k) && P[k].back);
+  const garment = l => l.cat !== 'body' && l.cat !== 'acc' && !l.drawn;
+  const opt = l => (garment(l) ? { garment: true } : {}), FREE = { arms: false, leg: false };
   const Ls = L.slice().sort((a, b) => a.z - b.z);
-  const torso = [], U = { L: '', R: '' }, F = { L: '', R: '' }, G = { L: '', R: '' };
-  Ls.forEach(l => {
-    let cls = l.cat === 'body' || l.cat === 'acc' ? 'band' : 'none', seg = null;
-    if (['top', 'outer', 'dress'].includes(l.cat)) {
-      const A = { L: '', R: '' }; const rest = l.svg.replace(/<!--arm([LR])-->([\s\S]*?)<!--\/arm\1-->/g, (m, k, x) => { A[k] += x; return ''; });
-      if (A.L || A.R) { cls = 'garment'; seg = { rest, ...A }; } else if (l.drawn) cls = 'band';
-    }
-    if (cls === 'none') { torso.push({ z: l.z, svg: wrapM(mLeg, l.svg) }); return; }
-    if (cls === 'band') {
-      torso.push({ z: l.z, svg: wrapM(mBand, l.svg) });
-      sides.filter(moves).forEach(k => { if (P[k].up) { U[k] += wrapC(C[k].ua, l.svg); G[k] += wrapC(C[k].gus, l.svg); } F[k] += wrapC(C[k].fa, l.svg); });
-      return;
-    }
-    let t = wrapM(l.cat === 'dress' ? mLeg : mTight, seg.rest);
-    ['L', 'R'].forEach(k => {
-      if (!seg[k]) return;
-      if (!moves(k)) { t += seg[k]; return; }
-      if (P[k].up) { U[k] += wrapC(C[k].uax, seg[k]); G[k] += wrapC(C[k].gus, seg[k]); } else t += wrapC(C[k].uax, seg[k]);
-      F[k] += wrapC(C[k].fa, seg[k]);
-    });
-    torso.push({ z: l.z, svg: t });
+  const out = Ls.map(l => ({ z: l.z, svg: warpSVG(l.svg, W, opt(l)) }));
+  H.forEach(l => out.push({ z: l.z, svg: warpSVG(l.svg, W, FREE) }));   // 头发不被手臂带走
+  // 手挡在身前：只把这只手（皮肤 + 认出来的袖子 + 手上的小物）在上层再画一遍
+  front.forEach(k => {
+    const re = new RegExp(`<!--arm${k}-->([\\s\\S]*?)<!--\\/arm${k}-->`, 'g');
+    const bit = l => (l.cat === 'body' ? `<!--arm${k}-->${RIG.SKIN[k]()}<!--/arm${k}-->` : l.cat === 'acc' ? ((byId(l.id) || {}).sub === 'hand' ? l.svg : '') : (l.svg.match(re) || []).join(''));
+    const arm = Ls.map(l => { const s = bit(l); return s ? warpSVG(s, W, opt(l)) : ''; }).join('');   // 和底下那张完全一样的变形，只是只画这只手
+    out.push({ z: P[k].over ? 51 : 49.5, svg: arm });
   });
-  // 没拎在手上的包（斜挎 / 腰包）画在小臂上面、前发下面，手臂转过来时不会从包里穿过去
-  const out = torso.concat(bags.filter(l => !HELD[l.bag] || !moves(HELD[l.bag])).map(l => (l.z >= 40 ? { ...l, z: Math.max(l.z, 49.8) } : l)));
-  sides.filter(moves).forEach(k => {
-    const A = P[k], S = J(k, RIG.S), E = J(k, RIG.E);
-    const tU = A.up ? `rotate(${A.up} ${f1(S[0])} ${f1(S[1])})` : '', tF = tU + (A.fore ? ` rotate(${A.fore} ${f1(E[0])} ${f1(E[1])})` : '');
-    if (A.up) out.push({ z: 48.9, svg: G[k] }, { z: 49, svg: `<g transform="${tU}">${U[k]}</g>` });
-    let held = bags.filter(l => HELD[l.bag] === k).map(l => l.svg).join('');
-    const tot = (A.up || 0) + (A.fore || 0);
-    if (held && Math.abs(tot) > 100) {   // 小臂举起来时，手提包滑到手肘上挂着（不会跟着手翻上去）
-      const r = (A.up || 0) * Math.PI / 180, dx = E[0] - S[0], dy = E[1] - S[1], Ew = [S[0] + dx * Math.cos(r) - dy * Math.sin(r), S[1] + dx * Math.sin(r) + dy * Math.cos(r)], H0 = J(k, [84, 336]);
-      out.push({ z: 48.95, svg: `<g transform="translate(${f1(Ew[0] - H0[0])} ${f1(Ew[1] - H0[1] + 4)})">${held}</g>` }); held = '';
-    }
-    out.push({ z: A.back ? 9.95 : A.over ? 51 : 49.5, svg: `<g transform="${tF}">${held}${F[k]}</g>` });   // 包画在手的下面，手指握住提手
+  // 背手：把整个画面（去掉背过去的手臂）在最上层再画一遍，盖住藏到身后的手
+  if (back.length) {
+    const m = uid('pm'), all = Ls.map(l => ({ z: l.z, svg: warpSVG(l.svg, W, { ...opt(l), arms: false }) })).concat(H.map(l => ({ z: l.z, svg: warpSVG(l.svg, W, FREE) })));
+    out.push({ z: 99, svg: `<mask id="${m}" maskUnits="userSpaceOnUse" x="-60" y="-60" width="420" height="740"><rect x="-60" y="-60" width="420" height="740" fill="#fff"/>${back.map(k => `<path d="${RIG.BACK[k]}" fill="#000"/>`).join('')}</mask><g mask="url(#${m})">${layersSVG(all)}</g>` });
+  }
+  // 包：斜挎 / 腰包不跟手臂变形；拎在手上的包整只平移到手上（小臂举过头时挂在手肘上）
+  bags.forEach(l => {
+    const k = HELD[l.bag];
+    if (!k) { out.push({ z: front.length && l.z >= 40 ? Math.max(l.z, 49.8) : l.z, svg: warpSVG(l.svg, W, { arms: false }) }); return; }
+    const A = P[k] || {}, tot = Math.abs((A.up || 0) + (A.fore || 0)), h0 = HAND[k];
+    const at = tot > 100 ? sideJ(k, RIG.E) : h0, u = warpAt(W, at[0], at[1], { force: k }), dx = at[0] + u[0] - h0[0], dy = at[1] + u[1] - h0[1] + (tot > 100 ? 4 : 0);
+    out.push({ z: moves(k) && !A.back && front.includes(k) ? 49.45 : l.z, svg: `<g transform="translate(${f2(dx)} ${f2(dy)})">${l.svg}</g>` });
   });
-  if (legOK) { const c = cp(RIG.LEG, RIG.disc(RIG.K, RIG.rK)); out.push({ z: 43.9, svg: `<g transform="rotate(${P.leg} ${f1(RIG.K[0])} ${f1(RIG.K[1])})">${wrapC(c, Ls.map(l => l.svg).join(''))}</g>` }); }
   if (P.extra) out.push({ z: 51.5, svg: P.extra });
-  const head = P.head ? H.map(l => ({ z: l.z, svg: `<g transform="rotate(${P.head} 150 152)">${l.svg}</g>` })) : H;
-  return `<defs>${defs.join('')}</defs>` + layersSVG(out.concat(head));
+  return layersSVG(out);
 }
 /* 长裤盖住鞋面：裤脚那一截再画一遍、叠在鞋子上面（原来是鞋子直接盖在裤脚上，看起来像穿模）。
    小脚裤 / 工装裤配靴子时照旧塞进靴筒里 */

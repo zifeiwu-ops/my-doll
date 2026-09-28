@@ -58,15 +58,13 @@ button{font:inherit;color:inherit}
 @media (min-width:880px){.stage{height:600px}}
 .stage::after{content:"";position:absolute;inset:10px;border:2px dashed #F6C3D4;border-radius:12px;pointer-events:none}
 .floor{position:absolute;left:50%;bottom:16px;width:56%;max-width:230px;height:26px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(ellipse at center,rgba(143,217,205,.75),rgba(143,217,205,0) 70%)}
-/* 娃娃活起来：轻轻左右晃 + 呼吸起伏 + 每隔几秒眨眼；换衣服时蹦一下（都只动整张图层，不重画，手机上也不卡） */
-.doll-live{position:absolute;left:0;top:10px;width:100%;height:calc(100% - 18px);transform-origin:50% 98%;animation:dSway 5.8s ease-in-out infinite;will-change:transform}
-.doll-live.hop{animation:dHop .56s cubic-bezier(.3,.7,.4,1),dSway 5.8s .56s ease-in-out infinite}
-.doll{position:absolute;inset:0;width:100%;height:100%;display:block;transform-origin:50% 98%;animation:dBreathe 3.4s ease-in-out infinite;will-change:transform}
+/* 娃娃站着不动，只每隔几秒眨一下眼；换衣服时轻轻蹦一下 */
+.doll-live{position:absolute;left:0;top:10px;width:100%;height:calc(100% - 18px);transform-origin:50% 98%}
+.doll-live.hop{animation:dHop .56s cubic-bezier(.3,.7,.4,1)}
+.doll{position:absolute;inset:0;width:100%;height:100%;display:block}
 #doll.blink .eye-o{opacity:0}#doll.blink .eye-c{opacity:1}
-@keyframes dSway{0%,100%{transform:rotate(-.5deg)}50%{transform:rotate(.5deg)}}
-@keyframes dBreathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.004,1.009)}}
 @keyframes dHop{0%{transform:none}16%{transform:scale(1.035,.955)}44%{transform:translateY(-14px) scale(.975,1.03)}70%{transform:translateY(0) scale(1.025,.975)}86%{transform:scale(.995,1.006)}100%{transform:none}}
-@media (prefers-reduced-motion:reduce){.doll-live,.doll-live.hop,.doll{animation:none}}
+@media (prefers-reduced-motion:reduce){.doll-live.hop{animation:none}}
 .deco{position:absolute;pointer-events:none;filter:drop-shadow(0 2px 0 rgba(74,52,48,.12))}
 .deco.d1{top:26px;left:22px;width:44px;height:44px}.deco.d2{top:40px;right:24px;width:38px;height:38px}.deco.d3{top:150px;left:26px;width:30px;height:30px}
 .deco.d4{bottom:120px;right:22px;width:40px;height:40px}.deco.d5{bottom:70px;left:20px;width:50px;height:50px}.deco.d6{top:210px;right:28px;width:28px;height:28px}
