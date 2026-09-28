@@ -2530,6 +2530,12 @@ function foldPts(x0, y0, x1, y1, bend = 0, n = 10) {
 /* 一组褶：[x0, y0, x1, y1, bend, 宽, 细线从哪里开始(0–1), 最宽处(0–1)] */
 function drapeSVG(list, o = {}) {
   if (!list || !list.length) return '';
+  if (STYLE.crisp && typeof foldCel === 'function') {                    // 统一成硬边阴影 + 细实线（和重画后的衣服一个画法）
+    let c = '', l = '';
+    list.forEach(f => { const P = foldPts(f[0], f[1], f[2], f[3], f[4] || 0, 10), d = 'M ' + P.map(P2).join(' L '); c += `<path d="${foldCel(d, (f[5] ?? 3.2) * .8)}"/>`;
+      const Q = P.slice(Math.min(8, Math.round((f[6] ?? .3) * 10))); l += `<path d="M ${Q.map(P2).join(' L ')}"/>`; });
+    return `<g fill="${CEL}" opacity=".42" style="mix-blend-mode:multiply">${c}</g><g fill="none" stroke="${o.lc || STYLE.line}" stroke-width=".55" stroke-linecap="round" opacity="${Math.min(.6, o.lo ?? .5)}">${l}</g>`;
+  }
   let sh = '', ln = '';
   list.forEach(f => {
     const P = foldPts(f[0], f[1], f[2], f[3], f[4] || 0, 10), w = f[5] ?? 3.2;
@@ -3357,7 +3363,7 @@ Object.assign(TPL.hoodie, {
     const y1 = 316, hemY0 = 302, cv = 4.6;
     const S = sleeve18({ y1: y1 - 9, puff: 5, bell: 3.2, eo: 3, ei: 2.6, se: 3.4 });
     const cf = cuff18(y1, 10, y => S.xo(Math.min(y, y1 - 9)) + 2.2, y => S.xi(Math.min(y, y1 - 9)) - 1.4);
-    const body = bodyD({ hem: hemY0, e: 4, hemE: 4.6, neckY: 176, neckW: 6, se: 3, curve: cv });
+    const body = bodyD({ hem: hemY0, e: 4, hemE: 4.6, neckY: 176, neckW: 6, se: 3, curve: cv, blouse: 2.4 });
     const hem = hemBandD(hemY0, 10, 4.6, cv);
     const rimL = spline([[150, 190], [141.5, 184.5], [131, 178.5], [122.5, 173], [119.8, 167], [125.5, 162.5], [133.5, 160.4], [140.8, 161.4], [142.3, 167.5], [145.4, 176], [150, 182, 'c']]);
     const cord = (x0, x1) => strap(`M ${x0} 178 C ${x0 - .6} 188 ${x1 + .4} 196 ${x1} 206`, '#FBD3E1', 1.3) + `<rect x="${x1 - 1.6}" y="205" width="3.2" height="5" rx="1.2" fill="#F07FA8" stroke="${INK}" stroke-width=".8"/>`;
@@ -3443,7 +3449,7 @@ Object.assign(TPL.sweater, {
     const y1 = 316, hem0 = 306, cv = 4.6;
     const S = sleeve18({ y1: y1 - 9, puff: 3.5, bell: 2.6, eo: 3.4, ei: 3, se: 3.6 });
     const cfx = y => S.xo(Math.min(y, y1 - 9)) + 2.2, cfi = y => S.xi(Math.min(y, y1 - 9)) - 1.4, cf = cuff18(y1, 9, cfx, cfi);
-    const body = bodyD({ hem: hem0, e: 4.4, hemE: 5, neckY: 170, neckW: 7, se: 3.2, curve: cv });
+    const body = bodyD({ hem: hem0, e: 4.4, hemE: 5, neckY: 170, neckW: 7, se: 3.2, curve: cv, blouse: 2.8 });
     const hem = hemBandD(hem0, 10, 5, cv), neck = spline([[137.2, 162.6, 'c'], [150, 168.4], [162.8, 162.6, 'c'], [163.8, 167, 'c'], [150, 174], [136.2, 167, 'c']]);
     const tf = torsoFolds(hem0 - 9, cv, { blouse: true, e: 5 }), rib = { lines: [{ d: ribArc(cfx, cfi, y1 - 9, y1, 5, 1.4), o: .36, w: .7 }] };
     return pc(body, F.fill, { folds: tf.folds, cel: tf.cel.concat([neckCel(178, 12, 4)]), autoFolds: false }) +
@@ -3458,7 +3464,7 @@ Object.assign(TPL.trackJacket, {
     const y1 = 314, hem0 = 294, cv = 4.2;
     const S = sleeve18({ y1: y1 - 7, bell: 2.4, eo: 3, ei: 2.6, se: 3.2 });
     const cfx = y => S.xo(Math.min(y, y1 - 7)) + 2, cfi = y => S.xi(Math.min(y, y1 - 7)) - 1.2, cf = cuff18(y1, 7, cfx, cfi);
-    const body = bodyD({ hem: hem0, e: 3.4, hemE: 3.6, neckY: 176, neckW: 1, neckX: 140, se: 2.8, curve: cv });
+    const body = bodyD({ hem: hem0, e: 3.4, hemE: 3.6, neckY: 176, neckW: 1, neckX: 140, se: 2.8, curve: cv, blouse: 2 });
     const hem = hemBandD(hem0, 7, 3.6, cv);
     const collar = spline([[139.6, 159, 'c'], [149.6, 172], [150, 180, 'c'], [141, 175], [135, 167, 'c']]);
     const stripe = `M ${f1(S.xo(206) + 1.8)} 206 ` + rng(214, y1 - 14, 8).map(y => `L ${f1(S.xo(y) + 1.8)} ${y}`).join(' ') + ` M ${f1(S.xo(206) + 5)} 206 ` + rng(214, y1 - 14, 8).map(y => `L ${f1(S.xo(y) + 5)} ${y}`).join(' ');
@@ -3479,8 +3485,9 @@ Object.assign(TPL.trackJacket, {
 /* ---------- 开襟外套的前片：下摆带弧、门襟往下微微外摆；两道从胸口垂到下摆的长褶 ---------- */
 function openPanel18(hem, gap = 11, e = 5, top = 140.8, o = {}) {
   const { swing = 2.2, flare = 2 } = o, xf = 150 - gap - swing, ys = Math.min(240, hem - 8);
-  const side = [[sideX(ys) - e, ys]]; if (hem > 262) rng(ys + 14, hem - 8, Math.max(1, Math.round((hem - 8 - ys - 14) / 16))).forEach(y => side.push([sideX(y) - e - 1 - flare * Math.pow((y - ys) / (hem - ys), 2), y]));
-  const xs = sideX(hem) - e - 1.2 - flare;
+  const SX = typeof hangOut === 'function' ? hangOut(y => sideX(y) - e, 214, .08) : (y => sideX(y) - e);   // 侧边从腋下垂下来，不掐腰
+  const side = [[SX(ys), ys]]; if (hem > 262) rng(ys + 14, hem - 8, Math.max(1, Math.round((hem - 8 - ys - 14) / 16))).forEach(y => side.push([SX(y) - 1 - flare * Math.pow((y - ys) / (hem - ys), 2), y]));
+  const xs = SX(hem) - 1.2 - flare;
   const d = spline([[top - 1.2, 163.4], [133, 166.4], [125.2, 168.6], [117.6, 170.4], [112, 173.6], [108.4, 179.6], [106.6, 188], [109, 214], ...side,
     [xs, hem, 'c'], [lerp(xs, xf, .36), hem + 3.4], [lerp(xs, xf, .56), hem + 2.4], [lerp(xs, xf, .78), hem + 3.6], [xf, hem + 2.6, 'c'], [150 - gap + 1 - swing * .5, hem - 30], [150 - gap + 3, 210], [top, 170, 'c']]);
   const L = hem - 214, ds = L > 40 ? [`M ${f1(sideX(222) - e + 9)} 224 Q ${f1(lerp(xs, xf, .3))} ${f1(hem - L * .4)} ${f1(lerp(xs, xf, .56))} ${f1(hem + 1.4)}`] : [];
@@ -3615,7 +3622,7 @@ Object.assign(TPL.buttonShirt, {
   render(F) {
     const y1 = 316, S = sleeve18({ y1: y1 - 9, puff: 2.6, bell: 2.2, eo: 3.4, ei: 3, se: 3.2 });
     const cfx = y => S.xo(Math.min(y, y1 - 9)) + 2.2, cfi = y => S.xi(Math.min(y, y1 - 9)) - 1.4, cf = cuff18(y1, 9, cfx, cfi);
-    const cv = 5, body = bodyD({ hem: 306, e: 4.2, hemE: 5, neckY: 172, neckW: 6, se: 3, curve: cv });
+    const cv = 5, body = bodyD({ hem: 310, e: 4.2, hemE: 5, neckY: 172, neckW: 6, se: 3, curve: cv, tail: 9 });
     const pocket = spline([[124.6, 196, 'c'], [138.4, 196.4, 'c'], [138.2, 210], [131.4, 213.4, 'c'], [124.6, 210]]);
     const tf = torsoFolds(306, cv, { e: 5 });
     return pc(body, F.fill, { ...tf, autoFolds: false, lines: [{ d: 'M 150 176 L 150 310', o: .55 }, { d: 'M 153.4 178 L 153.4 309', o: .3, w: .7 }] }) +
@@ -3626,6 +3633,128 @@ Object.assign(TPL.buttonShirt, {
       pc(SHIRT_COLLAR, F.fill, { lit: [1, 1], litOp: .5, cel: [`M 138 172 Q 150 186 162 172 L 162 176 Q 150 190 138 176 Z`] }) + pc(mir(SHIRT_COLLAR), F.fill, { lit: [1, 1], litOp: .5 });
   }
 });
+
+Object.assign(TPL.cargo, {
+  render(F) {
+    const ease = y => 3.6 + Math.max(0, y - 300) * .014, inE = y => 2.6 + Math.max(0, y - 340) * .01;
+    const d = pantsD({ top: 282, hem: 574, ease, inE }), wb = bandD(282, 7, 4, 3.6, 3.7);
+    const pk = spline([[legO(392) - 6.8, 390, 'c'], [legO(392) + 10, 389, 'c'], [legO(424) + 10.2, 424, 'c'], [legO(426) - 6.4, 425.6, 'c']]);
+    const flap = spline([[legO(385) - 7.4, 384, 'c'], [legO(385) + 10.8, 383, 'c'], [legO(393) + 10.8, 393, 'c'], [legO(394) - 7.2, 394.6, 'c']]);
+    const chain = F.print === 'chain' ? Array.from({ length: 12 }, (_, i) => { const t = i / 11, x = 124 + 12 * t - 2, y = 292 + 40 * Math.sin(t * Math.PI) * .9 + 8 * t; return `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="2.3" ry="1.5" fill="none" stroke="#9FA6B3" stroke-width="1.2"/>`; }).join('') : '';
+    const P = joinO(pantFolds18(PANT_HEM, ease, inE, { stack: 3 }), foldSet(fm('M 118 432 Q 121 452 118 476'), 3));   // 口袋下面布被口袋坠着，拉出一道长褶
+    const pkO = { cel: [`M ${f1(legO(392) - 6.8)} 391 L ${f1(legO(392) + 10)} 390 L ${f1(legO(392) + 10)} 393 L ${f1(legO(392) - 6.8)} 394 Z`], lines: [{ d: `M ${f1(legO(398) - 3.6)} 398 L ${f1(legO(398) - 3.6)} 421 M ${f1(legO(398) + 7)} 398 L ${f1(legO(398) + 7)} 421`, c: F.stitch, dash: '1.8 1.6', o: .8 }] };
+    return pc(d, F.fill, { ...pantsO(P, [{ d: FLY, c: F.detail, o: .9 }, { d: POCKET, c: F.detail, o: .8 }, { d: mir(POCKET), c: F.detail, o: .8 }]) }) +
+      pc(pk, F.fill, pkO) + pc(mir(pk), F.fill, mirO(pkO)) + pc(flap, F.fill, { cel: [flap], celOp: .25 }) + pc(mir(flap), F.fill, { cel: [mir(flap)], celOp: .25 }) + pc(wb, F.fill, {}) + chain;
+  }
+});
+
+Object.assign(TPL.cropSweat, {
+  /* 短卫衣：身片在罗纹上方鼓一圈、罗纹跟着下摆弧度；袖子在袖口上方鼓起来 */
+  render(F) {
+    const y1 = 312, hem0 = 248, cv = 3.6, S = sleeve18({ y1: y1 - 9, puff: 4.4, bell: 2.8, eo: 3.4, ei: 3, se: 3.4 });
+    const cfx = y => S.xo(Math.min(y, y1 - 9)) + 2.2, cfi = y => S.xi(Math.min(y, y1 - 9)) - 1.4, cf = cuff18(y1, 9, cfx, cfi);
+    const body = bodyD({ hem: hem0, e: 4.2, hemE: 5.4, neckY: 170, neckW: 7, se: 3.2, curve: cv, blouse: 2.6 });
+    const band = symS([[150, 247.4 + cv], [sideX(246) - 3.4, 245.6, 'c'], [sideX(256) - 2.2, 255.4, 'c'], [150, 257.8 + cv]]);
+    const neck = spline([[137.2, 162.6, 'c'], [150, 168.4], [162.8, 162.6, 'c'], [163.8, 167, 'c'], [150, 174], [136.2, 167, 'c']]);
+    const rc = F.rib || F.fill, tf = torsoFolds(hem0, cv, { blouse: true, e: 5.4 });
+    const br = Array.from({ length: 8 }, (_, i) => { const u = (i + .5) / 8, x = lerp(sideX(250) - 2.6, 150, u), dy = cv * (1 - (1 - u) * (1 - u)); return `M ${f1(x)} ${f1(247.4 + dy)} L ${f1(x)} ${f1(255.6 + dy)}`; }).join(' ');
+    const rib = { lines: [{ d: ribArc(cfx, cfi, y1 - 9, y1, 5, 1.4), o: .36, w: .7 }] };
+    return pc(body, F.fill, { ...tf, cel: tf.cel.concat([neckCel(178, 12, 4)]), autoFolds: false, over: F.print ? printMotif(F.print, 150, 214, 1.35) : '' }) +
+      pc(band, rc, { lines: [{ d: br + ' ' + mir(br), o: .35, w: .6 }] }) +
+      pc(S.d, F.fill, { folds: S.folds, cel: S.cel }) + pc(mir(S.d), F.fill, { folds: S.folds.map(mir), cel: S.cel.map(mir) }) +
+      pc(cf, rc, rib) + pc(mir(cf), rc, mirO(rib)) + pc(neck, rc, { rim: false });
+  }
+});
+
+/* =====================================================================
+   垂坠轮廓（第 19 版）：衣服不再是「身体轮廓往外扩几像素」，而是从撑起它的地方（肩、胸、胯）往下垂
+   · 布只能慢慢往里收：每往下 1 像素最多往里收 k 像素，所以腰窝、膝窝这些凹进去的地方会被布「跨过去」
+   · k 越小越宽松（直直垂下来），k 很大就等于贴身（打底裤、紧身款）
+   这样上衣从胸口垂下来、裤子从胯部直直落到脚面，不会一路贴着腰和膝盖，像正常的衣服
+   ===================================================================== */
+/* 左侧外轮廓（x 越小越往外）：取上方所有点「往下垂」之后最靠外的那条线 */
+function hangOut(f, y0, k, step = 2) {
+  return y => { let b = f(y); if (y <= y0) return b; for (let t = y0; t < y; t += step) b = Math.min(b, f(t) + k * (y - t)); return b; };
+}
+/* 裤腿内侧（x 越大越靠中线）：同理，从裆部往下垂 */
+function hangIn(f, y0, k, step = 2) {
+  return y => { let b = f(y); if (y <= y0) return b; for (let t = y0; t < y; t += step) b = Math.max(b, f(t) - k * (y - t)); return b; };
+}
+
+/* 布边的自然起伏：低频的轻微波动（像手画的线，不是尺子画的），左右用不同的种子，两边不会一模一样 */
+const wobF = (seed, amp) => y => amp * (Math.sin(y / 17 + seed * 1.7) * .6 + Math.sin(y / 7.3 + seed * 3.1) * .4);
+/* 只给左半边的点列 A、右半边用另一组点列 B（同样是左半边的写法），拼成一个左右略有差别的闭合形状 */
+const asymS = (A, B) => spline(A.concat(B.slice(1, -1).reverse().map(mx)));
+
+/* ---------- 上衣身片：从胸 / 腋下往下垂，跨过腰窝；宽松款（e 大）垂得更直 ---------- */
+bodyD = function (o = {}) {
+  const { neckY = 170, neckX = 139, se = 2.4, flare = 0, curve = 1.6, neckW = 5.5 } = o, hem = o.hem ?? 300;
+  const e = (o.e ?? 2.8) * 1.22, hemE = (o.hemE ?? 3.4) * 1.3 + ((o.hemE ?? 3.4) > 3.6 ? 1.2 : 0);
+  const k = o.hang ?? (e > 4.4 ? .05 : e > 3.2 ? .09 : .16), loose = e > 3.6;
+  const raw = y => { const t = Math.max(0, (y - 222) / (hem - 222)); return sideX(y) - e - (hemE - e) * t - flare * t * t; };
+  const X = hangOut(raw, 212, k);
+  const half = seed => {
+    const w = wobF(seed, loose ? 1.5 : .8), pts = [[150, neckY], [150 - neckW, neckY - 1.2], [neckX, 165]];
+    offsetPts(SHOULDER.slice(1), se).forEach(p => pts.push([p[0], p[1]]));
+    pts.push([Math.min(112, X(212)), 212]);
+    /* blouse：下摆收进罗纹的款，布在罗纹上方鼓出来一圈再收进去 */
+    const bl = y => (o.blouse ? o.blouse * Math.sin(Math.PI * ss18(hem - 26, hem + 2, y)) : 0);
+    rng(222, hem - 8, Math.max(1, Math.round((hem - 230) / 8))).forEach(y => pts.push([X(y) + w(y) * ss18(222, 250, y) - bl(y), y]));
+    if (o.blouse) pts.push([X(hem - 4) - bl(hem - 4), hem - 4]);
+    const tail = o.tail || 0;                                              // tail：衬衫下摆两侧开衩往上提、前片圆弧垂下来
+    const xh = X(hem) - (o.blouse ? 0 : loose ? 1.3 : .6);                  // 下摆两角微微往外翘一点（布的重量落在下摆）
+    pts.push([xh, hem - tail + (seed > 1 ? .5 : 0), 'c']);
+    const n0 = pts.length; hemWave(pts, xh, hem, curve, seed > 1 ? 1.25 : .8);
+    if (tail) for (let i = n0; i < pts.length; i++) { const u = (pts[i][0] - xh) / (150 - xh); pts[i][1] -= tail * Math.pow(1 - u, 2); }
+    pts.push([150, hem + curve]);
+    return [pts, xh];
+  };
+  const [A, xh] = half(1), [B] = half(2.3);
+  return withFolds(asymS(A, B), drapeFolds(xh, hem, curve, 222, e));
+};
+
+/* ---------- 无袖身片：胸下略收，但不再掐进腰窝 ---------- */
+tankD = function (o = {}) {
+  const { top = 194, strapX = 128, e = 2.2, hem = 292, hemE = 2.6, flare = 0, curve = 1.4, dip = 4 } = o;
+  const raw = y => { const t = Math.max(0, (y - 222) / (hem - 222)); return sideX(y) - e - (hemE - e) * t - flare * t * t; }, X = hangOut(raw, 222, o.hang ?? .2);
+  const pts = [[150, top + dip], [140, top + 1.2], [strapX - .5, top - 1, 'c'], [strapX - 4.5, top + 9], [sideX(222) - e + .8, 222]];
+  rng(230, Math.max(231, hem - 8), Math.max(1, Math.round((hem - 236) / 10))).forEach(y => pts.push([X(y), y]));
+  const xh = X(hem);
+  pts.push([xh, hem, 'c']); hemWave(pts, xh, hem, curve, .8); pts.push([150, hem + curve]);
+  return withFolds(symS(pts), drapeFolds(xh, hem, curve, 226, e, 1));
+};
+
+/* ---------- 裤子：外侧从胯部直直落下，内侧从裆部落下；紧身款（hang 大）照旧贴腿 ---------- */
+pantsD = function (o = {}) {
+  const { top = 282, dip = 4, crotch = 327, ease = () => 2.6, inE = () => 2 } = o, hem = Math.min(o.hem ?? 575, PANT_HEM);
+  const fit = ease(420) < 2.4, ko = o.hang ?? (fit ? 1 : .045), ki = o.hangIn ?? (fit ? 1 : ko * 2.2);   // 松量很小的是紧身款：照旧贴腿
+  const XO = hangOut(y => outerX(y) - ease(y), 300, ko), XI = hangIn(y => Math.min(149.4, legID(Math.max(330, y)) + inE(y)), crotch + 4, ki);
+  const long = hem > 500, K = 432;   // K：膝盖
+  /* 裤腿的「形」：胯下略鼓、膝盖处布被顶一下、裤脚堆在鞋面上一波一波（紧身款只留很轻的起伏） */
+  const feat = (y, side, seed) => {
+    const g = fit ? .35 : 1, kn = Math.exp(-Math.pow((y - K) / 11, 2)), stack = long ? ss18(hem - 34, hem - 6, y) : 0;
+    const ripple = stack * Math.sin((hem - y) / 4.6 + seed) * (side ? 2.2 : 2.6);
+    return g * ((side ? -2.4 : -1.4) * kn + ripple) + wobF(seed, fit ? .3 : 1.2)(y) * ss18(top + 20, top + 50, y);
+  };
+  const half = seed => {
+    const pts = [[150, top + dip], [outerX(top) - ease(top), top, 'c']];
+    rng(top + 8, hem - 7, Math.max(2, Math.round((hem - top - 15) / 8))).forEach(y => pts.push([XO(y) + feat(y, 1, seed), y]));
+    const xo = XO(hem) + feat(hem, 1, seed) - (long && !fit ? .8 : 0), xi = Math.min(149.4, XI(hem));
+    pts.push([xo, hem - (long ? 1.2 : 0), 'c']); pts.push([xo + (xi - xo) * .45, hem + (long ? 3.4 : 2.4)]);   // 裤脚搭在鞋面上：两侧略提、前面垂下来
+    pts.push([xi, hem + .4, 'c']);
+    rng(hem - 9, crotch + 7, Math.max(2, Math.round((hem - crotch - 16) / 9))).forEach(y => pts.push([Math.min(149.3, XI(y) - feat(y, 0, seed + 5) * .6), y]));
+    pts.push([150, crotch]);
+    return pts;
+  };
+  return asymS(half(1), half(2.6));
+};
+
+/* ---------- 开襟外套前片：侧边从腋下垂下来 ---------- */
+openPanel = function (hem, gap = 11, e = 5, top = 140.8) {
+  const X = hangOut(y => sideX(y) - e, 214, .08);
+  return spline([[top - 1.2, 163.4], [133, 166.4], [125.2, 168.6], [117.6, 170.4], [112, 173.6], [108.4, 179.6], [106.6, 188], [109, 214],
+    [X(Math.min(240, hem - 8)), Math.min(240, hem - 8)], ...(hem > 262 ? [[X(hem - 8) - 1, hem - 8]] : []), [X(hem) - 1.2, hem, 'c'], [150 - gap, hem + 2, 'c'], [150 - gap + 1, hem - 30], [150 - gap + 3, 210], [top, 170, 'c']]);
+};
 
 /* =====================================================================
    发型（参考图：一缕一缕带描边的发束、尖尖弯弯的发梢、刘海中间露额头）后片 z2 · 前片 z50

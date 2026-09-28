@@ -164,7 +164,7 @@ Object.assign(TPL.hoodie, {
     const y1 = 316, hemY0 = 302, cv = 4.6;
     const S = sleeve18({ y1: y1 - 9, puff: 5, bell: 3.2, eo: 3, ei: 2.6, se: 3.4 });
     const cf = cuff18(y1, 10, y => S.xo(Math.min(y, y1 - 9)) + 2.2, y => S.xi(Math.min(y, y1 - 9)) - 1.4);
-    const body = bodyD({ hem: hemY0, e: 4, hemE: 4.6, neckY: 176, neckW: 6, se: 3, curve: cv });
+    const body = bodyD({ hem: hemY0, e: 4, hemE: 4.6, neckY: 176, neckW: 6, se: 3, curve: cv, blouse: 2.4 });
     const hem = hemBandD(hemY0, 10, 4.6, cv);
     const rimL = spline([[150, 190], [141.5, 184.5], [131, 178.5], [122.5, 173], [119.8, 167], [125.5, 162.5], [133.5, 160.4], [140.8, 161.4], [142.3, 167.5], [145.4, 176], [150, 182, 'c']]);
     const cord = (x0, x1) => strap(`M ${x0} 178 C ${x0 - .6} 188 ${x1 + .4} 196 ${x1} 206`, '#FBD3E1', 1.3) + `<rect x="${x1 - 1.6}" y="205" width="3.2" height="5" rx="1.2" fill="#F07FA8" stroke="${INK}" stroke-width=".8"/>`;
@@ -250,7 +250,7 @@ Object.assign(TPL.sweater, {
     const y1 = 316, hem0 = 306, cv = 4.6;
     const S = sleeve18({ y1: y1 - 9, puff: 3.5, bell: 2.6, eo: 3.4, ei: 3, se: 3.6 });
     const cfx = y => S.xo(Math.min(y, y1 - 9)) + 2.2, cfi = y => S.xi(Math.min(y, y1 - 9)) - 1.4, cf = cuff18(y1, 9, cfx, cfi);
-    const body = bodyD({ hem: hem0, e: 4.4, hemE: 5, neckY: 170, neckW: 7, se: 3.2, curve: cv });
+    const body = bodyD({ hem: hem0, e: 4.4, hemE: 5, neckY: 170, neckW: 7, se: 3.2, curve: cv, blouse: 2.8 });
     const hem = hemBandD(hem0, 10, 5, cv), neck = spline([[137.2, 162.6, 'c'], [150, 168.4], [162.8, 162.6, 'c'], [163.8, 167, 'c'], [150, 174], [136.2, 167, 'c']]);
     const tf = torsoFolds(hem0 - 9, cv, { blouse: true, e: 5 }), rib = { lines: [{ d: ribArc(cfx, cfi, y1 - 9, y1, 5, 1.4), o: .36, w: .7 }] };
     return pc(body, F.fill, { folds: tf.folds, cel: tf.cel.concat([neckCel(178, 12, 4)]), autoFolds: false }) +
@@ -265,7 +265,7 @@ Object.assign(TPL.trackJacket, {
     const y1 = 314, hem0 = 294, cv = 4.2;
     const S = sleeve18({ y1: y1 - 7, bell: 2.4, eo: 3, ei: 2.6, se: 3.2 });
     const cfx = y => S.xo(Math.min(y, y1 - 7)) + 2, cfi = y => S.xi(Math.min(y, y1 - 7)) - 1.2, cf = cuff18(y1, 7, cfx, cfi);
-    const body = bodyD({ hem: hem0, e: 3.4, hemE: 3.6, neckY: 176, neckW: 1, neckX: 140, se: 2.8, curve: cv });
+    const body = bodyD({ hem: hem0, e: 3.4, hemE: 3.6, neckY: 176, neckW: 1, neckX: 140, se: 2.8, curve: cv, blouse: 2 });
     const hem = hemBandD(hem0, 7, 3.6, cv);
     const collar = spline([[139.6, 159, 'c'], [149.6, 172], [150, 180, 'c'], [141, 175], [135, 167, 'c']]);
     const stripe = `M ${f1(S.xo(206) + 1.8)} 206 ` + rng(214, y1 - 14, 8).map(y => `L ${f1(S.xo(y) + 1.8)} ${y}`).join(' ') + ` M ${f1(S.xo(206) + 5)} 206 ` + rng(214, y1 - 14, 8).map(y => `L ${f1(S.xo(y) + 5)} ${y}`).join(' ');
@@ -286,8 +286,9 @@ Object.assign(TPL.trackJacket, {
 /* ---------- 开襟外套的前片：下摆带弧、门襟往下微微外摆；两道从胸口垂到下摆的长褶 ---------- */
 function openPanel18(hem, gap = 11, e = 5, top = 140.8, o = {}) {
   const { swing = 2.2, flare = 2 } = o, xf = 150 - gap - swing, ys = Math.min(240, hem - 8);
-  const side = [[sideX(ys) - e, ys]]; if (hem > 262) rng(ys + 14, hem - 8, Math.max(1, Math.round((hem - 8 - ys - 14) / 16))).forEach(y => side.push([sideX(y) - e - 1 - flare * Math.pow((y - ys) / (hem - ys), 2), y]));
-  const xs = sideX(hem) - e - 1.2 - flare;
+  const SX = typeof hangOut === 'function' ? hangOut(y => sideX(y) - e, 214, .08) : (y => sideX(y) - e);   // 侧边从腋下垂下来，不掐腰
+  const side = [[SX(ys), ys]]; if (hem > 262) rng(ys + 14, hem - 8, Math.max(1, Math.round((hem - 8 - ys - 14) / 16))).forEach(y => side.push([SX(y) - 1 - flare * Math.pow((y - ys) / (hem - ys), 2), y]));
+  const xs = SX(hem) - 1.2 - flare;
   const d = spline([[top - 1.2, 163.4], [133, 166.4], [125.2, 168.6], [117.6, 170.4], [112, 173.6], [108.4, 179.6], [106.6, 188], [109, 214], ...side,
     [xs, hem, 'c'], [lerp(xs, xf, .36), hem + 3.4], [lerp(xs, xf, .56), hem + 2.4], [lerp(xs, xf, .78), hem + 3.6], [xf, hem + 2.6, 'c'], [150 - gap + 1 - swing * .5, hem - 30], [150 - gap + 3, 210], [top, 170, 'c']]);
   const L = hem - 214, ds = L > 40 ? [`M ${f1(sideX(222) - e + 9)} 224 Q ${f1(lerp(xs, xf, .3))} ${f1(hem - L * .4)} ${f1(lerp(xs, xf, .56))} ${f1(hem + 1.4)}`] : [];
@@ -422,7 +423,7 @@ Object.assign(TPL.buttonShirt, {
   render(F) {
     const y1 = 316, S = sleeve18({ y1: y1 - 9, puff: 2.6, bell: 2.2, eo: 3.4, ei: 3, se: 3.2 });
     const cfx = y => S.xo(Math.min(y, y1 - 9)) + 2.2, cfi = y => S.xi(Math.min(y, y1 - 9)) - 1.4, cf = cuff18(y1, 9, cfx, cfi);
-    const cv = 5, body = bodyD({ hem: 306, e: 4.2, hemE: 5, neckY: 172, neckW: 6, se: 3, curve: cv });
+    const cv = 5, body = bodyD({ hem: 310, e: 4.2, hemE: 5, neckY: 172, neckW: 6, se: 3, curve: cv, tail: 9 });
     const pocket = spline([[124.6, 196, 'c'], [138.4, 196.4, 'c'], [138.2, 210], [131.4, 213.4, 'c'], [124.6, 210]]);
     const tf = torsoFolds(306, cv, { e: 5 });
     return pc(body, F.fill, { ...tf, autoFolds: false, lines: [{ d: 'M 150 176 L 150 310', o: .55 }, { d: 'M 153.4 178 L 153.4 309', o: .3, w: .7 }] }) +
@@ -431,5 +432,37 @@ Object.assign(TPL.buttonShirt, {
       pc(cf, F.fill, { cel: [cf], celOp: .25 }) + pc(mir(cf), F.fill, { cel: [mir(cf)], celOp: .25 }) +
       btn(cfi(311) - 2.6, 311.4, '#FFFDF8', 1) + btn(300 - cfi(311) + 2.6, 311.4, '#FFFDF8', 1) +
       pc(SHIRT_COLLAR, F.fill, { lit: [1, 1], litOp: .5, cel: [`M 138 172 Q 150 186 162 172 L 162 176 Q 150 190 138 176 Z`] }) + pc(mir(SHIRT_COLLAR), F.fill, { lit: [1, 1], litOp: .5 });
+  }
+});
+
+Object.assign(TPL.cargo, {
+  render(F) {
+    const ease = y => 3.6 + Math.max(0, y - 300) * .014, inE = y => 2.6 + Math.max(0, y - 340) * .01;
+    const d = pantsD({ top: 282, hem: 574, ease, inE }), wb = bandD(282, 7, 4, 3.6, 3.7);
+    const pk = spline([[legO(392) - 6.8, 390, 'c'], [legO(392) + 10, 389, 'c'], [legO(424) + 10.2, 424, 'c'], [legO(426) - 6.4, 425.6, 'c']]);
+    const flap = spline([[legO(385) - 7.4, 384, 'c'], [legO(385) + 10.8, 383, 'c'], [legO(393) + 10.8, 393, 'c'], [legO(394) - 7.2, 394.6, 'c']]);
+    const chain = F.print === 'chain' ? Array.from({ length: 12 }, (_, i) => { const t = i / 11, x = 124 + 12 * t - 2, y = 292 + 40 * Math.sin(t * Math.PI) * .9 + 8 * t; return `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="2.3" ry="1.5" fill="none" stroke="#9FA6B3" stroke-width="1.2"/>`; }).join('') : '';
+    const P = joinO(pantFolds18(PANT_HEM, ease, inE, { stack: 3 }), foldSet(fm('M 118 432 Q 121 452 118 476'), 3));   // 口袋下面布被口袋坠着，拉出一道长褶
+    const pkO = { cel: [`M ${f1(legO(392) - 6.8)} 391 L ${f1(legO(392) + 10)} 390 L ${f1(legO(392) + 10)} 393 L ${f1(legO(392) - 6.8)} 394 Z`], lines: [{ d: `M ${f1(legO(398) - 3.6)} 398 L ${f1(legO(398) - 3.6)} 421 M ${f1(legO(398) + 7)} 398 L ${f1(legO(398) + 7)} 421`, c: F.stitch, dash: '1.8 1.6', o: .8 }] };
+    return pc(d, F.fill, { ...pantsO(P, [{ d: FLY, c: F.detail, o: .9 }, { d: POCKET, c: F.detail, o: .8 }, { d: mir(POCKET), c: F.detail, o: .8 }]) }) +
+      pc(pk, F.fill, pkO) + pc(mir(pk), F.fill, mirO(pkO)) + pc(flap, F.fill, { cel: [flap], celOp: .25 }) + pc(mir(flap), F.fill, { cel: [mir(flap)], celOp: .25 }) + pc(wb, F.fill, {}) + chain;
+  }
+});
+
+Object.assign(TPL.cropSweat, {
+  /* 短卫衣：身片在罗纹上方鼓一圈、罗纹跟着下摆弧度；袖子在袖口上方鼓起来 */
+  render(F) {
+    const y1 = 312, hem0 = 248, cv = 3.6, S = sleeve18({ y1: y1 - 9, puff: 4.4, bell: 2.8, eo: 3.4, ei: 3, se: 3.4 });
+    const cfx = y => S.xo(Math.min(y, y1 - 9)) + 2.2, cfi = y => S.xi(Math.min(y, y1 - 9)) - 1.4, cf = cuff18(y1, 9, cfx, cfi);
+    const body = bodyD({ hem: hem0, e: 4.2, hemE: 5.4, neckY: 170, neckW: 7, se: 3.2, curve: cv, blouse: 2.6 });
+    const band = symS([[150, 247.4 + cv], [sideX(246) - 3.4, 245.6, 'c'], [sideX(256) - 2.2, 255.4, 'c'], [150, 257.8 + cv]]);
+    const neck = spline([[137.2, 162.6, 'c'], [150, 168.4], [162.8, 162.6, 'c'], [163.8, 167, 'c'], [150, 174], [136.2, 167, 'c']]);
+    const rc = F.rib || F.fill, tf = torsoFolds(hem0, cv, { blouse: true, e: 5.4 });
+    const br = Array.from({ length: 8 }, (_, i) => { const u = (i + .5) / 8, x = lerp(sideX(250) - 2.6, 150, u), dy = cv * (1 - (1 - u) * (1 - u)); return `M ${f1(x)} ${f1(247.4 + dy)} L ${f1(x)} ${f1(255.6 + dy)}`; }).join(' ');
+    const rib = { lines: [{ d: ribArc(cfx, cfi, y1 - 9, y1, 5, 1.4), o: .36, w: .7 }] };
+    return pc(body, F.fill, { ...tf, cel: tf.cel.concat([neckCel(178, 12, 4)]), autoFolds: false, over: F.print ? printMotif(F.print, 150, 214, 1.35) : '' }) +
+      pc(band, rc, { lines: [{ d: br + ' ' + mir(br), o: .35, w: .6 }] }) +
+      pc(S.d, F.fill, { folds: S.folds, cel: S.cel }) + pc(mir(S.d), F.fill, { folds: S.folds.map(mir), cel: S.cel.map(mir) }) +
+      pc(cf, rc, rib) + pc(mir(cf), rc, mirO(rib)) + pc(neck, rc, { rim: false });
   }
 });

@@ -21,6 +21,12 @@ function foldPts(x0, y0, x1, y1, bend = 0, n = 10) {
 /* 一组褶：[x0, y0, x1, y1, bend, 宽, 细线从哪里开始(0–1), 最宽处(0–1)] */
 function drapeSVG(list, o = {}) {
   if (!list || !list.length) return '';
+  if (STYLE.crisp && typeof foldCel === 'function') {                    // 统一成硬边阴影 + 细实线（和重画后的衣服一个画法）
+    let c = '', l = '';
+    list.forEach(f => { const P = foldPts(f[0], f[1], f[2], f[3], f[4] || 0, 10), d = 'M ' + P.map(P2).join(' L '); c += `<path d="${foldCel(d, (f[5] ?? 3.2) * .8)}"/>`;
+      const Q = P.slice(Math.min(8, Math.round((f[6] ?? .3) * 10))); l += `<path d="M ${Q.map(P2).join(' L ')}"/>`; });
+    return `<g fill="${CEL}" opacity=".42" style="mix-blend-mode:multiply">${c}</g><g fill="none" stroke="${o.lc || STYLE.line}" stroke-width=".55" stroke-linecap="round" opacity="${Math.min(.6, o.lo ?? .5)}">${l}</g>`;
+  }
   let sh = '', ln = '';
   list.forEach(f => {
     const P = foldPts(f[0], f[1], f[2], f[3], f[4] || 0, 10), w = f[5] ?? 3.2;
