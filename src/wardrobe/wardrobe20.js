@@ -83,7 +83,17 @@ const LOOKS = [
 
 /* ---------- 筛选标签 ---------- */
 const IP_LABEL = { aikatsu: '偶像活动' };
-const STYLE_RULES = [['甜美', /蝴蝶结|荷叶|蕾丝|泡泡|蛋糕|爱心|草莓|娃娃|公主|芭蕾|纱|粉色/], ['街头', /卫衣|连帽|工装|运动|链条|破洞|摇滚|马丁|老爹|热裤|阔腿|网/], ['复古', /格纹|格|波点|碎花|花朵|灯芯绒|菱格|古着|麻花|费尔岛|豹纹/],
-  ['学院', /水手|百褶|领结|背带|领带|乐福|牛津|马甲/], ['休闲', /T|牛仔|短裤|衬衫|开衫|条纹|针织|毛衣|帆布/]];
+const STYLE_RULES = [['甜美', /蝴蝶结|荷叶|蕾丝|泡泡|蛋糕|爱心|草莓|娃娃|公主|芭蕾|纱|粉色|丸子|双马尾|揪揪|大卷/], ['街头', /卫衣|连帽|工装|运动|链条|破洞|摇滚|马丁|老爹|热裤|阔腿|网|炸毛|凌乱|挑染/], ['复古', /格纹|格|波点|碎花|花朵|灯芯绒|菱格|古着|麻花|费尔岛|豹纹|波波|盘发|卷发/],
+  ['学院', /水手|百褶|领结|背带|领带|乐福|牛津|马甲|齐刘海|低马尾|编发/], ['休闲', /T|牛仔|短裤|衬衫|开衫|条纹|针织|毛衣|帆布|短发|直发|中分|锁骨/]];
 const styleOf = it => STYLE_RULES.filter(([, re]) => re.test(it.name)).map(([k]) => k);
-const colorOf = it => { if (!it.fill && !it.diy) return null; try { const r = resolveFill(it); return r.base && /^#[0-9a-f]{6}$/i.test(r.base) ? colorName(r.base) : null; } catch (e) { return null; } };
+/* 颜色：有 fill 的用底色；发型 / 鞋袜 / 小物这些直接画的，取画里用得最多、又不是描边和白色的那个颜色（算一次存起来） */
+const _colorCache = {};
+function colorOf(it) {
+  if (it.id in _colorCache) return _colorCache[it.id];
+  let c = null;
+  try {
+    if (it.fill || it.diy) { const r = resolveFill(it); if (r.base && /^#[0-9a-f]{6}$/i.test(r.base)) c = r.base; }
+    if (!c) { const L = partsOf(it); c = it.cat === 'hair' ? hairBase(L) : (() => { const n = {}; L.forEach(l => (l.svg.match(/fill="(#[0-9a-fA-F]{6})"/g) || []).forEach(m => { const k = m.slice(6, 13).toUpperCase(), [, s, v] = hsl(k); if (v > .1 && v < .97 && !(s < .08 && v > .9) && k !== '#E2C0CE' && k !== '#2B2322') n[k] = (n[k] || 0) + 1; })); return Object.keys(n).sort((a, b) => n[b] - n[a])[0]; })(); }
+  } catch (e) { c = null; }
+  return (_colorCache[it.id] = c ? colorName(c) : null);
+}

@@ -101,7 +101,7 @@ function renderGrid() {
   const t = state.tab;
   let html;
   if (t === 'face') html = facePanelHTML();
-  else if (t === 'hair') html = hairColorRow() + WARDROBE.filter(i => i.cat === t).map(cardHTML).join('') + state.custom.filter(i => i.cat === t).map(cardHTML).join('');
+  else if (t === 'hair') html = hairColorRow() + filterBarHTML(t) + allItems().filter(i => i.cat === t && passFilter(i)).map(cardHTML).join('');
   else if (t === 'acc') html = accPanelHTML();
   else if (t === 'diy') html = ADD_CARD('top') + (state.custom.length ? state.custom.map(cardHTML).join('') : '<p class="empty">还没有 DIY 的衣服。用一张照片做一件，或者直接在娃娃身上画一件。</p>');
   else {
@@ -137,11 +137,11 @@ function filterBarHTML(t) {
 }
 /* 小物按分区显示：全部时每个分区一个小标题 */
 function accPanelHTML() {
-  const items = allItems().filter(i => i.cat === 'acc'), cur = state.accSub || 'all';
+  const items = allItems().filter(i => i.cat === 'acc' && passFilter(i)), cur = state.accSub || 'all';
   const chips = `<div class="subtabs" role="toolbar" aria-label="小物分区">` + [['all', '全部', items.length], ...ACC_GROUPS.map(([k, n]) => [k, n, items.filter(i => i.sub === k).length])]
     .map(([k, n, c]) => `<button type="button" class="opt" data-sub="${k}" aria-pressed="${k === cur}">${n}<span class="n">${c}</span></button>`).join('') + '</div>';
   const groups = cur === 'all' ? ACC_GROUPS : ACC_GROUPS.filter(([k]) => k === cur);
-  return chips + groups.map(([k, n]) => { const L = items.filter(i => i.sub === k); return L.length ? `<p class="subhead">${n}<span>${L.length} 件</span></p>` + L.map(cardHTML).join('') : ''; }).join('');
+  return filterBarHTML('acc') + chips + groups.map(([k, n]) => { const L = items.filter(i => i.sub === k); return L.length ? `<p class="subhead">${n}<span>${L.length} 件</span></p>` + L.map(cardHTML).join('') : ''; }).join('');
 }
 /* 小物的「位置」：参考同类换装游戏，每个位置一次只戴一件（帽子和发箍都戴在头顶，算同一个位置） */
 const accSlot = it => (!it ? '' : HATS.includes(it.id) ? 'hat' : it.sub || 'waist');
