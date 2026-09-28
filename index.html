@@ -299,6 +299,14 @@ select.name-in{flex:1 1 140px}
 #doll{transform-origin:0 0;will-change:transform}
 .stage.zoomed{cursor:grab}
 @media (max-width:879px){.zoom-ctl{bottom:40px}}
+
+/* 发色色块 */
+.hair-colors{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:2px 2px 4px}
+.hc-label{font-size:13px;color:var(--ink-soft);margin-right:2px}
+.hc{width:28px;height:28px;padding:0;border-radius:50%;border:2px solid var(--ink);background:var(--c);cursor:pointer;box-shadow:inset 0 -5px 0 rgba(0,0,0,.14),inset 0 4px 0 rgba(255,255,255,.35)}
+.hc[aria-checked="true"]{outline:3px solid var(--pink);outline-offset:2px}
+.hc-orig{width:auto;padding:0 9px;white-space:nowrap;border-radius:999px;background:#fff;font-family:var(--f-display);font-size:12px;box-shadow:none}
+@media (max-width:879px){.hc{width:24px;height:24px}.hair-colors{gap:5px}.hc-label{width:100%}}
 </style>
 </head>
 <body>
@@ -4656,6 +4664,41 @@ smallTail = function (x, y, c, ln, dir = 1, s = 1.1) {
 BACK_HEAD = (BH => h => { const d = new String(BH(h)); d.noShape = true; return d; })(BACK_HEAD);
 
 /* =====================================================================
+   发色（可选）：选了发色后，把这款发型里所有「头发色系」的颜色（底色、阴影、高光、描边）一起换过去
+   · 按原发色 → 目标发色的色相 / 饱和度 / 明暗整体平移，深浅层次保持原样
+   · 发圈、发夹、星星、花这些装饰颜色和头发差得远，不动
+   ===================================================================== */
+const HAIR_COLORS = [['#2A2226', '乌黑'], ['#4A3026', '深棕'], ['#8A5A40', '栗棕'], ['#B07A4E', '焦糖'], ['#A8532E', '红棕'], ['#D6BC98', '奶茶'], ['#EBD49A', '奶金'], ['#D9A850', '蜂蜜金'],
+  ['#C8C6CE', '银灰'], ['#F4AFC8', '樱花粉'], ['#B9A0E0', '香芋紫'], ['#8EC0E6', '天空蓝'], ['#9ED69A', '薄荷绿']];
+let HAIR_TINT = null;
+function hsl2hex(h, s, l) {
+  h = ((h % 360) + 360) % 360; s = Math.max(0, Math.min(1, s)); l = Math.max(0, Math.min(1, l));
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return rgb2hex((r + m) * 255, (g + m) * 255, (b + m) * 255);
+}
+function hairBase(L) {   // 发型的底色：用得最多、又有一定饱和度和明度的那个（描边色可能比底色还多）；黑 / 灰发退回用得最多的
+  const n = {}; L.forEach(l => (l.svg.match(/fill="(#[0-9a-fA-F]{6})"/g) || []).forEach(m => { const c = m.slice(6, 13).toUpperCase(); if (c !== '#E2C0CE' && c !== '#FFFFFF') n[c] = (n[c] || 0) + 1; }));
+  const K = Object.keys(n).sort((a, b) => n[b] - n[a]), all = new Set(L.flatMap(l => (l.svg.match(/#[0-9a-fA-F]{6}\b/g) || []).map(c => c.toUpperCase())));
+  const byInk = K.find(k => all.has(hairInk(k).toUpperCase()));   // 描边色 = 底色往墨色混 70%：能对上的就是底色
+  if (byInk) return byInk;
+  return K.find(k => { const [, sa, l] = hsl(k); return sa > .22 && l > .3 && l < .9 && n[k] >= n[K[0]] * .25; }) || K[0];
+}
+function tintHair(L, target) {
+  const base = hairBase(L); if (!base || !target) return L;
+  const [bh, bs, bl] = hsl(base), [th, ts, tl] = hsl(target), grey = bs < .15, cache = {};
+  const map = hex => {
+    const k = hex.toUpperCase(); if (k in cache) return cache[k];
+    const [h, s, l] = hsl(k), dh = Math.abs(((h - bh + 540) % 360) - 180);
+    const fam = k !== '#FFFFFF' && k !== INK.toUpperCase() && (grey ? s < .3 : (dh < 38 || s < .1) && Math.abs(s - bs) < .34);
+    if (!fam) return (cache[k] = hex);
+    const s2 = ts * Math.max(.45, Math.min(1.5, s / Math.max(bs, .1))), l2 = l <= bl ? tl * l / Math.max(bl, .05) : tl + (1 - tl) * (l - bl) / Math.max(1 - bl, .05) * (.28 + .72 * tl);   // 深发色的高光收一点，不然黑发会发灰
+    return (cache[k] = hsl2hex(th + (grey ? 0 : ((h - bh + 540) % 360) - 180), s2, l2));
+  };
+  return L.map(l => ({ ...l, svg: l.svg.replace(/#[0-9a-fA-F]{6}\b/g, map) }));
+}
+
+/* =====================================================================
    固定款：袜子 / 鞋 / 配饰（沿描摹底模的腿、脚、脖子、手腕画）
    层级：发型后片 2 · 底模 10 · 袜子 15 · 下装 20 · 连衣裙 25 · 上衣 30 · 外套 35 · 鞋 40 · 腿套 42 · 发型前片 50 · 配饰 55+
    ===================================================================== */
@@ -6305,7 +6348,7 @@ function partsOf(it) {
   if (it.shape) return [{ z: Z[it.cat], svg: piece(it.shape, resolveFill(it).fill, { evenodd: true, folds: it.lines || [] }) }];
   if (it.tpl) { const T = TPL[it.tpl], F = resolveFill(it); return [{ z: T.z ?? Z[it.cat], svg: T.render(F) }].concat(T.back ? [{ z: 9, svg: T.back(F) }] : []); }
   if (it.png) return [{ z: it.z ?? 30, svg: `<image href="${it.png}" x="0" y="0" width="300" height="600"/>` }];
-  if (it.cat === 'hair') { SOFT = .7; try { return hairDepth(it.parts().map(l => ({ ...l, svg: unifyHair(l.svg) }))); } finally { SOFT = 0; } }
+  if (it.cat === 'hair') { SOFT = .7; try { const L = it.parts().map(l => ({ ...l, svg: unifyHair(l.svg) })); return hairDepth(HAIR_TINT ? tintHair(L, HAIR_TINT) : L); } finally { SOFT = 0; } }   // HAIR_TINT：玩家选的发色
   return it.parts();
 }
 /* 头发前后分层：后面那层（z < 10）的发色压暗一档，前后两层就不会糊成一整块 */
@@ -6327,6 +6370,7 @@ const byId = id => (id ? allItems().find(i => i.id === id) : null);
 
 /* 动态蒙版：穿上衣 / 连衣裙时隐藏打底吊带，穿下装 / 连衣裙时隐藏打底短裤；穿连衣裙时不画上衣和下装 */
 function dollSVG(outfit, over = {}, pose = null) {
+  HAIR_TINT = outfit.hairColor || null;
   const slot = k => (k in over ? over[k] : byId(outfit[k]));
   const dress = slot('dress'), fullDress = dress && !keepsTop(dress);
   const top = fullDress ? null : slot('top'), bottom = dress ? null : slot('bottom');
@@ -6353,6 +6397,7 @@ function dollSVG(outfit, over = {}, pose = null) {
     H.forEach((l, i) => { if (l.cat === 'hair') { const y = l.z < 10 ? 78 : 60; H[i] = hide(l, P ? f1(y + propOffset(150, y)[1]) : y); } });   // 有姿势时身体按时装比例变形过，裁切线跟着挪
   }
   L.push(...hangOverShoes(L, bottom, slot('shoes'), P ? y => y + propOffset(150, y)[1] : y => y));   // 有姿势时裁切线跟着时装比例挪
+  HAIR_TINT = null;
   if (P) return posedSVG(P, L, H, accL, { bottom });
   return layersSVG(L.concat(headWrap(H)));
 }
@@ -6466,7 +6511,8 @@ function hangOverShoes(L, bottom, shoes, ym) {
   return L.filter(l => zs[l.cat] && !(l.cat === 'bottom' && skipBottom) && l.z >= 15 && l.z < 40).map(l => { const id = uid('an'); return { z: zs[l.cat] + l.z / 1000, svg: `<clipPath id="${id}"><rect x="-60" y="${y}" width="420" height="${f1(700 - y)}"/></clipPath><g clip-path="url(#${id})">${l.svg}</g>` }; });
 }
 function thumbSVG(it) {
-  const L = partsOf(it).slice();
+  HAIR_TINT = it.cat === 'hair' ? state.outfit.hairColor || null : null;
+  const L = partsOf(it).slice(); HAIR_TINT = null;
   if (isHead(it)) L.push({ z: 10.5, svg: headSVG() }, ...faceLayers(state.outfit.face));
   return `<svg viewBox="${thumbOf(it)}" aria-hidden="true">${layersSVG(L)}</svg>`;
 }
@@ -7664,6 +7710,7 @@ function cleanOutfit(o) {
   if (!byId(out.hair)) out.hair = 'h4';
   if (out.dress) { out.top = null; out.bottom = null; }
   if (Array.isArray(o.acc)) out.acc = oneEach(o.acc.filter(id => byId(id)));
+  out.hairColor = HAIR_COLORS.some(([c]) => c === o.hairColor) ? o.hairColor : null;
   return out;
 }
 
@@ -7737,6 +7784,7 @@ function renderGrid() {
   const t = state.tab;
   let html;
   if (t === 'face') html = facePanelHTML();
+  else if (t === 'hair') html = hairColorRow() + WARDROBE.filter(i => i.cat === t).map(cardHTML).join('') + state.custom.filter(i => i.cat === t).map(cardHTML).join('');
   else if (t === 'acc') html = accPanelHTML();
   else if (t === 'diy') html = ADD_CARD('top') + (state.custom.length ? state.custom.map(cardHTML).join('') : '<p class="empty">还没有 DIY 的衣服。用一张照片做一件，或者直接在娃娃身上画一件。</p>');
   else {
@@ -7744,6 +7792,13 @@ function renderGrid() {
     if (['top', 'outer', 'bottom', 'dress'].includes(t)) html += ADD_CARD(t);
   }
   $('#grid').innerHTML = html;
+}
+/* 发色：发型分类最上面一排色块，「原色」就是每款发型自己的颜色 */
+function hairColorRow() {
+  const cur = state.outfit.hairColor || null;
+  return `<div class="hair-colors" role="radiogroup" aria-label="发色"><span class="hc-label">发色</span>` +
+    `<button type="button" class="hc hc-orig" data-hc="" role="radio" aria-checked="${!cur}" title="原色"><span>原色</span></button>` +
+    HAIR_COLORS.map(([c, n]) => `<button type="button" class="hc" data-hc="${c}" role="radio" aria-checked="${cur === c}" title="${n}" aria-label="${n}" style="--c:${c}"></button>`).join('') + '</div>';
 }
 /* 小物按分区显示：全部时每个分区一个小标题 */
 function accPanelHTML() {
@@ -7949,6 +8004,7 @@ function bind() {
     }
     const labBtn = e.target.closest('[data-lab]'); if (labBtn) { openLab(labBtn.dataset.lab, labBtn, 'tpl'); return; }
     const drawBtn = e.target.closest('[data-draw]'); if (drawBtn) { openLab(drawBtn.dataset.draw, drawBtn, 'draw'); return; }
+    const hc = e.target.closest('[data-hc]'); if (hc) { state.outfit.hairColor = hc.dataset.hc || null; save(); renderStage(false); renderGrid(); const again = $(`[data-hc="${hc.dataset.hc}"]`); if (again) again.focus(); return; }
     const sb = e.target.closest('[data-sub]'); if (sb) { state.accSub = sb.dataset.sub; renderGrid(); const again = $(`[data-sub="${state.accSub}"]`); if (again) again.focus(); return; }
     const b = e.target.closest('[data-id]'); if (!b) return;
     const it = byId(b.dataset.id); if (it) { toggle(it); const again = $(`[data-id="${it.id}"]`); if (again) again.focus(); }

@@ -171,3 +171,38 @@ smallTail = function (x, y, c, ln, dir = 1, s = 1.1) {
 
 /* 盘发 / 扎起来的头发：后脑勺那片在发际线处是一条顺的弧（头发都扎上去了，不会垂出一排发梢） */
 BACK_HEAD = (BH => h => { const d = new String(BH(h)); d.noShape = true; return d; })(BACK_HEAD);
+
+/* =====================================================================
+   发色（可选）：选了发色后，把这款发型里所有「头发色系」的颜色（底色、阴影、高光、描边）一起换过去
+   · 按原发色 → 目标发色的色相 / 饱和度 / 明暗整体平移，深浅层次保持原样
+   · 发圈、发夹、星星、花这些装饰颜色和头发差得远，不动
+   ===================================================================== */
+const HAIR_COLORS = [['#2A2226', '乌黑'], ['#4A3026', '深棕'], ['#8A5A40', '栗棕'], ['#B07A4E', '焦糖'], ['#A8532E', '红棕'], ['#D6BC98', '奶茶'], ['#EBD49A', '奶金'], ['#D9A850', '蜂蜜金'],
+  ['#C8C6CE', '银灰'], ['#F4AFC8', '樱花粉'], ['#B9A0E0', '香芋紫'], ['#8EC0E6', '天空蓝'], ['#9ED69A', '薄荷绿']];
+let HAIR_TINT = null;
+function hsl2hex(h, s, l) {
+  h = ((h % 360) + 360) % 360; s = Math.max(0, Math.min(1, s)); l = Math.max(0, Math.min(1, l));
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return rgb2hex((r + m) * 255, (g + m) * 255, (b + m) * 255);
+}
+function hairBase(L) {   // 发型的底色：用得最多、又有一定饱和度和明度的那个（描边色可能比底色还多）；黑 / 灰发退回用得最多的
+  const n = {}; L.forEach(l => (l.svg.match(/fill="(#[0-9a-fA-F]{6})"/g) || []).forEach(m => { const c = m.slice(6, 13).toUpperCase(); if (c !== '#E2C0CE' && c !== '#FFFFFF') n[c] = (n[c] || 0) + 1; }));
+  const K = Object.keys(n).sort((a, b) => n[b] - n[a]), all = new Set(L.flatMap(l => (l.svg.match(/#[0-9a-fA-F]{6}\b/g) || []).map(c => c.toUpperCase())));
+  const byInk = K.find(k => all.has(hairInk(k).toUpperCase()));   // 描边色 = 底色往墨色混 70%：能对上的就是底色
+  if (byInk) return byInk;
+  return K.find(k => { const [, sa, l] = hsl(k); return sa > .22 && l > .3 && l < .9 && n[k] >= n[K[0]] * .25; }) || K[0];
+}
+function tintHair(L, target) {
+  const base = hairBase(L); if (!base || !target) return L;
+  const [bh, bs, bl] = hsl(base), [th, ts, tl] = hsl(target), grey = bs < .15, cache = {};
+  const map = hex => {
+    const k = hex.toUpperCase(); if (k in cache) return cache[k];
+    const [h, s, l] = hsl(k), dh = Math.abs(((h - bh + 540) % 360) - 180);
+    const fam = k !== '#FFFFFF' && k !== INK.toUpperCase() && (grey ? s < .3 : (dh < 38 || s < .1) && Math.abs(s - bs) < .34);
+    if (!fam) return (cache[k] = hex);
+    const s2 = ts * Math.max(.45, Math.min(1.5, s / Math.max(bs, .1))), l2 = l <= bl ? tl * l / Math.max(bl, .05) : tl + (1 - tl) * (l - bl) / Math.max(1 - bl, .05) * (.28 + .72 * tl);   // 深发色的高光收一点，不然黑发会发灰
+    return (cache[k] = hsl2hex(th + (grey ? 0 : ((h - bh + 540) % 360) - 180), s2, l2));
+  };
+  return L.map(l => ({ ...l, svg: l.svg.replace(/#[0-9a-fA-F]{6}\b/g, map) }));
+}

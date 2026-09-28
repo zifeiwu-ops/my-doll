@@ -28,7 +28,7 @@ function partsOf(it) {
   if (it.shape) return [{ z: Z[it.cat], svg: piece(it.shape, resolveFill(it).fill, { evenodd: true, folds: it.lines || [] }) }];
   if (it.tpl) { const T = TPL[it.tpl], F = resolveFill(it); return [{ z: T.z ?? Z[it.cat], svg: T.render(F) }].concat(T.back ? [{ z: 9, svg: T.back(F) }] : []); }
   if (it.png) return [{ z: it.z ?? 30, svg: `<image href="${it.png}" x="0" y="0" width="300" height="600"/>` }];
-  if (it.cat === 'hair') { SOFT = .7; try { return hairDepth(it.parts().map(l => ({ ...l, svg: unifyHair(l.svg) }))); } finally { SOFT = 0; } }
+  if (it.cat === 'hair') { SOFT = .7; try { const L = it.parts().map(l => ({ ...l, svg: unifyHair(l.svg) })); return hairDepth(HAIR_TINT ? tintHair(L, HAIR_TINT) : L); } finally { SOFT = 0; } }   // HAIR_TINT：玩家选的发色
   return it.parts();
 }
 /* 头发前后分层：后面那层（z < 10）的发色压暗一档，前后两层就不会糊成一整块 */
@@ -50,6 +50,7 @@ const byId = id => (id ? allItems().find(i => i.id === id) : null);
 
 /* 动态蒙版：穿上衣 / 连衣裙时隐藏打底吊带，穿下装 / 连衣裙时隐藏打底短裤；穿连衣裙时不画上衣和下装 */
 function dollSVG(outfit, over = {}, pose = null) {
+  HAIR_TINT = outfit.hairColor || null;
   const slot = k => (k in over ? over[k] : byId(outfit[k]));
   const dress = slot('dress'), fullDress = dress && !keepsTop(dress);
   const top = fullDress ? null : slot('top'), bottom = dress ? null : slot('bottom');
@@ -76,6 +77,7 @@ function dollSVG(outfit, over = {}, pose = null) {
     H.forEach((l, i) => { if (l.cat === 'hair') { const y = l.z < 10 ? 78 : 60; H[i] = hide(l, P ? f1(y + propOffset(150, y)[1]) : y); } });   // 有姿势时身体按时装比例变形过，裁切线跟着挪
   }
   L.push(...hangOverShoes(L, bottom, slot('shoes'), P ? y => y + propOffset(150, y)[1] : y => y));   // 有姿势时裁切线跟着时装比例挪
+  HAIR_TINT = null;
   if (P) return posedSVG(P, L, H, accL, { bottom });
   return layersSVG(L.concat(headWrap(H)));
 }
@@ -189,7 +191,8 @@ function hangOverShoes(L, bottom, shoes, ym) {
   return L.filter(l => zs[l.cat] && !(l.cat === 'bottom' && skipBottom) && l.z >= 15 && l.z < 40).map(l => { const id = uid('an'); return { z: zs[l.cat] + l.z / 1000, svg: `<clipPath id="${id}"><rect x="-60" y="${y}" width="420" height="${f1(700 - y)}"/></clipPath><g clip-path="url(#${id})">${l.svg}</g>` }; });
 }
 function thumbSVG(it) {
-  const L = partsOf(it).slice();
+  HAIR_TINT = it.cat === 'hair' ? state.outfit.hairColor || null : null;
+  const L = partsOf(it).slice(); HAIR_TINT = null;
   if (isHead(it)) L.push({ z: 10.5, svg: headSVG() }, ...faceLayers(state.outfit.face));
   return `<svg viewBox="${thumbOf(it)}" aria-hidden="true">${layersSVG(L)}</svg>`;
 }

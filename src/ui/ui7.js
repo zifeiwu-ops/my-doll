@@ -27,6 +27,7 @@ function cleanOutfit(o) {
   if (!byId(out.hair)) out.hair = 'h4';
   if (out.dress) { out.top = null; out.bottom = null; }
   if (Array.isArray(o.acc)) out.acc = oneEach(o.acc.filter(id => byId(id)));
+  out.hairColor = HAIR_COLORS.some(([c]) => c === o.hairColor) ? o.hairColor : null;
   return out;
 }
 
@@ -100,6 +101,7 @@ function renderGrid() {
   const t = state.tab;
   let html;
   if (t === 'face') html = facePanelHTML();
+  else if (t === 'hair') html = hairColorRow() + WARDROBE.filter(i => i.cat === t).map(cardHTML).join('') + state.custom.filter(i => i.cat === t).map(cardHTML).join('');
   else if (t === 'acc') html = accPanelHTML();
   else if (t === 'diy') html = ADD_CARD('top') + (state.custom.length ? state.custom.map(cardHTML).join('') : '<p class="empty">还没有 DIY 的衣服。用一张照片做一件，或者直接在娃娃身上画一件。</p>');
   else {
@@ -107,6 +109,13 @@ function renderGrid() {
     if (['top', 'outer', 'bottom', 'dress'].includes(t)) html += ADD_CARD(t);
   }
   $('#grid').innerHTML = html;
+}
+/* 发色：发型分类最上面一排色块，「原色」就是每款发型自己的颜色 */
+function hairColorRow() {
+  const cur = state.outfit.hairColor || null;
+  return `<div class="hair-colors" role="radiogroup" aria-label="发色"><span class="hc-label">发色</span>` +
+    `<button type="button" class="hc hc-orig" data-hc="" role="radio" aria-checked="${!cur}" title="原色"><span>原色</span></button>` +
+    HAIR_COLORS.map(([c, n]) => `<button type="button" class="hc" data-hc="${c}" role="radio" aria-checked="${cur === c}" title="${n}" aria-label="${n}" style="--c:${c}"></button>`).join('') + '</div>';
 }
 /* 小物按分区显示：全部时每个分区一个小标题 */
 function accPanelHTML() {
@@ -312,6 +321,7 @@ function bind() {
     }
     const labBtn = e.target.closest('[data-lab]'); if (labBtn) { openLab(labBtn.dataset.lab, labBtn, 'tpl'); return; }
     const drawBtn = e.target.closest('[data-draw]'); if (drawBtn) { openLab(drawBtn.dataset.draw, drawBtn, 'draw'); return; }
+    const hc = e.target.closest('[data-hc]'); if (hc) { state.outfit.hairColor = hc.dataset.hc || null; save(); renderStage(false); renderGrid(); const again = $(`[data-hc="${hc.dataset.hc}"]`); if (again) again.focus(); return; }
     const sb = e.target.closest('[data-sub]'); if (sb) { state.accSub = sb.dataset.sub; renderGrid(); const again = $(`[data-sub="${state.accSub}"]`); if (again) again.focus(); return; }
     const b = e.target.closest('[data-id]'); if (!b) return;
     const it = byId(b.dataset.id); if (it) { toggle(it); const again = $(`[data-id="${it.id}"]`); if (again) again.focus(); }
