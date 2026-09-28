@@ -59,12 +59,12 @@ function dollSVG(outfit, over = {}, pose = null) {
   if (!top && !fullDress) L.push({ z: 12, svg: cami });
   if (!bottom && !dress) L.push({ z: 12, svg: shorts });
   [slot('hair'), top, slot('outer'), bottom, dress, slot('legs'), dress && tplOf(dress) && tplOf(dress).long ? null : slot('warmer'), slot('shoes')].forEach(it => { if (it) (isHead(it) ? H : L).push(...partsOf(it).map(l => ({ ...l, cat: it.cat, drawn: !!it.shape }))); });
-  const accL = [], P = pose && pose !== 'stand' ? POSES[pose] : null;
+  const accL = [], P = pose ? POSES[pose] || POSES.stand : null;   // 没传姿势（DIY 画布）时保持原始比例，画的形状才对得上
   (outfit.acc || []).forEach(id => { const it = byId(id); if (it) { const Q = partsOf(it); if (isHead(it)) H.push(...Q); else if (P && (BAGS.has(id) || HELD[id] || it.sub === 'bag' || it.sub === 'waist')) accL.push(...Q.map(l => ({ ...l, bag: id }))); else L.push(...Q.map(l => ({ ...l, cat: 'acc', id }))); } });
   // 戴帽子时，帽顶以上的头发（丸子、高马尾、呆毛）收进帽子里，不会从帽子上穿出来；遮阳帽没有帽顶，不收
   if ((outfit.acc || []).some(id => { const it = byId(id); return it && it.sub === 'hat' && !OPEN_HATS.has(id); })) {
     const hide = (l, y) => { const c = uid('hc'); return { ...l, svg: `<clipPath id="${c}"><rect x="-40" y="${y}" width="380" height="700"/></clipPath><g clip-path="url(#${c})">${l.svg}</g>` }; };
-    H.forEach((l, i) => { if (l.cat === 'hair') H[i] = hide(l, l.z < 10 ? 78 : 60); });
+    H.forEach((l, i) => { if (l.cat === 'hair') { const y = l.z < 10 ? 78 : 60; H[i] = hide(l, P ? f1(y + propOffset(150, y)[1]) : y); } });   // 有姿势时身体按时装比例变形过，裁切线跟着挪
   }
   L.push(...pantsOverShoes(bottom, slot('shoes')));
   if (P) return posedSVG(P, L, H, accL, { bottom });
@@ -160,7 +160,7 @@ function posedSVG(P, L, H, bags, W0) {
     const at = tot > 100 ? sideJ(k, RIG.E) : h0, u = warpAt(W, at[0], at[1], { force: k }), dx = at[0] + u[0] - h0[0], dy = at[1] + u[1] - h0[1] + (tot > 100 ? 4 : 0);
     out.push({ z: moves(k) && !A.back && front.includes(k) ? 49.45 : l.z, svg: `<g transform="translate(${f2(dx)} ${f2(dy)})">${l.svg}</g>` });
   });
-  if (P.extra) out.push({ z: 51.5, svg: P.extra });
+  if (P.extra) out.push({ z: 51.5, svg: warpSVG(P.extra, W, { arms: false }) });
   return layersSVG(out);
 }
 /* 长裤盖住鞋面：裤脚那一截再画一遍、叠在鞋子上面（原来是鞋子直接盖在裤脚上，看起来像穿模）。

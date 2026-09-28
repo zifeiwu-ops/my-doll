@@ -18,6 +18,14 @@ const WARP_GAP = (() => {
   }
   return { T, A };
 })();
+/* 时装比例（参考时尚插画的 7 头身）：头部整体缩小一点、腿拉长一截，再整体上移放进画面。
+   和姿势变形叠加：按部件原来的位置算偏移，所以抬到头边的手不会跟着头一起缩小 */
+const PROP = { head: .84, leg: 1.1, dy: -22, chin: 154, crotch: 316 };
+function propOffset(x, y) {
+  const hx = PROP.head + (1 - PROP.head) * sstep(146, 178, y);
+  const y1 = y < PROP.chin ? PROP.chin + (y - PROP.chin) * PROP.head : y > PROP.crotch ? PROP.crotch + (y - PROP.crotch) * PROP.leg : y;
+  return [(x - 150) * (hx - 1), y1 - y + PROP.dy];
+}
 /* 手臂蒙皮权重（左半边坐标）：1 = 手臂上，0 = 身体上。腋下以上按肩线分，腋下以下在手臂和身体之间的空隙里平滑过渡 */
 function armMember(xl, y) {
   const bnd = 121 + (armI0(222) + 5 - 121) * Math.max(0, Math.min(1, (y - 206) / 16));
@@ -71,7 +79,8 @@ function warpAt(W, x, y, o = {}) {
   }
   // 6) 踢腿：右腿膝盖以下绕膝盖转
   if (W.leg && o.leg !== false) { const wl = ((o.legSide ? o.legSide === 'R' : x > 150) ? 1 : 0) * sstep(RIG.yK - 18, RIG.yK + 8, y); if (wl) [px, py] = rotP(px, py, RIG.K, W.leg * wl); }
-  return [ux + px - x, uy + py - y];
+  const pr = propOffset(x, y);
+  return [ux + px - x + pr[0], uy + py - y + pr[1]];
 }
 
 /* ---------- 矢量变形：逐个元素把坐标换到画布坐标 → 加位移 → 换回元素自己的坐标 ---------- */
