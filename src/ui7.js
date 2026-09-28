@@ -1,0 +1,358 @@
+/* =====================================================================
+   界面
+   ===================================================================== */
+const $ = s => document.querySelector(s);
+const TABS = [['hair', '发型'], ['face', '五官'], ['top', '上衣'], ['outer', '外套'], ['bottom', '下装'], ['dress', '连衣裙'], ['legs', '袜子'], ['shoes', '鞋子'], ['acc', '小物'], ['diy', 'DIY']];
+const TAB_HINT = { hair: '选一个发型', face: '换眼睛、瞳色、眉毛、嘴巴和腮红', top: '点一下穿上，再点一次脱下', outer: '外套叠在上衣外面', bottom: '点一下穿上，再点一次脱下', dress: '穿连衣裙会自动脱掉上衣和下装', legs: '袜子和腿套可以一起穿', shoes: '点一下穿上，再点一次脱下', acc: '小物可以同时戴好几件，帽子类一次戴一顶', diy: '用照片做的、自己画的衣服都在这里，也会出现在对应分类里' };
+const KEY = 'y2k-closet-v7';
+const HATS = ['a1', 'a5', 'a8', 'a12', 'a13', 'a14', 'a15', ...HATS10, ...HATS11, ...HATS13, ...HATS16];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function save() { try { localStorage.setItem(KEY, JSON.stringify({ custom: state.custom, outfit: state.outfit })); } catch (e) { } }
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (s && Array.isArray(s.custom)) state.custom = s.custom.filter(c => c && c.id && (TPL[c.tpl] || c.shape) && c.color);
+    if (s && s.outfit) return s.outfit;
+  } catch (e) { }
+  return null;
+}
+function cleanOutfit(o) {
+  const out = { ...DEFAULT_OUTFIT, acc: [...DEFAULT_OUTFIT.acc], face: { ...DEFAULT_FACE } };
+  if (!o) return out;
+  if (o.face) Object.keys(FACE_OPTS).forEach(k => { if (FACE_OPTS[k].items.some(([id]) => id === o.face[k])) out.face[k] = o.face[k]; });
+  /* 旧版默认五官（奶茶棕瞳）自动换成新的参考图浅灰棕瞳；自己改过的五官不动 */
+  if (o.face && o.face.eyes === 'e1' && o.face.iris === 'milk' && o.face.brows === 'b1' && o.face.mouth === 'm1' && o.face.blush === 'k1') out.face.iris = 'ash';
+  SLOTS.forEach(k => { if (o[k] === null || (o[k] && byId(o[k]))) out[k] = o[k]; });
+  if (!byId(out.hair)) out.hair = 'h4';
+  if (out.dress) { out.top = null; out.bottom = null; }
+  if (Array.isArray(o.acc)) out.acc = o.acc.filter(id => byId(id));
+  return out;
+}
+
+function ootdText() {
+  const o = state.outfit, names = SLOTS.map(k => byId(o[k])).filter(Boolean).map(i => i.name);
+  if (o.acc.length) names.push(`${o.acc.length} 件小物`);
+  return `<b>OOTD</b>${esc(names.join(' · '))}`;
+}
+function renderStage(fx) {
+  $('#doll').innerHTML = `<g filter="url(#sticker)">${dollSVG(state.outfit, {}, state.pose)}</g>`;
+  $('#ootd').innerHTML = ootdText();
+  if (fx) { burst(); hop(); }
+}
+const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+function hop() {
+  const w = $('#dollLive'); if (!w || calm()) return;
+  w.classList.remove('hop'); void w.offsetWidth; w.classList.add('hop');
+}
+/* 眨眼：隔 2.5–6 秒随机眨一次，偶尔连眨两下 */
+function blinkLoop() {
+  setTimeout(() => {
+    const d = $('#doll');
+    if (d && !document.hidden && !calm()) {
+      const once = (then) => { d.classList.add('blink'); setTimeout(() => { d.classList.remove('blink'); if (then) setTimeout(then, 150); }, 120); };
+      once(Math.random() < .25 ? () => once() : null);
+    }
+    blinkLoop();
+  }, 2500 + Math.random() * 3500);
+}
+function burst() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const box = $('#sparkles'), cols = ['#FFFFFF', '#FFE27A', '#F7A8C8', '#8FD9CD'];
+  for (let i = 0; i < 10; i++) {
+    const s = document.createElement('span'), a = (i / 10) * Math.PI * 2 + Math.random() * .5, rr = 110 + Math.random() * 90;
+    s.className = 'spark';
+    s.style.left = `calc(50% + ${(Math.cos(a) * rr * .55).toFixed(0)}px)`;
+    s.style.top = `calc(46% + ${(Math.sin(a) * rr).toFixed(0)}px)`;
+    s.style.setProperty('--c', cols[i % cols.length]); s.style.setProperty('--d', `${Math.round(Math.random() * 140)}ms`);
+    box.appendChild(s); setTimeout(() => s.remove(), 1100);
+  }
+}
+function renderTabs() {
+  $('#tabs').innerHTML = TABS.map(([k, label]) => {
+    const n = k === 'diy' ? state.custom.length : k === 'face' ? '' : allItems().filter(i => i.cat === k).length;
+    return `<button class="tab${k === 'diy' ? ' diy' : ''}" role="tab" type="button" data-tab="${k}" aria-selected="${state.tab === k}">${label}${n === '' ? '' : `<span class="n">${n}</span>`}</button>`;
+  }).join('');
+  $('#tabHint').textContent = TAB_HINT[state.tab];
+}
+function isOn(it) { const o = state.outfit; return it.cat === 'acc' ? o.acc.includes(it.id) : o[slotOf(it)] === it.id; }
+function cardHTML(it) {
+  const badge = it.diy ? '<span class="badge diy">DIY</span>' : it.isNew ? '<span class="badge new">NEW</span>' : '';
+  const del = it.diy ? `<button class="del" type="button" data-del="${it.id}" aria-label="删除 ${esc(it.name)}">×</button>` : '';
+  return `<div class="card">${badge}<button class="card-btn" type="button" data-id="${it.id}" aria-pressed="${isOn(it)}"><span class="thumb">${thumbSVG(it)}</span><span class="nm">${esc(it.name)}</span></button>${del}</div>`;
+}
+function faceThumb(key, id) {
+  const f = { ...state.outfit.face, [key]: id };
+  return `<svg viewBox="${FACE_OPTS[key].vb}" aria-hidden="true">${layersSVG([{ z: 10.5, svg: headSVG() }, ...faceLayers(f)])}</svg>`;
+}
+function facePanelHTML() {
+  const f = state.outfit.face;
+  return Object.entries(FACE_OPTS).map(([key, g]) => {
+    const items = g.swatch
+      ? g.items.map(([id, name]) => `<button class="swatch" type="button" data-face="${key}" data-fid="${id}" aria-pressed="${f[key] === id}"><span style="background:linear-gradient(${IRIS[id][0]},${IRIS[id][1]} 55%,${IRIS[id][2]})"></span>${name}</button>`).join('')
+      : g.items.map(([id, name]) => `<div class="card"><button class="card-btn face-btn" type="button" data-face="${key}" data-fid="${id}" aria-pressed="${f[key] === id}"><span class="thumb">${faceThumb(key, id)}</span><span class="nm">${name}</span></button></div>`).join('');
+    return `<section class="fsec"><h4 class="fsec-h">${g.label}</h4><div class="${g.swatch ? 'swatches' : 'frow'}">${items}</div></section>`;
+  }).join('');
+}
+const ADD_CARD = cat => `<div class="card card-add"><button class="card-btn" type="button" data-lab="${cat}"><span class="plus" aria-hidden="true">+</span><span class="nm">用照片做一件</span></button></div>` +
+  `<div class="card card-add draw"><button class="card-btn" type="button" data-draw="${cat}"><span class="plus" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 20 L5.2 15.4 L15.8 4.8 a2 2 0 0 1 2.8 0 l.6 .6 a2 2 0 0 1 0 2.8 L8.6 18.8 Z" fill="#fff" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14.2 6.4 L17.6 9.8" stroke="currentColor" stroke-width="1.6"/></svg></span><span class="nm">自己画一件</span></button></div>`;
+function renderGrid() {
+  const t = state.tab;
+  let html;
+  if (t === 'face') html = facePanelHTML();
+  else if (t === 'acc') html = accPanelHTML();
+  else if (t === 'diy') html = ADD_CARD('top') + (state.custom.length ? state.custom.map(cardHTML).join('') : '<p class="empty">还没有 DIY 的衣服。用一张照片做一件，或者直接在娃娃身上画一件。</p>');
+  else {
+    html = WARDROBE.filter(i => i.cat === t).map(cardHTML).join('') + state.custom.filter(i => i.cat === t).map(cardHTML).join('');
+    if (['top', 'outer', 'bottom', 'dress'].includes(t)) html += ADD_CARD(t);
+  }
+  $('#grid').innerHTML = html;
+}
+/* 小物按分区显示：全部时每个分区一个小标题 */
+function accPanelHTML() {
+  const items = allItems().filter(i => i.cat === 'acc'), cur = state.accSub || 'all';
+  const chips = `<div class="subtabs" role="toolbar" aria-label="小物分区">` + [['all', '全部', items.length], ...ACC_GROUPS.map(([k, n]) => [k, n, items.filter(i => i.sub === k).length])]
+    .map(([k, n, c]) => `<button type="button" class="opt" data-sub="${k}" aria-pressed="${k === cur}">${n}<span class="n">${c}</span></button>`).join('') + '</div>';
+  const groups = cur === 'all' ? ACC_GROUPS : ACC_GROUPS.filter(([k]) => k === cur);
+  return chips + groups.map(([k, n]) => { const L = items.filter(i => i.sub === k); return L.length ? `<p class="subhead">${n}<span>${L.length} 件</span></p>` + L.map(cardHTML).join('') : ''; }).join('');
+}
+function toggle(it) {
+  const o = state.outfit;
+  const k = slotOf(it);
+  if (it.cat === 'acc') {
+    const i = o.acc.indexOf(it.id);
+    if (i >= 0) o.acc.splice(i, 1);
+    else { if (HATS.includes(it.id)) o.acc = o.acc.filter(a => !HATS.includes(a)); o.acc.push(it.id); }
+  }
+  else if (k === 'hair') o.hair = it.id;
+  else {
+    o[k] = o[k] === it.id ? null : it.id;
+    if (o[k] && k === 'dress') { o.bottom = null; if (!keepsTop(it)) o.top = null; }
+    if (o[k] && k === 'bottom') o.dress = null;
+    if (o[k] && k === 'top' && !keepsTop(byId(o.dress))) o.dress = null;
+  }
+  save(); renderStage(isOn(it)); renderGrid();
+}
+function randomize() {
+  const pick = a => a[Math.floor(Math.random() * a.length)], of = c => allItems().filter(i => i.cat === c);
+  const face = {}; Object.entries(FACE_OPTS).forEach(([k, g]) => { face[k] = pick(g.items)[0]; });
+  const useDress = Math.random() < .25, socks = of('legs').filter(i => !i.slot), acc = of('acc').filter(i => !HATS.includes(i.id) && Math.random() < .3).map(i => i.id);
+  if (Math.random() < .45) acc.push(pick(HATS));
+  state.outfit = { hair: pick(of('hair')).id, top: useDress ? null : pick(of('top')).id, outer: Math.random() < .3 ? pick(of('outer')).id : null, bottom: useDress ? null : pick(of('bottom')).id, dress: useDress ? pick(of('dress')).id : null,
+    legs: Math.random() < .55 ? pick(socks).id : null, warmer: Math.random() < .25 ? 'l3' : null, shoes: pick(of('shoes')).id, acc, face };
+  save(); renderStage(true); renderGrid();
+}
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
+
+/* ---------------- DIY 实验室 ---------------- */
+const lab = { ui: 'tpl', P: null, M: null, kind: '', res: null, tpl: 'hoodie', mode: 'pattern', scale: 30, name: '', nameTouched: false, sample: '', opener: null };
+const CAT_NAME = { top: '上衣', outer: '外套', bottom: '下装', dress: '连衣裙' };
+const SWATCHES = ['#F7B2CC', '#F48FB1', '#FFE27A', '#BFEBE4', '#8FD9CD', '#A7D1EE', '#C9AEF2', '#FBF6E6', '#CDB994', '#9A6448', '#6F92BC', '#2E2A30'];
+const LAB_DEFAULT = { top: 'hoodie', outer: 'puffJacket', bottom: 'shorts', dress: 'denimDress' };
+const CAT_LABEL = { top: 'TOP', outer: 'OUTER', bottom: 'BOTTOM', dress: 'DRESS' };
+const KIND_TEXT = {
+  auto: '已经自动框出衣服',
+  closeup: '看起来是布料特写，整张都当作面料',
+  fallback: '没找到明显的衣服轮廓，先取了照片中间',
+  tap: '按你点的位置重新框好了',
+  swatch: '用了你选的颜色'
+};
+function previewItem() {
+  if (!lab.res) return null;
+  if (lab.ui === 'draw') return dr.shape ? { id: 'preview', diy: true, cat: dr.cat, shape: dr.shape, lines: dr.lines, thumb: dr.thumb, name: '预览', mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale } : null;
+  return { id: 'preview', diy: true, cat: TPL[lab.tpl].cat, tpl: lab.tpl, name: '预览', mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale };
+}
+function autoName() { return lab.res ? `${colorName(lab.res.color)}${lab.mode === 'pattern' && lab.res.tile ? '印花' : ''}${lab.ui === 'draw' ? '手绘' + CAT_NAME[dr.cat] : TPL[lab.tpl].name}` : ''; }
+function openLab(cat, opener, ui) {
+  lab.opener = opener || null;
+  lab.ui = ui === 'draw' ? 'draw' : 'tpl';
+  if (LAB_DEFAULT[cat] && TPL[lab.tpl].cat !== cat) lab.tpl = LAB_DEFAULT[cat];
+  if (lab.ui === 'draw' && DRAW_VIEW[cat] && dr.cat !== cat) { dr.cat = cat; dr.strokes = []; rebuildDrawn(); }
+  $('#lab').hidden = false; document.body.classList.add('modal-open');
+  if (!lab.nameTouched && lab.res) lab.name = autoName();
+  if (!lab.res && lab.ui === 'draw') useSwatch(SWATCHES[0]);
+  else if (!lab.res) loadSample(cat === 'bottom' || cat === 'dress' ? 'floral' : 'plaid'); else refreshLab();
+  $('#labClose').focus();
+}
+function closeLab() {
+  $('#lab').hidden = true; document.body.classList.remove('modal-open');
+  if (lab.opener && document.body.contains(lab.opener)) lab.opener.focus();
+}
+function loadSource(src, sample) {
+  lab.P = V.prep(src); lab.sample = sample || '';
+  const r = V.autoMask(lab.P); lab.M = r.M; lab.kind = r.kind;
+  runExtract();
+}
+function loadSample(kind) { loadSource(sampleImage(kind), kind); }
+function useSwatch(c) {
+  lab.P = null; lab.M = null; lab.sample = ''; lab.kind = 'swatch';
+  lab.res = { mode: 'solid', color: c, palette: [c], tile: null }; lab.mode = 'solid';
+  if (!lab.nameTouched) lab.name = autoName();
+  refreshLab();
+}
+function setLabUI(ui) {
+  lab.ui = ui; if (ui === 'draw' && !dr.strokes.length) rebuildDrawn();
+  if (!lab.nameTouched) lab.name = autoName();
+  refreshLab();
+}
+function runExtract() {
+  lab.res = V.extract(lab.P, lab.M, lab.kind);
+  lab.mode = lab.res.mode;
+  if (!lab.nameTouched) lab.name = autoName();
+  refreshLab();
+}
+function drawPhoto() {
+  const P = lab.P, cv = $('#photoCv'), wrap = $('#photoWrap');
+  if (!P) { wrap.hidden = true; return; }
+  wrap.hidden = false;
+  const dw = Math.max(200, wrap.clientWidth || 360), dh = Math.round(dw * P.sh / P.sw), dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(dw * dpr); cv.height = Math.round(dh * dpr);
+  const x = cv.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(P.src, 0, 0, cv.width, cv.height);
+  const ov = mkCanvas(P.W, P.H), oc = ov.getContext('2d'), id = oc.createImageData(P.W, P.H), M = lab.M, W = P.W, H = P.H;
+  for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) {
+    const i = yy * W + xx;
+    if (!M[i]) { id.data[i * 4] = 74; id.data[i * 4 + 1] = 52; id.data[i * 4 + 2] = 48; id.data[i * 4 + 3] = 140; }
+    else if ((xx > 0 && !M[i - 1]) || (xx < W - 1 && !M[i + 1]) || (yy > 0 && !M[i - W]) || (yy < H - 1 && !M[i + W])) { id.data[i * 4] = 255; id.data[i * 4 + 1] = 255; id.data[i * 4 + 2] = 255; id.data[i * 4 + 3] = 255; }
+  }
+  oc.putImageData(id, 0, 0);
+  x.imageSmoothingEnabled = false; x.drawImage(ov, 0, 0, cv.width, cv.height);
+}
+function renderTplRow() {
+  const pv = previewItem();
+  const ORDER = { top: 0, outer: 1, bottom: 2, dress: 3 };
+  $('#tplRow').innerHTML = Object.entries(TPL).sort((a, b) => ORDER[a[1].cat] - ORDER[b[1].cat]).map(([k, t]) => {
+    const it = pv ? { ...pv, tpl: k, cat: t.cat } : { id: 'blank', white: true, cat: t.cat, tpl: k };
+    return `<button class="tpl" type="button" role="radio" data-tpl="${k}" aria-checked="${lab.tpl === k}"><svg viewBox="${t.thumb}" aria-hidden="true">${t.back ? t.back(resolveFill(it)) : ''}${t.render(resolveFill(it))}</svg><span>${t.name}</span><span class="cat">${CAT_LABEL[t.cat]}</span></button>`;
+  }).join('');
+  const sel = $('#tplRow [aria-checked="true"]'); if (sel) sel.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+function refreshLab() {
+  rebuildUserDefs();
+  const draw = lab.ui === 'draw';
+  $('#tplPane').hidden = draw; $('#drawPane').hidden = !draw;
+  document.querySelectorAll('#labModes [data-ui]').forEach(b => b.setAttribute('aria-selected', b.dataset.ui === lab.ui));
+  $('#labTitle').textContent = draw ? '自己画版型' : '照片做衣服';
+  if (!draw) renderTplRow();
+  const has = !!lab.res;
+  $('#btnAdd').disabled = !has || (draw && !dr.shape);
+  $('#tapHint').hidden = !has || !lab.P;
+  document.querySelectorAll('#swatchRow [data-sw]').forEach(b => b.setAttribute('aria-pressed', lab.kind === 'swatch' && lab.res && lab.res.color === b.dataset.sw));
+  $('#sampleTag').hidden = !lab.sample;
+  if (!has) return;
+  drawPhoto();
+  const nColors = lab.res.palette.length;
+  $('#status').className = 'status';
+  $('#status').textContent = lab.kind === 'swatch' ? `用了你选的颜色「${colorName(lab.res.color)}」。想要印花的话，放一张照片进来。` : `${KIND_TEXT[lab.kind]}，提取到 ${nColors} 种颜色，判断为${lab.res.mode === 'pattern' ? '印花' : '纯色'}。`;
+  $('#palette').innerHTML = lab.res.palette.map(c => `<span class="chip" style="background:${c}" title="${c}"></span>`).join('');
+  document.querySelectorAll('#fabricSeg button').forEach(b => { b.setAttribute('aria-checked', b.dataset.mode === lab.mode); if (b.dataset.mode === 'pattern') b.disabled = !lab.res.tile; });
+  $('#scaleRow').hidden = lab.mode !== 'pattern' || !lab.res.tile;
+  $('#scale').value = lab.scale;
+  $('#itemName').value = lab.name;
+  const cat = draw ? dr.cat : TPL[lab.tpl].cat;
+  const svg = $('#labDoll'); svg.setAttribute('viewBox', draw ? (dr.thumb || DRAW_VIEW[cat].join(' ')) : TPL[lab.tpl].thumb);
+  if (draw) drawRender();
+  const over = cat === 'dress' ? { dress: previewItem() } : cat === 'outer' ? { outer: previewItem() } : { [cat]: previewItem(), dress: null };
+  svg.innerHTML = dollSVG(state.outfit, over);
+}
+function addToCloset() {
+  if (!lab.res) return;
+  const id = 'u' + Date.now().toString(36), name = (lab.name.trim() || autoName()).slice(0, 16);
+  let it;
+  if (lab.ui === 'draw') { if (!dr.shape) return; it = { id, diy: true, cat: dr.cat, shape: dr.shape, lines: dr.lines, thumb: dr.thumb, name, mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale }; }
+  else { const t = TPL[lab.tpl]; it = { id, diy: true, cat: t.cat, tpl: lab.tpl, name, mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale }; }
+  state.custom.push(it); state.outfit[it.cat] = id;
+  if (it.cat === 'dress') { state.outfit.top = null; state.outfit.bottom = null; }
+  if (it.cat === 'top' || it.cat === 'bottom') state.outfit.dress = null;
+  lab.nameTouched = false; lab.name = autoName();
+  save(); rebuildUserDefs(); closeLab();
+  state.tab = 'diy'; renderTabs(); renderGrid(); renderStage(true);
+  toast(`「${it.name}」放进衣橱了，已经穿上`);
+}
+function deleteCustom(id) {
+  state.custom = state.custom.filter(c => c.id !== id);
+  ['top', 'outer', 'bottom', 'dress'].forEach(k => { if (state.outfit[k] === id) state.outfit[k] = null; });
+  save(); rebuildUserDefs(); renderTabs(); renderGrid(); renderStage(false);
+  toast('删掉了');
+}
+function readFile(file) {
+  if (!file) return;
+  if (!/^image\//.test(file.type)) { showErr('这不是图片文件，换一张 JPG 或 PNG 试试。'); return; }
+  const url = URL.createObjectURL(file), img = new Image();
+  img.onload = () => { lab.nameTouched = false; loadSource(img, ''); URL.revokeObjectURL(url); };
+  img.onerror = () => { showErr('这张照片打不开（可能是 HEIC 格式），换一张 JPG 或 PNG 试试。'); URL.revokeObjectURL(url); };
+  img.src = url;
+}
+function showErr(msg) { const s = $('#status'); s.className = 'status err'; s.textContent = msg; }
+
+/* ---------------- 事件 ---------------- */
+function bind() {
+  $('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (!b) return; state.tab = b.dataset.tab; renderTabs(); renderGrid(); });
+  $('#tabs').addEventListener('keydown', e => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const i = TABS.findIndex(t => t[0] === state.tab), j = (i + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length;
+    state.tab = TABS[j][0]; renderTabs(); renderGrid(); $(`[data-tab="${state.tab}"]`).focus();
+  });
+  $('#grid').addEventListener('click', e => {
+    const del = e.target.closest('[data-del]');
+    if (del) {
+      if (del.dataset.armed) { deleteCustom(del.dataset.del); return; }
+      del.dataset.armed = '1'; del.textContent = '删除?';
+      setTimeout(() => { if (del.isConnected) { delete del.dataset.armed; del.textContent = '×'; } }, 3000);
+      return;
+    }
+    const fb = e.target.closest('[data-face]');
+    if (fb) {
+      state.outfit.face[fb.dataset.face] = fb.dataset.fid; save(); renderStage(false); renderGrid();
+      const again = $(`[data-face="${fb.dataset.face}"][data-fid="${fb.dataset.fid}"]`); if (again) again.focus();
+      return;
+    }
+    const labBtn = e.target.closest('[data-lab]'); if (labBtn) { openLab(labBtn.dataset.lab, labBtn, 'tpl'); return; }
+    const drawBtn = e.target.closest('[data-draw]'); if (drawBtn) { openLab(drawBtn.dataset.draw, drawBtn, 'draw'); return; }
+    const sb = e.target.closest('[data-sub]'); if (sb) { state.accSub = sb.dataset.sub; renderGrid(); const again = $(`[data-sub="${state.accSub}"]`); if (again) again.focus(); return; }
+    const b = e.target.closest('[data-id]'); if (!b) return;
+    const it = byId(b.dataset.id); if (it) { toggle(it); const again = $(`[data-id="${it.id}"]`); if (again) again.focus(); }
+  });
+  $('#btnRandom').addEventListener('click', randomize);
+  $('#btnReset').addEventListener('click', () => { state.outfit = cleanOutfit(null); save(); renderStage(true); renderGrid(); });
+
+  $('#labClose').addEventListener('click', closeLab);
+  $('#lab').addEventListener('click', e => { if (e.target.id === 'lab') closeLab(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#lab').hidden) closeLab(); });
+  $('#tplRow').addEventListener('click', e => { const b = e.target.closest('[data-tpl]'); if (!b) return; lab.tpl = b.dataset.tpl; if (!lab.nameTouched) lab.name = autoName(); refreshLab(); });
+  $('#file').addEventListener('change', e => { readFile(e.target.files[0]); e.target.value = ''; });
+  const drop = $('#drop');
+  ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => readFile(e.dataTransfer.files[0]));
+  document.querySelectorAll('[data-sample]').forEach(b => b.addEventListener('click', () => { lab.nameTouched = false; loadSample(b.dataset.sample); }));
+  $('#photoCv').addEventListener('click', e => {
+    if (!lab.P) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const tx = Math.max(0, Math.min(lab.P.W - 1, Math.floor((e.clientX - r.left) / r.width * lab.P.W)));
+    const ty = Math.max(0, Math.min(lab.P.H - 1, Math.floor((e.clientY - r.top) / r.height * lab.P.H)));
+    const m = V.tapMask(lab.P, tx, ty); lab.M = m.M; lab.kind = m.kind; runExtract();
+  });
+  document.querySelectorAll('#fabricSeg button').forEach(b => b.addEventListener('click', () => { lab.mode = b.dataset.mode; if (!lab.nameTouched) lab.name = autoName(); refreshLab(); }));
+  $('#labModes').addEventListener('click', e => { const b = e.target.closest('[data-ui]'); if (b && b.dataset.ui !== lab.ui) setLabUI(b.dataset.ui); });
+  $('#swatchRow').innerHTML = '<span>直接选颜色：</span>' + SWATCHES.map(c => `<button class="sw" type="button" data-sw="${c}" aria-pressed="false" aria-label="${colorName(c)}" style="background:${c}"></button>`).join('');
+  $('#swatchRow').addEventListener('click', e => { const b = e.target.closest('[data-sw]'); if (b) useSwatch(b.dataset.sw); });
+  bindDraw();
+  $('#scale').addEventListener('input', e => { lab.scale = +e.target.value; refreshLab(); });
+  $('#itemName').addEventListener('input', e => { lab.name = e.target.value; lab.nameTouched = true; });
+  $('#btnAdd').addEventListener('click', addToCloset);
+  bindStudio();
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (!$('#lab').hidden && lab.res) drawPhoto(); }, 150); });
+}
+
+function boot(data) {
+  const saved = load();
+  state.outfit = cleanOutfit((data && data.outfit) || saved);
+  state.pose = (data && POSES[data.pose]) ? data.pose : loadPose();
+  if (data && data.tab) state.tab = data.tab;
+  document.getElementById('irisDefs').innerHTML = irisDefsHTML();
+  document.getElementById('patDefs').innerHTML = PATTERN_DEFS;
+  rebuildUserDefs(); renderTabs(); renderGrid(); renderStage(false); bind(); blinkLoop();
+  try { window.claude?.hot?.snapshot?.(() => ({ outfit: state.outfit, tab: state.tab, pose: state.pose })); } catch (e) { }
+}
+if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.claude?.hot?.data ?? {});
