@@ -4,7 +4,7 @@ function wavy(pts, amp, n) {
   const out = [];
   for (let i = 0; i < pts.length; i++) {
     const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1;
-    const k = Math.sin(i / (pts.length - 1) * Math.PI * (SOFT ? Math.max(1, Math.round(n * .6)) : n)) * amp * (SOFT ? .8 : 1);
+    const k = Math.sin(i / (pts.length - 1) * Math.PI * (SOFT ? Math.max(1, Math.round(n * .6)) : n)) * amp * (SOFT ? .55 : 1);
     out.push([pts[i][0] - dy / L * k, pts[i][1] + dx / L * k, pts[i][2]]);
   }
   return out;
@@ -38,14 +38,14 @@ const hairTie = (x, y, c, rot = 0) => `<g transform="rotate(${rot} ${x} ${y})"><
 
 /* 螺旋卷：一缕带波浪的发束，越往下越细 */
 function ringlet(x0, y0, x1, y1, w, n, amp = 2.4) {
-  amp *= SOFT ? .72 : 1; if (SOFT) n = Math.max(1, Math.round(n * .6 * 2) / 2);
+  amp *= SOFT ? .55 : 1; if (SOFT) n = Math.max(1, Math.round(n * .6 * 2) / 2);
   const N = Math.round(n * 5), L = [], R = [];
   for (let i = 0; i <= N; i++) { const t = i / N, x = x0 + (x1 - x0) * t + Math.sin(t * Math.PI * 2 * n) * amp * (.4 + t * .6), y = y0 + (y1 - y0) * t, ww = w * (1 - .6 * Math.pow(t, 1.5)) / 2; L.push([x - ww, y]); R.push([x + ww, y]); }
   const tip = [(L[N][0] + R[N][0]) / 2 + amp * .4, y1 + 3, 'c'];
   return spline([...L.slice(0, N), tip, ...R.slice(0, N).reverse()]);
 }
 function ringletLines(x0, y0, x1, y1, w, n, amp = 2.4) {
-  amp *= SOFT ? .72 : 1; if (SOFT) n = Math.max(1, Math.round(n * .6 * 2) / 2);
+  amp *= SOFT ? .55 : 1; if (SOFT) n = Math.max(1, Math.round(n * .6 * 2) / 2);
   let d = ''; const k = Math.round(n * 2);
   for (let j = 1; j < k; j++) { const t = j / k, x = x0 + (x1 - x0) * t + Math.sin(t * Math.PI * 2 * n) * amp * (.4 + t * .6), y = y0 + (y1 - y0) * t, ww = w * (1 - .6 * Math.pow(t, 1.5)) / 2 * .8; d += `M ${f1(x - ww)} ${f1(y - 1.6)} Q ${f1(x)} ${f1(y + 2.6)} ${f1(x + ww)} ${f1(y - .6)} `; }
   return d;

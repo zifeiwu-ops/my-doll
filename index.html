@@ -936,8 +936,8 @@ let PATTERN_DEFS = `
 <filter id="soft" x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="1.6"/></filter>
 <filter id="shsoft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.1"/></filter>
 <filter id="shsoft2" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.7"/></filter>
-<filter id="vol" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation="3.6" result="b"/><feOffset in="b" dx="-3.2" dy="-2.2" result="o"/><feComposite in="SourceGraphic" in2="o" operator="out"/></filter>
-<filter id="vols" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation="1.7" result="b"/><feOffset in="b" dx="-1.5" dy="-1.1" result="o"/><feComposite in="SourceGraphic" in2="o" operator="out"/></filter>
+<filter id="vol" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation="1.5" result="b"/><feOffset in="b" dx="-3.6" dy="-2.2" result="o"/><feComposite in="SourceGraphic" in2="o" operator="out"/></filter>
+<filter id="vols" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation=".8" result="b"/><feOffset in="b" dx="-1.7" dy="-1.1" result="o"/><feComposite in="SourceGraphic" in2="o" operator="out"/></filter>
 <filter id="sticker" x="-10%" y="-6%" width="120%" height="112%" color-interpolation-filters="sRGB"><feMorphology in="SourceAlpha" operator="dilate" radius="3" result="g"/><feFlood flood-color="#fff"/><feComposite in2="g" operator="in" result="e"/><feDropShadow in="e" dx="0" dy="1.5" stdDeviation="1.5" flood-color="#6AAFB5" flood-opacity=".35" result="s"/><feMorphology in="SourceAlpha" operator="dilate" radius="1" result="k"/><feFlood flood-color="#2B2322"/><feComposite in2="k" operator="in" result="ink"/><feMerge><feMergeNode in="s"/><feMergeNode in="ink"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
 <filter id="dollInk" x="-10%" y="-6%" width="120%" height="112%" color-interpolation-filters="sRGB"><feMorphology in="SourceAlpha" operator="dilate" radius=".8" result="k"/><feFlood flood-color="#2B2322"/><feComposite in2="k" operator="in" result="ink"/><feMerge><feMergeNode in="ink"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
 const PAT_BASE = { refbody: '#FDEFF1', refsleeve: '#F4B3C8', heartpink: '#F6AAC6', roses: '#EBD2C4', brownplaid: '#B9A28E', beigeheart: '#C9B894', denim: '#6F92BC', heartdenim: '#3F77A8', heartplum: '#65497A', pinkdots: '#FCDDE6', bigdots: '#E9E0C4', tartan: '#B8454E', sweater: '#C47A3C', camo: '#9CC45A', dots: '#F2EEE8', creamdots: '#FBF3D4', mesh: '#2A2528', argyle: '#3F4A6B', hibiscus: '#4DB3B0', tweed: '#F1E6D6', navystripe: '#9097B0', darkdenim: '#34507C', lace: '#FFFBF4', pinkgingham: '#F9D2DE' };
@@ -3191,26 +3191,39 @@ Object.assign(TPL, {
 /* 柔软画法：描边用发色压暗的深棕（不用纯黑）、线更细，内侧高光和月牙阴影都收轻，发丝线更细更淡 */
 const hairInk = c => (/^#[0-9a-f]{6}$/i.test(c) ? mix(c, INK, .7) : INK);
 const hairPiece = (d, c, o = {}) => piece(d, c, { rim: [1.7, 1.4], sw: .85, oc: hairInk(c), lit: false, cls: 'ho', ...o, ...(o.gloss ? { glossOp: .3 } : {}), over: (o.over || '') + (o.auto === false ? '' : autoStrands(d, c)) });
-/* 自动发丝：沿这一片头发的走向，在左右边缘之间排几根两头尖的细发丝（参考图里每一片头发都有一层细密的发丝线） */
+/* 发束阴影（参考日系平涂插画）：不再画一根根细发丝线，而是在发束之间放一两条从发根往发梢收尖的阴影块，
+   把一整片头发分成几缕，又不会显得毛躁 */
 function autoStrands(d, c) {
   if (!SOFT || !/^#[0-9a-f]{6}$/i.test(c)) return '';
   const S = pathPolys(String(d)); if (!S) return '';
   const poly = S.reduce((a, p) => a.concat(p), []); if (poly.length < 6) return '';
   let y0 = 1e9, y1 = -1e9; poly.forEach(p => { if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; });
-  const H = y1 - y0; if (H < 14) return '';
+  const H = y1 - y0; if (H < 18) return '';
   const span = y => { const xs = []; for (let i = 0; i < poly.length - 1; i++) { const a = poly[i], b = poly[i + 1]; if ((a[1] <= y && b[1] > y) || (b[1] <= y && a[1] > y)) xs.push(a[0] + (y - a[1]) / (b[1] - a[1]) * (b[0] - a[0])); }
     xs.sort((p, q) => p - q); let best = null; for (let i = 0; i + 1 < xs.length; i += 2) if (!best || xs[i + 1] - xs[i] > best[1] - best[0]) best = [xs[i], xs[i + 1]]; return best; };
-  const N = 18, rows = []; for (let k = 0; k <= N; k++) { const y = y0 + H * (.05 + .88 * k / N); rows.push([y, span(y)]); }
+  const N = 18, rows = []; for (let k = 0; k <= N; k++) { const y = y0 + H * (.04 + .9 * k / N); rows.push([y, span(y)]); }
   const ok = rows.filter(r => r[1]), wAvg = ok.reduce((s, r) => s + r[1][1] - r[1][0], 0) / Math.max(1, ok.length);
-  const k = Math.max(1, Math.min(4, Math.round(wAvg / 9)));   // 发丝线少画一些，一片头发两三根就够
-  const r = RNG(Math.round(Math.abs(poly[0][0] * 7 + poly[0][1] * 13 + H * 3)) + 1);
+  if (wAvg < 7) return '';
+  const k = wAvg > 22 ? 2 : 1, r = RNG(Math.round(Math.abs(poly[0][0] * 7 + poly[0][1] * 13 + H * 3)) + 1);
   let out = '';
   for (let i = 0; i < k; i++) {
-    const f = (i + .5) / k + (r() - .5) * .45 / k, ph = r() * 6, ya = .02 + r() * .3, yb = .7 + r() * .28, pts = [];
-    rows.forEach(([y, sp], j) => { const t = j / N; if (!sp || t < ya || t > yb) return; const w = sp[1] - sp[0]; if (w < 1.8) return; pts.push([sp[0] + w * Math.min(.9, Math.max(.1, f + Math.sin(t * 5 + ph) * .035)), y]); });
-    if (pts.length >= 3) out += `<path d="${taperD(resamp(pts, 10), .85 + r() * .3, .42)}"/>`;
+    const f = (i + 1) / (k + 1) + (r() - .5) * .18, ph = r() * 6, yb = .72 + r() * .22, pts = [];
+    rows.forEach(([y, sp], j) => { const t = j / N; if (!sp || t > yb) return; const w = sp[1] - sp[0]; if (w < 3) return; pts.push([sp[0] + w * Math.min(.85, Math.max(.15, f + Math.sin(t * 4 + ph) * .03)), y]); });
+    if (pts.length >= 4) out += `<path d="${taperD(resamp(pts, 10), Math.min(5.5, wAvg * (.16 + r() * .08)), .18)}"/>`;
   }
-  return out ? `<g fill="${mix(c, INK, .52)}" opacity=".3">${out}</g>` : '';
+  return out ? `<g fill="${mix(c, '#3E2440', .3)}" opacity=".5">${out}</g>` : '';
+}
+/* 头顶高光环：沿头顶弧线的几段柔和亮带（日系插画里常见的「天使环」），头发一下子有了光泽和体积 */
+function hairRing(c) {
+  if (!/^#[0-9a-f]{6}$/i.test(c)) return '';
+  const hi = mix(c, '#FFFFFF', hsl(c)[2] < .3 ? .3 : .48), E = (a, dr) => [150 + Math.cos(a) * (37 + dr), 100 + Math.sin(a) * (27 + dr * .8)];
+  const up = [], lo = [], N = 14;
+  for (let k = 0; k <= N; k++) {
+    const t = k / N, a = (204 + 132 * t) * Math.PI / 180, th = Math.sin(Math.PI * t);          // 两头收细
+    up.push(E(a, 1.6 * th));
+    if (k < N) { const am = (204 + 132 * (t + .5 / N)) * Math.PI / 180; lo.unshift(E(am, -(3.4 + (k % 3 === 1 ? 2.6 : 1.2)) * Math.max(.35, th)).concat('c')); }   // 下缘一排往下的尖角，顺着发束
+  }
+  return `<path d="${spline(up.concat(lo), true, .5)}" fill="${hi}" opacity=".62"/>`;
 }
 /* 整片头发只描一圈外轮廓：把每缕的描边挪到最底下、加粗一倍，上面的平涂盖住内侧一半 ——
    缕与缕重叠处就不再有一圈圈黑边（不再像一根根管子），缕间的缝隙和发梢仍有轮廓；原来的内线保留成很淡的细线 */
@@ -3219,7 +3232,7 @@ function unifyHair(svg) {
   svg = svg.replace(/<path class="ho" d="([^"]*)" fill="none" stroke="([^"]*)" stroke-width="([^"]*)"[^>]*\/>/g, (m, d, c, w) => {
     outs.push(`<path d="${d}" fill="none" stroke="${c}" stroke-width="${f1(+w * 2)}" stroke-linejoin="round" stroke-linecap="round"/>`);
     const b = brushD(d, 1.05, .5);
-    return b ? `<path d="${b}" fill="${c}" opacity=".42"/>` : `<path d="${d}" fill="none" stroke="${c}" stroke-width=".55" stroke-linejoin="round" stroke-linecap="round" opacity=".4"/>`;
+    return b ? `<path d="${b}" fill="${c}" opacity=".26"/>` : `<path d="${d}" fill="none" stroke="${c}" stroke-width=".55" stroke-linejoin="round" stroke-linecap="round" opacity=".4"/>`;
   });
   return outs.join('') + svg;
 }
@@ -3249,9 +3262,9 @@ function capPiece(d, outline, c, o = {}) {
   return piece(d, c, { rim: false, sw: 0, lit: false, ...o }).replace(/<path d="[^"]*" fill="none" stroke="[^"]*" stroke-width="0"[^>]*\/>$/, '') + `<path class="ho" d="${outline}" fill="none" stroke="${hairInk(c)}" stroke-width=".85" stroke-linecap="round" stroke-linejoin="round"/>`;
 }
 const CAP_LINE = line(CAP_PTS.slice().reverse().concat(CAP_PTS.slice(1).map(mx)));
-const capHair = (c, ln, extra = '') => capPiece(CAP, CAP_LINE, c, { lines: capLines(ln), shade: ['M 170 62 C 186 72 192 90 191 118 L 200 118 L 200 60 Z'], over: extra });
+const capHair = (c, ln, extra = '') => capPiece(CAP, CAP_LINE, c, { lines: capLines(ln), shade: ['M 170 62 C 186 72 192 90 191 118 L 200 118 L 200 60 Z'], over: hairRing(c) });   // 头顶光泽统一用高光环
 const BACK_HEAD = h => symS([[150, 61], [136, 62.4], [123, 67.6], [113, 77], [107.4, 92], [106, 108], [106.8, 124], [109, 138], [113, 150], [121, h - 4], [134, h], [150, h + 1]]);
-const capLines = (ln) => strands(['M 146 61 C 138 68 132 76 129 86', 'M 136 62.6 C 126 70 120 80 118 94', 'M 154 61 C 162 68 168 76 171 86', 'M 164 62.6 C 174 70 180 80 182 94', 'M 150 60 C 149 68 149 76 150 84'], ln, .55);
+const capLines = (ln) => strands(['M 136 62.6 C 126 70 120 80 118 94', 'M 164 62.6 C 174 70 180 80 182 94'], ln, .4);
 /* 头顶光泽：一小段柔和的弧光（不再用锯齿闪光） */
 const shine = (pts, c = '#FFF8EA') => pts.map(([x, y, r]) => `<path d="M ${x - 5} ${y + 1.6} Q ${x} ${y - 1.6} ${x + 5} ${y + 1.2}" fill="none" stroke="${c}" stroke-width="1.8" stroke-linecap="round" opacity=".4" transform="rotate(${r || 0} ${x} ${y})"/>`).join('');
 const mirLocks = L => L.map(([x0, y0, x1, y1, w, b, c]) => [300 - x0, y0, 300 - x1, y1, w, -b, -(c || 0)]);
@@ -3392,7 +3405,7 @@ function wavy(pts, amp, n) {
   const out = [];
   for (let i = 0; i < pts.length; i++) {
     const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1;
-    const k = Math.sin(i / (pts.length - 1) * Math.PI * (SOFT ? Math.max(1, Math.round(n * .6)) : n)) * amp * (SOFT ? .8 : 1);
+    const k = Math.sin(i / (pts.length - 1) * Math.PI * (SOFT ? Math.max(1, Math.round(n * .6)) : n)) * amp * (SOFT ? .55 : 1);
     out.push([pts[i][0] - dy / L * k, pts[i][1] + dx / L * k, pts[i][2]]);
   }
   return out;
@@ -3426,14 +3439,14 @@ const hairTie = (x, y, c, rot = 0) => `<g transform="rotate(${rot} ${x} ${y})"><
 
 /* 螺旋卷：一缕带波浪的发束，越往下越细 */
 function ringlet(x0, y0, x1, y1, w, n, amp = 2.4) {
-  amp *= SOFT ? .72 : 1; if (SOFT) n = Math.max(1, Math.round(n * .6 * 2) / 2);
+  amp *= SOFT ? .55 : 1; if (SOFT) n = Math.max(1, Math.round(n * .6 * 2) / 2);
   const N = Math.round(n * 5), L = [], R = [];
   for (let i = 0; i <= N; i++) { const t = i / N, x = x0 + (x1 - x0) * t + Math.sin(t * Math.PI * 2 * n) * amp * (.4 + t * .6), y = y0 + (y1 - y0) * t, ww = w * (1 - .6 * Math.pow(t, 1.5)) / 2; L.push([x - ww, y]); R.push([x + ww, y]); }
   const tip = [(L[N][0] + R[N][0]) / 2 + amp * .4, y1 + 3, 'c'];
   return spline([...L.slice(0, N), tip, ...R.slice(0, N).reverse()]);
 }
 function ringletLines(x0, y0, x1, y1, w, n, amp = 2.4) {
-  amp *= SOFT ? .72 : 1; if (SOFT) n = Math.max(1, Math.round(n * .6 * 2) / 2);
+  amp *= SOFT ? .55 : 1; if (SOFT) n = Math.max(1, Math.round(n * .6 * 2) / 2);
   let d = ''; const k = Math.round(n * 2);
   for (let j = 1; j < k; j++) { const t = j / k, x = x0 + (x1 - x0) * t + Math.sin(t * Math.PI * 2 * n) * amp * (.4 + t * .6), y = y0 + (y1 - y0) * t, ww = w * (1 - .6 * Math.pow(t, 1.5)) / 2 * .8; d += `M ${f1(x - ww)} ${f1(y - 1.6)} Q ${f1(x)} ${f1(y + 2.6)} ${f1(x + ww)} ${f1(y - .6)} `; }
   return d;
@@ -5465,8 +5478,15 @@ function partsOf(it) {
   if (it.shape) return [{ z: Z[it.cat], svg: piece(it.shape, resolveFill(it).fill, { evenodd: true, folds: it.lines || [] }) }];
   if (it.tpl) { const T = TPL[it.tpl], F = resolveFill(it); return [{ z: T.z ?? Z[it.cat], svg: T.render(F) }].concat(T.back ? [{ z: 9, svg: T.back(F) }] : []); }
   if (it.png) return [{ z: it.z ?? 30, svg: `<image href="${it.png}" x="0" y="0" width="300" height="600"/>` }];
-  if (it.cat === 'hair') { SOFT = .7; try { return it.parts().map(l => ({ ...l, svg: unifyHair(l.svg) })); } finally { SOFT = 0; } }
+  if (it.cat === 'hair') { SOFT = .7; try { return hairDepth(it.parts().map(l => ({ ...l, svg: unifyHair(l.svg) }))); } finally { SOFT = 0; } }
   return it.parts();
+}
+/* 头发前后分层：后面那层（z < 10）的发色压暗一档，前后两层就不会糊成一整块 */
+function hairDepth(L) {
+  const cnt = {}; L.forEach(l => (l.svg.match(/fill="(#[0-9a-fA-F]{6})"/g) || []).forEach(m => { cnt[m] = (cnt[m] || 0) + 1; }));
+  const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0]; if (!top) return L;
+  const c = top[0].slice(6, 13), dk = mix(c, '#3A2436', .17);
+  return L.map(l => (l.z < 10 ? { ...l, svg: l.svg.split(`fill="${c}"`).join(`fill="${dk}"`) } : l));
 }
 const thumbOf = it => it.thumb || (it.tpl && TPL[it.tpl].thumb) || '0 0 300 600';
 function layersSVG(list) { return list.sort((a, b) => a.z - b.z).map(l => l.svg).join(''); }
@@ -5491,6 +5511,11 @@ function dollSVG(outfit, over = {}, pose = null) {
   [slot('hair'), top, slot('outer'), bottom, dress, slot('legs'), dress && tplOf(dress) && tplOf(dress).long ? null : slot('warmer'), slot('shoes')].forEach(it => { if (it) (isHead(it) ? H : L).push(...partsOf(it).map(l => ({ ...l, cat: it.cat, drawn: !!it.shape }))); });
   const accL = [], P = pose && pose !== 'stand' ? POSES[pose] : null;
   (outfit.acc || []).forEach(id => { const it = byId(id); if (it) { const Q = partsOf(it); if (isHead(it)) H.push(...Q); else if (P && (BAGS.has(id) || HELD[id] || it.sub === 'bag' || it.sub === 'waist')) accL.push(...Q.map(l => ({ ...l, bag: id }))); else L.push(...Q.map(l => ({ ...l, cat: 'acc', id }))); } });
+  // 戴帽子时，帽顶以上的头发（丸子、高马尾、呆毛）收进帽子里，不会从帽子上穿出来；遮阳帽没有帽顶，不收
+  if ((outfit.acc || []).some(id => { const it = byId(id); return it && it.sub === 'hat' && !OPEN_HATS.has(id); })) {
+    const hide = (l, y) => { const c = uid('hc'); return { ...l, svg: `<clipPath id="${c}"><rect x="-40" y="${y}" width="380" height="700"/></clipPath><g clip-path="url(#${c})">${l.svg}</g>` }; };
+    H.forEach((l, i) => { if (l.cat === 'hair') H[i] = hide(l, l.z < 10 ? 78 : 60); });
+  }
   L.push(...pantsOverShoes(bottom, slot('shoes')));
   if (P) return posedSVG(P, L, H, accL, { bottom });
   return layersSVG(L.concat(headWrap(H)));
@@ -5517,9 +5542,14 @@ const POSES = {
   /* Coquette 芭蕾甜心 */
   curtsy: { name: '提裙', head: -6, body: LEAN, skirt: { flare: 5.5, lift: 2.6 }, hair: { flare: 1.2 }, L: { up: 14, fore: 16 }, R: { up: -14, fore: -16 } },
   heart: { name: '比心', head: 5, body: LEAN_L, L: { up: -8, fore: -140 }, R: { up: 8, fore: 140 }, extra: `<path d="${heartD(150, 199, 6)}" fill="#F48FB1" stroke="#fff" stroke-width="2" paint-order="stroke"/><path d="M 146.4 196 Q 147 194 149 194" fill="none" stroke="#fff" stroke-width="1" stroke-linecap="round"/>` },
+  /* 参考时尚插画里的站姿 */
+  drink: { name: '拿饮料', isNew: true, head: 5, body: LEAN_L, L: { up: 24, fore: -78 }, R: { up: -46, fore: 158 }, hair: { sway: 1.2 }, extra: `<g transform="translate(176 206) rotate(6)"><path d="M -8 -12 L 8 -12 L 6 16 L -6 16 Z" fill="#F48FB1" stroke="#3D3134" stroke-width=".8" stroke-linejoin="round"/><path d="M -8.6 -12 L 8.6 -12 L 8.2 -9 L -8.2 -9 Z" fill="#fff" stroke="#3D3134" stroke-width=".7"/><path d="M 2 -12 L 5 -24 L 9 -22" fill="none" stroke="#3D3134" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M 2 -12 L 5 -24 L 9 -22" fill="none" stroke="#FFE27A" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="${heartD(0, 3, 3.6)}" fill="#fff"/><path d="M -5 -6 L -4 10" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity=".6"/></g>` },
+  camera: { name: '拿相机', isNew: true, head: -4, body: LEAN, L: { up: 28, fore: -140 }, R: { up: -28, fore: 140 }, extra: `<g transform="translate(150 234)"><rect x="-15" y="-10" width="30" height="20" rx="4" fill="#F7D56A" stroke="#3D3134" stroke-width=".8"/><rect x="-15" y="-10" width="30" height="6" rx="3" fill="#F48FB1" stroke="#3D3134" stroke-width=".7"/><circle r="6.4" cy="1.6" fill="#4A4450" stroke="#3D3134" stroke-width=".8"/><circle r="3.8" cy="1.6" fill="#8FB8E0"/><circle r="1.3" cx="-1.4" cy=".4" fill="#fff"/><rect x="7" y="-8.6" width="5" height="3" rx="1" fill="#fff"/></g>` },
+  stride: { name: '迈步', isNew: true, head: 3, body: { hip: -3.6, kneeL: 1.6, tilt: -.02 }, leg: -16, L: { up: -8, fore: -12 }, R: { up: -10, fore: -10 }, skirt: { sway: 1.6, flare: 1.4 }, hair: { sway: -1.6 } },
   spread: { name: '芭蕾展臂', head: -5, body: LEAN, skirt: { flare: 3.2, lift: 1.2 }, hair: { flare: 2.6, lift: 1 }, L: { up: 52, fore: 18 }, R: { up: -52, fore: -18 } }
 };
 const BAGS = new Set(['a4', 'a27', 'a33', 'a34', 'a47', 'a58', 'a42', 'a53', 'a48', 'a49', 'a50']);        // 包不跟着手臂变形，整只保留在原处
+const OPEN_HATS = new Set(['a95']);                                                                    // 没有帽顶的帽子（遮阳帽）
 const HELD = { a47: 'L', a34: 'R', a73: 'L', a90: 'L' };                                               // 拎在手上的包跟着那只手走
 const PANTS_TPL = new Set(['widePants', 'cargo', 'flareJeans', 'skinnyJeans', 'slacks', 'sashPants', 'skirtJeans', 'wideFlare', 'wrapCargo', 'balloonPants', 'shorts', 'capris', 'bermuda', 'culottes', 'beltShorts']);
 const RIG = (() => {
@@ -6739,7 +6769,7 @@ Object.assign(STICKERS, {
    ===================================================================== */
 const $ = s => document.querySelector(s);
 const TABS = [['hair', '发型'], ['face', '五官'], ['top', '上衣'], ['outer', '外套'], ['bottom', '下装'], ['dress', '连衣裙'], ['legs', '袜子'], ['shoes', '鞋子'], ['acc', '小物'], ['diy', 'DIY']];
-const TAB_HINT = { hair: '选一个发型', face: '换眼睛、瞳色、眉毛、嘴巴和腮红', top: '点一下穿上，再点一次脱下', outer: '外套叠在上衣外面', bottom: '点一下穿上，再点一次脱下', dress: '穿连衣裙会自动脱掉上衣和下装', legs: '袜子和腿套可以一起穿', shoes: '点一下穿上，再点一次脱下', acc: '小物可以同时戴好几件，帽子类一次戴一顶', diy: '用照片做的、自己画的衣服都在这里，也会出现在对应分类里' };
+const TAB_HINT = { hair: '选一个发型', face: '换眼睛、瞳色、眉毛、嘴巴和腮红', top: '点一下穿上，再点一次脱下', outer: '外套叠在上衣外面', bottom: '点一下穿上，再点一次脱下', dress: '穿连衣裙会自动脱掉上衣和下装', legs: '袜子和腿套可以一起穿', shoes: '点一下穿上，再点一次脱下', acc: '每个位置一次戴一件：帽子 / 发箍、发饰、耳饰、眼镜、项链、包包、手饰、腰饰、贴纸各选一件，换一件会自动摘下原来那件', diy: '用照片做的、自己画的衣服都在这里，也会出现在对应分类里' };
 const KEY = 'y2k-closet-v7';
 const HATS = ['a1', 'a5', 'a8', 'a12', 'a13', 'a14', 'a15', ...HATS10, ...HATS11, ...HATS13, ...HATS16];
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -6762,7 +6792,7 @@ function cleanOutfit(o) {
   SLOTS.forEach(k => { if (o[k] === null || (o[k] && byId(o[k]))) out[k] = o[k]; });
   if (!byId(out.hair)) out.hair = 'h4';
   if (out.dress) { out.top = null; out.bottom = null; }
-  if (Array.isArray(o.acc)) out.acc = o.acc.filter(id => byId(id));
+  if (Array.isArray(o.acc)) out.acc = oneEach(o.acc.filter(id => byId(id)));
   return out;
 }
 
@@ -6852,13 +6882,16 @@ function accPanelHTML() {
   const groups = cur === 'all' ? ACC_GROUPS : ACC_GROUPS.filter(([k]) => k === cur);
   return chips + groups.map(([k, n]) => { const L = items.filter(i => i.sub === k); return L.length ? `<p class="subhead">${n}<span>${L.length} 件</span></p>` + L.map(cardHTML).join('') : ''; }).join('');
 }
+/* 小物的「位置」：参考同类换装游戏，每个位置一次只戴一件（帽子和发箍都戴在头顶，算同一个位置） */
+const accSlot = it => (!it ? '' : HATS.includes(it.id) ? 'hat' : it.sub || 'waist');
+function oneEach(ids) { const seen = new Set(); return ids.slice().reverse().filter(id => { const s = accSlot(byId(id)); if (seen.has(s)) return false; seen.add(s); return true; }).reverse(); }
 function toggle(it) {
   const o = state.outfit;
   const k = slotOf(it);
   if (it.cat === 'acc') {
     const i = o.acc.indexOf(it.id);
     if (i >= 0) o.acc.splice(i, 1);
-    else { if (HATS.includes(it.id)) o.acc = o.acc.filter(a => !HATS.includes(a)); o.acc.push(it.id); }
+    else { const s = accSlot(it); o.acc = o.acc.filter(a => accSlot(byId(a)) !== s); o.acc.push(it.id); }   // 同一个位置只能戴一件，换一件会把原来那件摘下
   }
   else if (k === 'hair') o.hair = it.id;
   else {
@@ -6872,7 +6905,7 @@ function toggle(it) {
 function randomize() {
   const pick = a => a[Math.floor(Math.random() * a.length)], of = c => allItems().filter(i => i.cat === c);
   const face = {}; Object.entries(FACE_OPTS).forEach(([k, g]) => { face[k] = pick(g.items)[0]; });
-  const useDress = Math.random() < .25, socks = of('legs').filter(i => !i.slot), acc = of('acc').filter(i => !HATS.includes(i.id) && Math.random() < .3).map(i => i.id);
+  const useDress = Math.random() < .25, socks = of('legs').filter(i => !i.slot), acc = oneEach(of('acc').filter(i => !HATS.includes(i.id) && Math.random() < .12).map(i => i.id));
   if (Math.random() < .45) acc.push(pick(HATS));
   state.outfit = { hair: pick(of('hair')).id, top: useDress ? null : pick(of('top')).id, outer: Math.random() < .3 ? pick(of('outer')).id : null, bottom: useDress ? null : pick(of('bottom')).id, dress: useDress ? pick(of('dress')).id : null,
     legs: Math.random() < .55 ? pick(socks).id : null, warmer: Math.random() < .25 ? 'l3' : null, shoes: pick(of('shoes')).id, acc, face };

@@ -28,8 +28,15 @@ function partsOf(it) {
   if (it.shape) return [{ z: Z[it.cat], svg: piece(it.shape, resolveFill(it).fill, { evenodd: true, folds: it.lines || [] }) }];
   if (it.tpl) { const T = TPL[it.tpl], F = resolveFill(it); return [{ z: T.z ?? Z[it.cat], svg: T.render(F) }].concat(T.back ? [{ z: 9, svg: T.back(F) }] : []); }
   if (it.png) return [{ z: it.z ?? 30, svg: `<image href="${it.png}" x="0" y="0" width="300" height="600"/>` }];
-  if (it.cat === 'hair') { SOFT = .7; try { return it.parts().map(l => ({ ...l, svg: unifyHair(l.svg) })); } finally { SOFT = 0; } }
+  if (it.cat === 'hair') { SOFT = .7; try { return hairDepth(it.parts().map(l => ({ ...l, svg: unifyHair(l.svg) }))); } finally { SOFT = 0; } }
   return it.parts();
+}
+/* 头发前后分层：后面那层（z < 10）的发色压暗一档，前后两层就不会糊成一整块 */
+function hairDepth(L) {
+  const cnt = {}; L.forEach(l => (l.svg.match(/fill="(#[0-9a-fA-F]{6})"/g) || []).forEach(m => { cnt[m] = (cnt[m] || 0) + 1; }));
+  const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0]; if (!top) return L;
+  const c = top[0].slice(6, 13), dk = mix(c, '#3A2436', .17);
+  return L.map(l => (l.z < 10 ? { ...l, svg: l.svg.split(`fill="${c}"`).join(`fill="${dk}"`) } : l));
 }
 const thumbOf = it => it.thumb || (it.tpl && TPL[it.tpl].thumb) || '0 0 300 600';
 function layersSVG(list) { return list.sort((a, b) => a.z - b.z).map(l => l.svg).join(''); }
@@ -54,6 +61,11 @@ function dollSVG(outfit, over = {}, pose = null) {
   [slot('hair'), top, slot('outer'), bottom, dress, slot('legs'), dress && tplOf(dress) && tplOf(dress).long ? null : slot('warmer'), slot('shoes')].forEach(it => { if (it) (isHead(it) ? H : L).push(...partsOf(it).map(l => ({ ...l, cat: it.cat, drawn: !!it.shape }))); });
   const accL = [], P = pose && pose !== 'stand' ? POSES[pose] : null;
   (outfit.acc || []).forEach(id => { const it = byId(id); if (it) { const Q = partsOf(it); if (isHead(it)) H.push(...Q); else if (P && (BAGS.has(id) || HELD[id] || it.sub === 'bag' || it.sub === 'waist')) accL.push(...Q.map(l => ({ ...l, bag: id }))); else L.push(...Q.map(l => ({ ...l, cat: 'acc', id }))); } });
+  // 戴帽子时，帽顶以上的头发（丸子、高马尾、呆毛）收进帽子里，不会从帽子上穿出来；遮阳帽没有帽顶，不收
+  if ((outfit.acc || []).some(id => { const it = byId(id); return it && it.sub === 'hat' && !OPEN_HATS.has(id); })) {
+    const hide = (l, y) => { const c = uid('hc'); return { ...l, svg: `<clipPath id="${c}"><rect x="-40" y="${y}" width="380" height="700"/></clipPath><g clip-path="url(#${c})">${l.svg}</g>` }; };
+    H.forEach((l, i) => { if (l.cat === 'hair') H[i] = hide(l, l.z < 10 ? 78 : 60); });
+  }
   L.push(...pantsOverShoes(bottom, slot('shoes')));
   if (P) return posedSVG(P, L, H, accL, { bottom });
   return layersSVG(L.concat(headWrap(H)));
@@ -80,9 +92,14 @@ const POSES = {
   /* Coquette 芭蕾甜心 */
   curtsy: { name: '提裙', head: -6, body: LEAN, skirt: { flare: 5.5, lift: 2.6 }, hair: { flare: 1.2 }, L: { up: 14, fore: 16 }, R: { up: -14, fore: -16 } },
   heart: { name: '比心', head: 5, body: LEAN_L, L: { up: -8, fore: -140 }, R: { up: 8, fore: 140 }, extra: `<path d="${heartD(150, 199, 6)}" fill="#F48FB1" stroke="#fff" stroke-width="2" paint-order="stroke"/><path d="M 146.4 196 Q 147 194 149 194" fill="none" stroke="#fff" stroke-width="1" stroke-linecap="round"/>` },
+  /* 参考时尚插画里的站姿 */
+  drink: { name: '拿饮料', isNew: true, head: 5, body: LEAN_L, L: { up: 24, fore: -78 }, R: { up: -46, fore: 158 }, hair: { sway: 1.2 }, extra: `<g transform="translate(176 206) rotate(6)"><path d="M -8 -12 L 8 -12 L 6 16 L -6 16 Z" fill="#F48FB1" stroke="#3D3134" stroke-width=".8" stroke-linejoin="round"/><path d="M -8.6 -12 L 8.6 -12 L 8.2 -9 L -8.2 -9 Z" fill="#fff" stroke="#3D3134" stroke-width=".7"/><path d="M 2 -12 L 5 -24 L 9 -22" fill="none" stroke="#3D3134" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M 2 -12 L 5 -24 L 9 -22" fill="none" stroke="#FFE27A" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="${heartD(0, 3, 3.6)}" fill="#fff"/><path d="M -5 -6 L -4 10" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity=".6"/></g>` },
+  camera: { name: '拿相机', isNew: true, head: -4, body: LEAN, L: { up: 28, fore: -140 }, R: { up: -28, fore: 140 }, extra: `<g transform="translate(150 234)"><rect x="-15" y="-10" width="30" height="20" rx="4" fill="#F7D56A" stroke="#3D3134" stroke-width=".8"/><rect x="-15" y="-10" width="30" height="6" rx="3" fill="#F48FB1" stroke="#3D3134" stroke-width=".7"/><circle r="6.4" cy="1.6" fill="#4A4450" stroke="#3D3134" stroke-width=".8"/><circle r="3.8" cy="1.6" fill="#8FB8E0"/><circle r="1.3" cx="-1.4" cy=".4" fill="#fff"/><rect x="7" y="-8.6" width="5" height="3" rx="1" fill="#fff"/></g>` },
+  stride: { name: '迈步', isNew: true, head: 3, body: { hip: -3.6, kneeL: 1.6, tilt: -.02 }, leg: -16, L: { up: -8, fore: -12 }, R: { up: -10, fore: -10 }, skirt: { sway: 1.6, flare: 1.4 }, hair: { sway: -1.6 } },
   spread: { name: '芭蕾展臂', head: -5, body: LEAN, skirt: { flare: 3.2, lift: 1.2 }, hair: { flare: 2.6, lift: 1 }, L: { up: 52, fore: 18 }, R: { up: -52, fore: -18 } }
 };
 const BAGS = new Set(['a4', 'a27', 'a33', 'a34', 'a47', 'a58', 'a42', 'a53', 'a48', 'a49', 'a50']);        // 包不跟着手臂变形，整只保留在原处
+const OPEN_HATS = new Set(['a95']);                                                                    // 没有帽顶的帽子（遮阳帽）
 const HELD = { a47: 'L', a34: 'R', a73: 'L', a90: 'L' };                                               // 拎在手上的包跟着那只手走
 const PANTS_TPL = new Set(['widePants', 'cargo', 'flareJeans', 'skinnyJeans', 'slacks', 'sashPants', 'skirtJeans', 'wideFlare', 'wrapCargo', 'balloonPants', 'shorts', 'capris', 'bermuda', 'culottes', 'beltShorts']);
 const RIG = (() => {

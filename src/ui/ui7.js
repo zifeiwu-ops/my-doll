@@ -3,7 +3,7 @@
    ===================================================================== */
 const $ = s => document.querySelector(s);
 const TABS = [['hair', '发型'], ['face', '五官'], ['top', '上衣'], ['outer', '外套'], ['bottom', '下装'], ['dress', '连衣裙'], ['legs', '袜子'], ['shoes', '鞋子'], ['acc', '小物'], ['diy', 'DIY']];
-const TAB_HINT = { hair: '选一个发型', face: '换眼睛、瞳色、眉毛、嘴巴和腮红', top: '点一下穿上，再点一次脱下', outer: '外套叠在上衣外面', bottom: '点一下穿上，再点一次脱下', dress: '穿连衣裙会自动脱掉上衣和下装', legs: '袜子和腿套可以一起穿', shoes: '点一下穿上，再点一次脱下', acc: '小物可以同时戴好几件，帽子类一次戴一顶', diy: '用照片做的、自己画的衣服都在这里，也会出现在对应分类里' };
+const TAB_HINT = { hair: '选一个发型', face: '换眼睛、瞳色、眉毛、嘴巴和腮红', top: '点一下穿上，再点一次脱下', outer: '外套叠在上衣外面', bottom: '点一下穿上，再点一次脱下', dress: '穿连衣裙会自动脱掉上衣和下装', legs: '袜子和腿套可以一起穿', shoes: '点一下穿上，再点一次脱下', acc: '每个位置一次戴一件：帽子 / 发箍、发饰、耳饰、眼镜、项链、包包、手饰、腰饰、贴纸各选一件，换一件会自动摘下原来那件', diy: '用照片做的、自己画的衣服都在这里，也会出现在对应分类里' };
 const KEY = 'y2k-closet-v7';
 const HATS = ['a1', 'a5', 'a8', 'a12', 'a13', 'a14', 'a15', ...HATS10, ...HATS11, ...HATS13, ...HATS16];
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -26,7 +26,7 @@ function cleanOutfit(o) {
   SLOTS.forEach(k => { if (o[k] === null || (o[k] && byId(o[k]))) out[k] = o[k]; });
   if (!byId(out.hair)) out.hair = 'h4';
   if (out.dress) { out.top = null; out.bottom = null; }
-  if (Array.isArray(o.acc)) out.acc = o.acc.filter(id => byId(id));
+  if (Array.isArray(o.acc)) out.acc = oneEach(o.acc.filter(id => byId(id)));
   return out;
 }
 
@@ -116,13 +116,16 @@ function accPanelHTML() {
   const groups = cur === 'all' ? ACC_GROUPS : ACC_GROUPS.filter(([k]) => k === cur);
   return chips + groups.map(([k, n]) => { const L = items.filter(i => i.sub === k); return L.length ? `<p class="subhead">${n}<span>${L.length} 件</span></p>` + L.map(cardHTML).join('') : ''; }).join('');
 }
+/* 小物的「位置」：参考同类换装游戏，每个位置一次只戴一件（帽子和发箍都戴在头顶，算同一个位置） */
+const accSlot = it => (!it ? '' : HATS.includes(it.id) ? 'hat' : it.sub || 'waist');
+function oneEach(ids) { const seen = new Set(); return ids.slice().reverse().filter(id => { const s = accSlot(byId(id)); if (seen.has(s)) return false; seen.add(s); return true; }).reverse(); }
 function toggle(it) {
   const o = state.outfit;
   const k = slotOf(it);
   if (it.cat === 'acc') {
     const i = o.acc.indexOf(it.id);
     if (i >= 0) o.acc.splice(i, 1);
-    else { if (HATS.includes(it.id)) o.acc = o.acc.filter(a => !HATS.includes(a)); o.acc.push(it.id); }
+    else { const s = accSlot(it); o.acc = o.acc.filter(a => accSlot(byId(a)) !== s); o.acc.push(it.id); }   // 同一个位置只能戴一件，换一件会把原来那件摘下
   }
   else if (k === 'hair') o.hair = it.id;
   else {
@@ -136,7 +139,7 @@ function toggle(it) {
 function randomize() {
   const pick = a => a[Math.floor(Math.random() * a.length)], of = c => allItems().filter(i => i.cat === c);
   const face = {}; Object.entries(FACE_OPTS).forEach(([k, g]) => { face[k] = pick(g.items)[0]; });
-  const useDress = Math.random() < .25, socks = of('legs').filter(i => !i.slot), acc = of('acc').filter(i => !HATS.includes(i.id) && Math.random() < .3).map(i => i.id);
+  const useDress = Math.random() < .25, socks = of('legs').filter(i => !i.slot), acc = oneEach(of('acc').filter(i => !HATS.includes(i.id) && Math.random() < .12).map(i => i.id));
   if (Math.random() < .45) acc.push(pick(HATS));
   state.outfit = { hair: pick(of('hair')).id, top: useDress ? null : pick(of('top')).id, outer: Math.random() < .3 ? pick(of('outer')).id : null, bottom: useDress ? null : pick(of('bottom')).id, dress: useDress ? pick(of('dress')).id : null,
     legs: Math.random() < .55 ? pick(socks).id : null, warmer: Math.random() < .25 ? 'l3' : null, shoes: pick(of('shoes')).id, acc, face };

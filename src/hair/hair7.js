@@ -5,26 +5,39 @@
 /* 柔软画法：描边用发色压暗的深棕（不用纯黑）、线更细，内侧高光和月牙阴影都收轻，发丝线更细更淡 */
 const hairInk = c => (/^#[0-9a-f]{6}$/i.test(c) ? mix(c, INK, .7) : INK);
 const hairPiece = (d, c, o = {}) => piece(d, c, { rim: [1.7, 1.4], sw: .85, oc: hairInk(c), lit: false, cls: 'ho', ...o, ...(o.gloss ? { glossOp: .3 } : {}), over: (o.over || '') + (o.auto === false ? '' : autoStrands(d, c)) });
-/* 自动发丝：沿这一片头发的走向，在左右边缘之间排几根两头尖的细发丝（参考图里每一片头发都有一层细密的发丝线） */
+/* 发束阴影（参考日系平涂插画）：不再画一根根细发丝线，而是在发束之间放一两条从发根往发梢收尖的阴影块，
+   把一整片头发分成几缕，又不会显得毛躁 */
 function autoStrands(d, c) {
   if (!SOFT || !/^#[0-9a-f]{6}$/i.test(c)) return '';
   const S = pathPolys(String(d)); if (!S) return '';
   const poly = S.reduce((a, p) => a.concat(p), []); if (poly.length < 6) return '';
   let y0 = 1e9, y1 = -1e9; poly.forEach(p => { if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; });
-  const H = y1 - y0; if (H < 14) return '';
+  const H = y1 - y0; if (H < 18) return '';
   const span = y => { const xs = []; for (let i = 0; i < poly.length - 1; i++) { const a = poly[i], b = poly[i + 1]; if ((a[1] <= y && b[1] > y) || (b[1] <= y && a[1] > y)) xs.push(a[0] + (y - a[1]) / (b[1] - a[1]) * (b[0] - a[0])); }
     xs.sort((p, q) => p - q); let best = null; for (let i = 0; i + 1 < xs.length; i += 2) if (!best || xs[i + 1] - xs[i] > best[1] - best[0]) best = [xs[i], xs[i + 1]]; return best; };
-  const N = 18, rows = []; for (let k = 0; k <= N; k++) { const y = y0 + H * (.05 + .88 * k / N); rows.push([y, span(y)]); }
+  const N = 18, rows = []; for (let k = 0; k <= N; k++) { const y = y0 + H * (.04 + .9 * k / N); rows.push([y, span(y)]); }
   const ok = rows.filter(r => r[1]), wAvg = ok.reduce((s, r) => s + r[1][1] - r[1][0], 0) / Math.max(1, ok.length);
-  const k = Math.max(1, Math.min(4, Math.round(wAvg / 9)));   // 发丝线少画一些，一片头发两三根就够
-  const r = RNG(Math.round(Math.abs(poly[0][0] * 7 + poly[0][1] * 13 + H * 3)) + 1);
+  if (wAvg < 7) return '';
+  const k = wAvg > 22 ? 2 : 1, r = RNG(Math.round(Math.abs(poly[0][0] * 7 + poly[0][1] * 13 + H * 3)) + 1);
   let out = '';
   for (let i = 0; i < k; i++) {
-    const f = (i + .5) / k + (r() - .5) * .45 / k, ph = r() * 6, ya = .02 + r() * .3, yb = .7 + r() * .28, pts = [];
-    rows.forEach(([y, sp], j) => { const t = j / N; if (!sp || t < ya || t > yb) return; const w = sp[1] - sp[0]; if (w < 1.8) return; pts.push([sp[0] + w * Math.min(.9, Math.max(.1, f + Math.sin(t * 5 + ph) * .035)), y]); });
-    if (pts.length >= 3) out += `<path d="${taperD(resamp(pts, 10), .85 + r() * .3, .42)}"/>`;
+    const f = (i + 1) / (k + 1) + (r() - .5) * .18, ph = r() * 6, yb = .72 + r() * .22, pts = [];
+    rows.forEach(([y, sp], j) => { const t = j / N; if (!sp || t > yb) return; const w = sp[1] - sp[0]; if (w < 3) return; pts.push([sp[0] + w * Math.min(.85, Math.max(.15, f + Math.sin(t * 4 + ph) * .03)), y]); });
+    if (pts.length >= 4) out += `<path d="${taperD(resamp(pts, 10), Math.min(5.5, wAvg * (.16 + r() * .08)), .18)}"/>`;
   }
-  return out ? `<g fill="${mix(c, INK, .52)}" opacity=".3">${out}</g>` : '';
+  return out ? `<g fill="${mix(c, '#3E2440', .3)}" opacity=".5">${out}</g>` : '';
+}
+/* 头顶高光环：沿头顶弧线的几段柔和亮带（日系插画里常见的「天使环」），头发一下子有了光泽和体积 */
+function hairRing(c) {
+  if (!/^#[0-9a-f]{6}$/i.test(c)) return '';
+  const hi = mix(c, '#FFFFFF', hsl(c)[2] < .3 ? .3 : .48), E = (a, dr) => [150 + Math.cos(a) * (37 + dr), 100 + Math.sin(a) * (27 + dr * .8)];
+  const up = [], lo = [], N = 14;
+  for (let k = 0; k <= N; k++) {
+    const t = k / N, a = (204 + 132 * t) * Math.PI / 180, th = Math.sin(Math.PI * t);          // 两头收细
+    up.push(E(a, 1.6 * th));
+    if (k < N) { const am = (204 + 132 * (t + .5 / N)) * Math.PI / 180; lo.unshift(E(am, -(3.4 + (k % 3 === 1 ? 2.6 : 1.2)) * Math.max(.35, th)).concat('c')); }   // 下缘一排往下的尖角，顺着发束
+  }
+  return `<path d="${spline(up.concat(lo), true, .5)}" fill="${hi}" opacity=".62"/>`;
 }
 /* 整片头发只描一圈外轮廓：把每缕的描边挪到最底下、加粗一倍，上面的平涂盖住内侧一半 ——
    缕与缕重叠处就不再有一圈圈黑边（不再像一根根管子），缕间的缝隙和发梢仍有轮廓；原来的内线保留成很淡的细线 */
@@ -33,7 +46,7 @@ function unifyHair(svg) {
   svg = svg.replace(/<path class="ho" d="([^"]*)" fill="none" stroke="([^"]*)" stroke-width="([^"]*)"[^>]*\/>/g, (m, d, c, w) => {
     outs.push(`<path d="${d}" fill="none" stroke="${c}" stroke-width="${f1(+w * 2)}" stroke-linejoin="round" stroke-linecap="round"/>`);
     const b = brushD(d, 1.05, .5);
-    return b ? `<path d="${b}" fill="${c}" opacity=".42"/>` : `<path d="${d}" fill="none" stroke="${c}" stroke-width=".55" stroke-linejoin="round" stroke-linecap="round" opacity=".4"/>`;
+    return b ? `<path d="${b}" fill="${c}" opacity=".26"/>` : `<path d="${d}" fill="none" stroke="${c}" stroke-width=".55" stroke-linejoin="round" stroke-linecap="round" opacity=".4"/>`;
   });
   return outs.join('') + svg;
 }
@@ -63,9 +76,9 @@ function capPiece(d, outline, c, o = {}) {
   return piece(d, c, { rim: false, sw: 0, lit: false, ...o }).replace(/<path d="[^"]*" fill="none" stroke="[^"]*" stroke-width="0"[^>]*\/>$/, '') + `<path class="ho" d="${outline}" fill="none" stroke="${hairInk(c)}" stroke-width=".85" stroke-linecap="round" stroke-linejoin="round"/>`;
 }
 const CAP_LINE = line(CAP_PTS.slice().reverse().concat(CAP_PTS.slice(1).map(mx)));
-const capHair = (c, ln, extra = '') => capPiece(CAP, CAP_LINE, c, { lines: capLines(ln), shade: ['M 170 62 C 186 72 192 90 191 118 L 200 118 L 200 60 Z'], over: extra });
+const capHair = (c, ln, extra = '') => capPiece(CAP, CAP_LINE, c, { lines: capLines(ln), shade: ['M 170 62 C 186 72 192 90 191 118 L 200 118 L 200 60 Z'], over: hairRing(c) });   // 头顶光泽统一用高光环
 const BACK_HEAD = h => symS([[150, 61], [136, 62.4], [123, 67.6], [113, 77], [107.4, 92], [106, 108], [106.8, 124], [109, 138], [113, 150], [121, h - 4], [134, h], [150, h + 1]]);
-const capLines = (ln) => strands(['M 146 61 C 138 68 132 76 129 86', 'M 136 62.6 C 126 70 120 80 118 94', 'M 154 61 C 162 68 168 76 171 86', 'M 164 62.6 C 174 70 180 80 182 94', 'M 150 60 C 149 68 149 76 150 84'], ln, .55);
+const capLines = (ln) => strands(['M 136 62.6 C 126 70 120 80 118 94', 'M 164 62.6 C 174 70 180 80 182 94'], ln, .4);
 /* 头顶光泽：一小段柔和的弧光（不再用锯齿闪光） */
 const shine = (pts, c = '#FFF8EA') => pts.map(([x, y, r]) => `<path d="M ${x - 5} ${y + 1.6} Q ${x} ${y - 1.6} ${x + 5} ${y + 1.2}" fill="none" stroke="${c}" stroke-width="1.8" stroke-linecap="round" opacity=".4" transform="rotate(${r || 0} ${x} ${y})"/>`).join('');
 const mirLocks = L => L.map(([x0, y0, x1, y1, w, b, c]) => [300 - x0, y0, 300 - x1, y1, w, -b, -(c || 0)]);
