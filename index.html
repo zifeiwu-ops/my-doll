@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>千禧衣橱</title>
+<title>My doll</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hachi+Maru+Pop&family=ZCOOL+KuaiLe&display=swap">
@@ -270,7 +270,7 @@ select.name-in{flex:1 1 140px}
 
 <div class="app">
   <header class="masthead">
-    <h1 class="logo"><span class="logo-cn"><span>千</span><span class="c2">禧</span><span class="c3">衣</span><span class="c4">橱</span></span><span class="ribbon">Millennium Wardrobe</span></h1>
+    <h1 class="logo"><span class="logo-cn"><span>M</span><span class="c2">y</span> <span class="c3">d</span><span class="c4">o</span><span>l</span><span class="c2">l</span></span><span class="ribbon">Y2K dress-up</span></h1>
     <div class="memo"><svg class="clip" aria-hidden="true" viewBox="0 0 100 100"><use href="#st-clip" x="0" y="0" width="100" height="100"/></svg><b>本期上新 · 糖果装饰风 + 甜酷街头 173 件</b>
       <p>彩虹抹胸 · 毛绒腿套 · 双丸子头 · 水手领条纹T · 蓬蓬荷叶短裙 · 条纹过膝袜 · 毛领大衣 · 西部靴<br>新姿势「双手叉腰 / 双手捧心」，拍照小屋新增涂鸦贴纸墙、糖果店、放学路口</p></div>
     <svg class="stk" style="top:-6px;right:4%;width:34px;height:34px;color:#FFE27A" aria-hidden="true" viewBox="0 0 100 100"><use href="#st-star" x="0" y="0" width="100" height="100"/></svg>
@@ -427,7 +427,7 @@ select.name-in{flex:1 1 140px}
 
 <script>
 /* =====================================================================
-   千禧衣橱 · 原型（千禧少女贴纸风 · 对齐 Y2K COLLECTION SPRITE SHEET v1.0）
+   My doll · 原型（千禧少女贴纸风 · 对齐 Y2K COLLECTION SPRITE SHEET v1.0）
    画布：所有部件画在同一个 300 × 600 坐标里（= 1024 × 2048），天然对齐。底模按参考精灵图描摹。
    【上新衣服】在 WARDROBE 里加一行：
      套版型（画风自动统一）：{ id: 't10', cat: 'top', tpl: 'babyTee', name: '名字', fill: { c: '#颜色' } 或 { p: '图案名' }, isNew: true }
@@ -6392,7 +6392,7 @@ function frameTexts(k, cap) {
   else if (k === 'booth') T.push({ x: 150, y: 350, s: 22, t: cap, c: '#fff', f: 'd', a: 'center', stroke: '#E0668F' });
   else if (k === 'film') T.push({ x: 254, y: 372, s: 13, t: filmDate(), c: '#FF9A3C', f: 'm', a: 'right' });
   else if (k === 'mag') {
-    T.push({ x: 150, y: 58, s: 44, t: 'MILLENNIUM', c: '#fff', f: 'r', a: 'center', stroke: '#E0668F' });
+    T.push({ x: 150, y: 58, s: 44, t: 'MY DOLL', c: '#fff', f: 'r', a: 'center', stroke: '#E0668F' });
     T.push({ x: 18, y: 86, s: 12, t: 'ISSUE 12 · 秋冬穿搭特辑', c: '#4A3430', f: 'b', a: 'left', bg: 'rgba(255,255,255,.8)' });
     if (cap) T.push({ x: 18, y: 330, s: 18, t: cap, c: '#fff', f: 'd', a: 'left', stroke: '#4A3430' });
   } else if (cap) T.push({ x: 16, y: 384, s: 16, t: cap, c: '#fff', f: 'd', a: 'left', stroke: '#4A3430' });
@@ -6524,7 +6524,7 @@ async function savePic(i) {
   const p = studio.album[i]; if (!p) return;
   const data = p.blob || await (await fetch(p.jpg)).blob(), ext = p.blob ? 'png' : 'jpg';
   if (!DL) { showBig(p); return; }
-  try { await DL.save({ filename: `千禧衣橱-${stamp(p.t)}.${ext}`, data }); toast('照片已保存'); }
+  try { await DL.save({ filename: `My-doll-${stamp(p.t)}.${ext}`, data }); toast('照片已保存'); }
   catch (e) { if (e && e.code === 'declined') return; if (e && e.code === 'rate_limited') { toast('保存窗口还开着，稍等一下再试'); return; } showBig(p); }
 }
 function showBig(p) { $('#bigImg').src = p.url; $('#bigPic').hidden = false; $('#bigClose').focus(); }

@@ -5,7 +5,7 @@ import os
 D = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src') + os.sep
 OUT = os.path.dirname(os.path.abspath(__file__))
 DOC = '''/* =====================================================================
-   千禧衣橱 · 原型（千禧少女贴纸风 · 对齐 Y2K COLLECTION SPRITE SHEET v1.0）
+   My doll · 原型（千禧少女贴纸风 · 对齐 Y2K COLLECTION SPRITE SHEET v1.0）
    画布：所有部件画在同一个 300 × 600 坐标里（= 1024 × 2048），天然对齐。底模按参考精灵图描摹。
    【上新衣服】在 WARDROBE 里加一行：
      套版型（画风自动统一）：{ id: 't10', cat: 'top', tpl: 'babyTee', name: '名字', fill: { c: '#颜色' } 或 { p: '图案名' }, isNew: true }

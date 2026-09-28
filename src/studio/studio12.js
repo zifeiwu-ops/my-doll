@@ -90,7 +90,7 @@ function frameTexts(k, cap) {
   else if (k === 'booth') T.push({ x: 150, y: 350, s: 22, t: cap, c: '#fff', f: 'd', a: 'center', stroke: '#E0668F' });
   else if (k === 'film') T.push({ x: 254, y: 372, s: 13, t: filmDate(), c: '#FF9A3C', f: 'm', a: 'right' });
   else if (k === 'mag') {
-    T.push({ x: 150, y: 58, s: 44, t: 'MILLENNIUM', c: '#fff', f: 'r', a: 'center', stroke: '#E0668F' });
+    T.push({ x: 150, y: 58, s: 44, t: 'MY DOLL', c: '#fff', f: 'r', a: 'center', stroke: '#E0668F' });
     T.push({ x: 18, y: 86, s: 12, t: 'ISSUE 12 · 秋冬穿搭特辑', c: '#4A3430', f: 'b', a: 'left', bg: 'rgba(255,255,255,.8)' });
     if (cap) T.push({ x: 18, y: 330, s: 18, t: cap, c: '#fff', f: 'd', a: 'left', stroke: '#4A3430' });
   } else if (cap) T.push({ x: 16, y: 384, s: 16, t: cap, c: '#fff', f: 'd', a: 'left', stroke: '#4A3430' });
@@ -222,7 +222,7 @@ async function savePic(i) {
   const p = studio.album[i]; if (!p) return;
   const data = p.blob || await (await fetch(p.jpg)).blob(), ext = p.blob ? 'png' : 'jpg';
   if (!DL) { showBig(p); return; }
-  try { await DL.save({ filename: `千禧衣橱-${stamp(p.t)}.${ext}`, data }); toast('照片已保存'); }
+  try { await DL.save({ filename: `My-doll-${stamp(p.t)}.${ext}`, data }); toast('照片已保存'); }
   catch (e) { if (e && e.code === 'declined') return; if (e && e.code === 'rate_limited') { toast('保存窗口还开着，稍等一下再试'); return; } showBig(p); }
 }
 function showBig(p) { $('#bigImg').src = p.url; $('#bigPic').hidden = false; $('#bigClose').focus(); }
