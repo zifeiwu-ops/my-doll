@@ -18,6 +18,10 @@ const wobF = (seed, amp) => y => amp * (Math.sin(y / 17 + seed * 1.7) * .6 + Mat
 /* 只给左半边的点列 A、右半边用另一组点列 B（同样是左半边的写法），拼成一个左右略有差别的闭合形状 */
 const asymS = (A, B) => spline(A.concat(B.slice(1, -1).reverse().map(mx)));
 
+/* 细节：下摆明线（顺着下摆的弧度，离边 2.6）、贴身款胸下的一道弧形阴影 */
+const hemStitch = (xh, hem, curve, up = 2.6) => { const P = rng(0, 1, 10).map(u => [lerp(xh + 1.6, 150, u), hemY(hem, curve, u) - up]); const d = 'M ' + P.map(P2).join(' L '); return [{ d, dash: '1.5 1.3', w: .8, o: .42 }, { d: mir(d), dash: '1.5 1.3', w: .8, o: .42 }]; };
+const bustCel = (y = 216, w = 1) => { const d = `M ${f1(150 - 25 * w)} ${y - 2} Q ${f1(150 - 14 * w)} ${y + 6.4} ${150 - 3} ${y + 1.6} Q ${f1(150 - 14 * w)} ${y + 3.6} ${f1(150 - 25 * w)} ${y - 2} Z`; return [d, mir(d)]; };
+
 /* ---------- 上衣身片：从胸 / 腋下往下垂，跨过腰窝；宽松款（e 大）垂得更直 ---------- */
 bodyD = function (o = {}) {
   const { neckY = 170, neckX = 139, se = 2.4, flare = 0, curve = 1.6, neckW = 5.5 } = o, hem = o.hem ?? 300;
@@ -42,7 +46,8 @@ bodyD = function (o = {}) {
     return [pts, xh];
   };
   const [A, xh] = half(1), [B] = half(2.3);
-  return withFolds(asymS(A, B), drapeFolds(xh, hem, curve, 222, e));
+  const fitted = !loose && !o.blouse && hem - 222 > 20;
+  return withFolds(asymS(A, B), drapeFolds(xh, hem, curve, 222, e), fitted ? bustCel(216) : null, o.blouse || o.noStitch ? null : hemStitch(xh, hem, curve));
 };
 
 /* ---------- 无袖身片：胸下略收，但不再掐进腰窝 ---------- */
@@ -53,7 +58,7 @@ tankD = function (o = {}) {
   rng(230, Math.max(231, hem - 8), Math.max(1, Math.round((hem - 236) / 10))).forEach(y => pts.push([X(y), y]));
   const xh = X(hem);
   pts.push([xh, hem, 'c']); hemWave(pts, xh, hem, curve, .8); pts.push([150, hem + curve]);
-  return withFolds(symS(pts), drapeFolds(xh, hem, curve, 226, e, 1));
+  return withFolds(symS(pts), drapeFolds(xh, hem, curve, 226, e, 1), hem - top > 50 ? bustCel(top + 22, .92) : null, hemStitch(xh, hem, curve, 2.2));
 };
 
 /* ---------- 裤子：外侧从胯部直直落下，内侧从裆部落下；紧身款（hang 大）照旧贴腿 ---------- */
@@ -78,7 +83,11 @@ pantsD = function (o = {}) {
     pts.push([150, crotch]);
     return pts;
   };
-  return asymS(half(1), half(2.6));
+  /* 裤子的细节：外侧缝（淡淡一条）、裤脚明线 */
+  const seam = 'M ' + rng(300, hem - 6, 20).map(y => P2([XO(y) + feat(y, 1, 1) + 2.4, y])).join(' L ');
+  const xo = XO(hem) + feat(hem, 1, 1), xi = Math.min(149.4, XI(hem)), cuff = `M ${f1(xo + 1.4)} ${f1(hem - 3.2)} Q ${f1(lerp(xo, xi, .45))} ${f1(hem - .4)} ${f1(xi - 1)} ${f1(hem - 2.6)}`;
+  const L = [{ d: seam, w: .7, o: fit ? .18 : .26 }, { d: cuff, dash: '1.5 1.3', w: .8, o: .42 }];
+  return withFolds(asymS(half(1), half(2.6)), [], null, L.concat(L.map(l => ({ ...l, d: mir(l.d) }))));
 };
 
 /* ---------- 开襟外套前片：侧边从腋下垂下来 ---------- */

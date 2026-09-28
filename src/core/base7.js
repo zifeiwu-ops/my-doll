@@ -12,9 +12,9 @@ const uid = p => (p || 'c') + (++_uid);
 const f1 = n => +n.toFixed(1);
 
 /* 路径可附带自动垂坠褶皱（String 对象 + .folds），piece() 会自动画上；mir() 会一起镜像 */
-const withFolds = (d, folds, cel) => { const o = new String(d); o.folds = folds; if (cel) o.cel = cel; return o; };   // cel：跟着形状走的硬边阴影
+const withFolds = (d, folds, cel, lines) => { const o = new String(d); o.folds = folds; if (cel) o.cel = cel; if (lines) o.lines = lines; return o; };   // lines：跟着形状走的明线 / 接缝   // cel：跟着形状走的硬边阴影
 function mir(d) {
-  if (d && d.folds) return withFolds(mir(String(d)), d.folds.map(mir), d.cel && d.cel.map(c => c && mir(c)));
+  if (d && d.folds) return withFolds(mir(String(d)), d.folds.map(mir), d.cel && d.cel.map(c => c && mir(c)), d.lines && d.lines.map(l => ({ ...l, d: mir(l.d) })));
   return d.replace(/([MLCQmlcq])([^MLCQZmlcqz]*)/g, (m, cmd, args) => {
     const nums = args.trim().split(/[\s,]+/).filter(Boolean).map(Number);
     const abs = cmd === cmd.toUpperCase();
@@ -144,7 +144,7 @@ function inkLine(d, w, fade = 0) {
   return out || null;
 }
 function piece(d, fill, o = {}) {
-  if (d && d.folds) { if (o.autoFolds !== false) o = { ...o, folds: (o.folds || []).concat(d.folds) }; if (d.cel && o.autoCel !== false) o = { ...o, cel: (o.cel || []).concat(d.cel) }; d = String(d); }
+  if (d && d.folds) { if (o.autoFolds !== false) o = { ...o, folds: (o.folds || []).concat(d.folds) }; if (d.cel && o.autoCel !== false) o = { ...o, cel: (o.cel || []).concat(d.cel) }; if (d.lines && o.autoLines !== false) o = { ...o, lines: (o.lines || []).concat(d.lines) }; d = String(d); }
   const id = uid('k');
   const sc = o.sc || STYLE.shade;
   if (!o.oc) o = { ...o, oc: lineOf(fill) };
