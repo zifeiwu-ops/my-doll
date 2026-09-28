@@ -1,6 +1,6 @@
 /* ---------- 新发型 · 千禧校园 & 甜系插画系列 ---------- */
 /* 波浪外轮廓：沿点列在法线方向加起伏（卷发用） */
-function wavy(pts, amp, n) {
+var wavy = function (pts, amp, n) {
   const out = [];
   for (let i = 0; i < pts.length; i++) {
     const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1;
@@ -8,7 +8,7 @@ function wavy(pts, amp, n) {
     out.push([pts[i][0] - dy / L * k, pts[i][1] + dx / L * k, pts[i][2]]);
   }
   return out;
-}
+};
 const curlLines = (x, y0, y1, w, n) => { let d = ''; for (let i = 0; i < n; i++) { const y = y0 + (y1 - y0) * (i + .5) / n; d += `M ${f1(x - w)} ${f1(y - 3)} C ${f1(x - w * .2)} ${f1(y - 6)} ${f1(x + w)} ${f1(y - 2)} ${f1(x + w * .2)} ${f1(y + 3)} `; } return d; };
 /* 中分的发顶发束 */
 const PART_LOCKS = [[148.6, 83.4, 126, 112, 11, -4.6, 2], [151.4, 83.4, 174, 112, 11, 4.6, -2], [146, 84, 121, 104, 8, -3], [154, 84, 179, 104, 8, 3]];
@@ -37,19 +37,19 @@ function braid(path, w, n, c, ln) {
 const hairTie = (x, y, c, rot = 0) => `<g transform="rotate(${rot} ${x} ${y})"><rect x="${x - 4.2}" y="${y - 1.8}" width="8.4" height="3.6" rx="1.8" fill="${c}" stroke="${INK}" stroke-width=".9"/></g>`;
 
 /* 螺旋卷：一缕带波浪的发束，越往下越细 */
-function ringlet(x0, y0, x1, y1, w, n, amp = 2.4) {
+var ringlet = function (x0, y0, x1, y1, w, n, amp = 2.4) {
   amp *= SOFT ? .55 : 1; if (SOFT) n = Math.max(1, Math.round(n * .6 * 2) / 2);
   const N = Math.round(n * 5), L = [], R = [];
   for (let i = 0; i <= N; i++) { const t = i / N, x = x0 + (x1 - x0) * t + Math.sin(t * Math.PI * 2 * n) * amp * (.4 + t * .6), y = y0 + (y1 - y0) * t, ww = w * (1 - .6 * Math.pow(t, 1.5)) / 2; L.push([x - ww, y]); R.push([x + ww, y]); }
   const tip = [(L[N][0] + R[N][0]) / 2 + amp * .4, y1 + 3, 'c'];
   return spline([...L.slice(0, N), tip, ...R.slice(0, N).reverse()]);
-}
-function ringletLines(x0, y0, x1, y1, w, n, amp = 2.4) {
+};
+var ringletLines = function (x0, y0, x1, y1, w, n, amp = 2.4) {
   amp *= SOFT ? .55 : 1; if (SOFT) n = Math.max(1, Math.round(n * .6 * 2) / 2);
   let d = ''; const k = Math.round(n * 2);
   for (let j = 1; j < k; j++) { const t = j / k, x = x0 + (x1 - x0) * t + Math.sin(t * Math.PI * 2 * n) * amp * (.4 + t * .6), y = y0 + (y1 - y0) * t, ww = w * (1 - .6 * Math.pow(t, 1.5)) / 2 * .8; d += `M ${f1(x - ww)} ${f1(y - 1.6)} Q ${f1(x)} ${f1(y + 2.6)} ${f1(x + ww)} ${f1(y - .6)} `; }
   return d;
-}
+};
 function curlyHair(id, name, c, ln, hi) {
   return {
     id, cat: 'hair', name, thumb: '70 46 160 170', isNew: true,
