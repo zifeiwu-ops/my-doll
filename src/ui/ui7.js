@@ -2,8 +2,8 @@
    界面
    ===================================================================== */
 const $ = s => document.querySelector(s);
-const TABS = [['hair', '发型'], ['face', '五官'], ['top', '上衣'], ['outer', '外套'], ['bottom', '下装'], ['dress', '连衣裙'], ['legs', '袜子'], ['shoes', '鞋子'], ['acc', '小物'], ['diy', 'DIY']];
-const TAB_HINT = { hair: '选一个发型', face: '换眼睛、瞳色、眉毛、嘴巴和腮红', top: '点一下穿上，再点一次脱下', outer: '外套叠在上衣外面', bottom: '点一下穿上，再点一次脱下', dress: '穿连衣裙会自动脱掉上衣和下装', legs: '袜子和腿套可以一起穿', shoes: '点一下穿上，再点一次脱下', acc: '每个位置一次戴一件：帽子 / 发箍、发饰、耳饰、眼镜、项链、包包、手饰、腰饰、贴纸各选一件，换一件会自动摘下原来那件', diy: '用照片做的、自己画的衣服都在这里，也会出现在对应分类里' };
+const TABS = [['hair', '发型'], ['face', '五官'], ['top', '上衣'], ['outer', '外套'], ['bottom', '下装'], ['dress', '连衣裙'], ['legs', '袜子'], ['shoes', '鞋子'], ['acc', '小物'], ['set', '套装'], ['diy', 'DIY']];
+const TAB_HINT = { set: '点一下整套换上（发型、发色、衣服、鞋子、包一起换）', hair: '选一个发型', face: '换眼睛、瞳色、眉毛、嘴巴和腮红', top: '点一下穿上，再点一次脱下', outer: '外套叠在上衣外面', bottom: '点一下穿上，再点一次脱下', dress: '穿连衣裙会自动脱掉上衣和下装', legs: '袜子和腿套可以一起穿', shoes: '点一下穿上，再点一次脱下', acc: '每个位置一次戴一件：帽子 / 发箍、发饰、耳饰、眼镜、项链、包包、手饰、腰饰、贴纸各选一件，换一件会自动摘下原来那件', diy: '用照片做的、自己画的衣服都在这里，也会出现在对应分类里' };
 const KEY = 'y2k-closet-v7';
 const HATS = ['a1', 'a5', 'a8', 'a12', 'a13', 'a14', 'a15', ...HATS10, ...HATS11, ...HATS13, ...HATS16];
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -71,7 +71,7 @@ function burst() {
 }
 function renderTabs() {
   $('#tabs').innerHTML = TABS.map(([k, label]) => {
-    const n = k === 'diy' ? state.custom.length : k === 'face' ? '' : allItems().filter(i => i.cat === k).length;
+    const n = k === 'diy' ? state.custom.length : k === 'face' ? '' : k === 'set' ? LOOKS.length : allItems().filter(i => i.cat === k).length;
     return `<button class="tab${k === 'diy' ? ' diy' : ''}" role="tab" type="button" data-tab="${k}" aria-selected="${state.tab === k}">${label}${n === '' ? '' : `<span class="n">${n}</span>`}</button>`;
   }).join('');
   $('#tabHint').textContent = TAB_HINT[state.tab];
@@ -103,6 +103,7 @@ function renderGrid() {
   if (t === 'face') html = facePanelHTML();
   else if (t === 'hair') html = hairColorRow() + filterBarHTML(t) + allItems().filter(i => i.cat === t && passFilter(i)).map(cardHTML).join('');
   else if (t === 'acc') html = accPanelHTML();
+  else if (t === 'set') html = setPanelHTML();
   else if (t === 'diy') html = ADD_CARD('top') + (state.custom.length ? state.custom.map(cardHTML).join('') : '<p class="empty">还没有 DIY 的衣服。用一张照片做一件，或者直接在娃娃身上画一件。</p>');
   else {
     html = filterBarHTML(t) + WARDROBE.filter(i => i.cat === t && passFilter(i)).map(cardHTML).join('') + state.custom.filter(i => i.cat === t && passFilter(i)).map(cardHTML).join('');
@@ -120,20 +121,27 @@ function hairColorRow() {
 /* ---------- 衣橱筛选：系列（IP）/ 颜色 / 风格；选了系列时最上面一排是这个系列的整套造型，点一下全身换上 ---------- */
 const COLOR_DOT = { 奶油白: '#FBF4DE', 酷黑: '#2A2528', 银灰: '#C8C6CE', 炭灰: '#6A666C', 樱花粉: '#F7B8CC', 樱桃红: '#D8323C', 蜜桃粉: '#F8C4A8', 焦糖棕: '#8A5A3A', 蜜桃橘: '#F29A5A', 卡其: '#A89A6A', 柠檬黄: '#F6E27A', 薄荷绿: '#A8E6C8', 抹茶绿: '#5E9A5A', 汽水蓝: '#7ED6E0', 牛仔蓝: '#6F92BC', 天空蓝: '#8EC0E6', 香芋紫: '#B9A0E0', 泡泡粉: '#F4AFC8', 芭比粉: '#E0508A' };
 const flt = () => (state.filter = state.filter || { ip: '', color: '', style: '' });
-function passFilter(it) { const f = flt(); return (!f.ip || it.ip === f.ip) && (!f.color || colorOf(it) === f.color) && (!f.style || styleOf(it).includes(f.style)); }
-function filterBarHTML(t) {
-  const f = flt(), items = allItems().filter(i => i.cat === t);
+function passFilter(it) { const f = flt(); if (it.o) return (!f.ip || it.ip === f.ip) && (!f.color || lookColor(it) === f.color) && (!f.style || lookStyle(it).includes(f.style)); return (!f.ip || it.ip === f.ip) && (!f.color || colorOf(it) === f.color) && (!f.style || styleOf(it).includes(f.style)); }
+function filterBarHTML(t, list) {
+  const f = flt(), items = list || allItems().filter(i => i.cat === t);
   const chip = (k, v, label, n) => `<button type="button" class="opt" data-flt="${k}" data-v="${v}" aria-pressed="${f[k] === v}">${label}${n != null ? `<span class="n">${n}</span>` : ''}</button>`;
-  const ips = [...new Set(items.map(i => i.ip).filter(Boolean))], cols = [...new Set(items.map(colorOf).filter(Boolean))], sts = STYLE_RULES.map(([k]) => k).filter(k => items.some(i => styleOf(i).includes(k)));
+  const cOf = i => (i.o ? lookColor(i) : colorOf(i)), sOf = i => (i.o ? lookStyle(i) : styleOf(i));
+  const ips = [...new Set(items.map(i => i.ip).filter(Boolean))], cols = [...new Set(items.map(cOf).filter(Boolean))], sts = STYLE_RULES.map(([k]) => k).filter(k => items.some(i => sOf(i).includes(k)));
   const row = (label, body) => `<div class="flt-row"><span class="flt-label">${label}</span><div class="flt-opts">${body}</div></div>`;
-  const looks = f.ip ? LOOKS.filter(L => L.ip === f.ip) : [];
   const on = ['ip', 'color', 'style'].filter(k => f[k]).length;
   return `<div class="flt${state.fltOpen ? ' open' : ''}"><button type="button" class="flt-toggle" data-flttoggle aria-expanded="${!!state.fltOpen}">筛选${on ? `<span class="n">${on}</span>` : ''} ▾</button><div class="flt-body">` +
     row('系列', chip('ip', '', '全部') + ips.map(k => chip('ip', k, IP_LABEL[k] || k, items.filter(i => i.ip === k).length)).join('')) +
     (cols.length > 1 ? row('颜色', `<button type="button" class="opt" data-flt="color" data-v="" aria-pressed="${!f.color}">全部</button>` + cols.map(c => `<button type="button" class="cdot" data-flt="color" data-v="${c}" aria-pressed="${f.color === c}" title="${c}" aria-label="${c}" style="--c:${COLOR_DOT[c] || '#ccc'}"></button>`).join('')) : '') +
     (sts.length ? row('风格', chip('style', '', '全部') + sts.map(k => chip('style', k, k)).join('')) : '') +
-    (looks.length ? `<div class="looks">${looks.map((L, i) => `<button type="button" class="look-btn" data-look="${LOOKS.indexOf(L)}" aria-label="换上整套：${L.name}"><svg viewBox="70 40 160 540" aria-hidden="true">${dollSVG({ ...state.outfit, ...L.o, face: state.outfit.face }, {}, null)}</svg><span>${L.name}</span></button>`).join('')}</div>` : '') +
     `</div></div>` + (items.some(passFilter) ? '' : '<p class="empty">这个分类里没有符合筛选的单品。</p>');
+}
+/* ---------- 套装分区：只有这里筛出来的是完整套装；套装的颜色 = 主件（连衣裙 / 上衣）的颜色，风格 = 各件风格合起来 ---------- */
+const lookMain = L => byId(L.o.dress || L.o.top || L.o.outer);
+const lookColor = L => { const m = lookMain(L); return m ? colorOf(m) : null; };
+const lookStyle = L => [...new Set(['dress', 'top', 'outer', 'bottom', 'shoes'].map(k => byId(L.o[k])).filter(Boolean).flatMap(styleOf))];
+function setPanelHTML() {
+  const shown = LOOKS.filter(passFilter);
+  return filterBarHTML('set', LOOKS) + (shown.length ? shown.map(L => `<div class="card look-card"><button type="button" class="card-btn" data-look="${LOOKS.indexOf(L)}" aria-label="换上整套：${L.name}"><span class="thumb"><svg viewBox="60 30 180 570" aria-hidden="true">${dollSVG({ ...state.outfit, ...L.o, face: state.outfit.face }, {}, null)}</svg></span><span class="nm">${L.name}</span>${L.ip ? `<span class="look-ip">${IP_LABEL[L.ip] || L.ip}</span>` : ''}</button></div>`).join('') : '');
 }
 /* 小物按分区显示：全部时每个分区一个小标题 */
 function accPanelHTML() {
