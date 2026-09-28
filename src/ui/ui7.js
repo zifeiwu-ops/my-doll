@@ -359,3 +359,31 @@ function boot(data) {
   try { window.claude?.hot?.snapshot?.(() => ({ outfit: state.outfit, tab: state.tab, pose: state.pose })); } catch (e) { }
 }
 if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.claude?.hot?.data ?? {});
+
+/* ---------------- 舞台缩放：双指捏 / 滚轮 / 按钮放大缩小，放大后单指拖着看，双击还原 ---------------- */
+(() => {
+  const stage = document.querySelector('.stage'), el = $('#doll'); if (!stage || !el) return;
+  const Z = { s: 1, x: 0, y: 0 }, MAX = 4;
+  const wrap = el.parentNode, base = () => ({ w: wrap.clientWidth || 1, h: wrap.clientHeight || 1 });   // #doll 铺满 .doll-live（SVG 没有 offsetWidth）
+  const apply = () => { const { w, h } = base(); Z.s = Math.max(1, Math.min(MAX, Z.s)); Z.x = Math.min(0, Math.max(w * (1 - Z.s), Z.x)); Z.y = Math.min(0, Math.max(h * (1 - Z.s), Z.y));
+    el.style.transform = Z.s === 1 ? '' : `translate(${Z.x}px, ${Z.y}px) scale(${Z.s})`; stage.classList.toggle('zoomed', Z.s > 1); };
+  // 以屏幕上的点 (cx, cy) 为中心缩放到 s
+  const zoomAt = (s, cx, cy) => { const r = wrap.getBoundingClientRect(), px = cx - r.left, py = cy - r.top, k = Math.max(1, Math.min(MAX, s)) / Z.s;
+    Z.x = px - (px - Z.x) * k; Z.y = py - (py - Z.y) * k; Z.s *= k; apply(); };
+  const center = () => { const r = stage.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height * .42]; };
+  $('#zIn').addEventListener('click', () => zoomAt(Z.s * 1.4, ...center()));
+  $('#zOut').addEventListener('click', () => zoomAt(Z.s / 1.4, ...center()));
+  $('#zFit').addEventListener('click', () => { Z.s = 1; Z.x = Z.y = 0; apply(); });
+  stage.addEventListener('wheel', e => { e.preventDefault(); zoomAt(Z.s * Math.exp(-e.deltaY * .0022), e.clientX, e.clientY); }, { passive: false });
+  const P = new Map(); let pinch = null, last = 0;
+  const skip = e => e.target.closest('button');
+  stage.addEventListener('pointerdown', e => { if (skip(e)) return; P.set(e.pointerId, [e.clientX, e.clientY]); try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+    if (P.size === 2) { const [a, b] = [...P.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, s: Z.s }; }
+    if (P.size === 1) { const now = Date.now(); if (now - last < 300) { if (Z.s > 1) { Z.s = 1; Z.x = Z.y = 0; apply(); } else zoomAt(2.2, e.clientX, e.clientY); } last = now; } });
+  stage.addEventListener('pointermove', e => { if (!P.has(e.pointerId)) return; const prev = P.get(e.pointerId); P.set(e.pointerId, [e.clientX, e.clientY]);
+    if (P.size >= 2 && pinch) { const [a, b] = [...P.values()]; zoomAt(pinch.s * (Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d), (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); }
+    else if (P.size === 1 && Z.s > 1) { Z.x += e.clientX - prev[0]; Z.y += e.clientY - prev[1]; apply(); } });
+  const up = e => { P.delete(e.pointerId); if (P.size < 2) pinch = null; };
+  stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+  addEventListener('resize', apply);
+})();

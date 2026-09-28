@@ -252,46 +252,53 @@ select.name-in{flex:1 1 140px}
 @media (prefers-reduced-motion:reduce){.flash.go{animation:none}}
 @media (prefers-reduced-motion:reduce){.spark{display:none}.card-btn,.btn,.toast{transition:none}}
 
-/* ---------- 手机：参考同类换装游戏的竖屏布局 ----------
-   一屏放下：上半屏是娃娃（一直看得见），下半屏是衣橱抽屉；分类一行横着滑、衣服在抽屉里面滚动，整页不再上下滑
-   拍照 / 随机 / 恢复默认变成舞台右侧的一列圆按钮，姿势是舞台下面一条横着滑的胶囊 */
+/* ---------- 手机：参考暖暖的竖屏布局 ----------
+   一屏放下、整页不滑：左边是娃娃（占满高度，可以双指 / 按钮放大缩小、拖着看），右边是衣橱：
+   最右一列竖着的分类签，旁边两列衣服单独上下滚；拍照 / 随机 / 恢复默认是娃娃左侧的一列圆按钮，姿势是娃娃下面一条横着滑的胶囊 */
 @media (max-width:879px){
   html,body{height:100%}
   body:not(.modal-open){overflow:hidden}
-  .app{height:100vh;height:100dvh;padding:8px 10px calc(8px + env(safe-area-inset-bottom));gap:8px;overflow:hidden}
+  .app{height:100vh;height:100dvh;padding:6px 8px calc(6px + env(safe-area-inset-bottom));gap:6px;overflow:hidden}
   .masthead{flex:0 0 auto;gap:6px 12px;flex-wrap:nowrap}
   .logo{flex-direction:row;align-items:center;gap:8px}
-  .logo-cn{font-size:30px;-webkit-text-stroke:6px #fff}.logo-cn span{-webkit-text-stroke:6px #fff}
-  .ribbon{font-size:11.5px;padding:2px 12px}
+  .logo-cn{font-size:26px;-webkit-text-stroke:5px #fff}.logo-cn span{-webkit-text-stroke:5px #fff}
+  .ribbon{font-size:11px;padding:1px 10px}
   .memo,.masthead .stk{display:none}
-  .layout{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:12px}
+  .layout{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 43%;gap:8px}
   .tape{display:none}
-  .sheet{border-radius:16px;box-shadow:0 0 0 3px #fff,0 0 0 5px var(--aqua-deep),2px 4px 0 3px rgba(74,52,48,.12)}
-  .layout>.sheet:first-child{flex:0 0 auto}
-  .stage{height:calc(50dvh - 70px);min-height:250px;border-radius:14px 14px 0 0}
-  .stage::after{inset:6px}
-  .deco.d3,.deco.d4,.deco.d6{display:none}
-  .deco.d1{top:12px;left:12px;width:30px;height:30px}.deco.d2{top:auto;bottom:40px;left:14px;right:auto;width:26px;height:26px}.deco.d5{bottom:12px;left:10px;width:34px;height:34px}
-  .stage-bar{padding:6px 8px 7px;gap:6px}
+  .sheet{border-radius:14px;box-shadow:0 0 0 2px #fff,0 0 0 4px var(--aqua-deep),2px 3px 0 2px rgba(74,52,48,.12)}
+  .layout>.sheet:first-child{display:flex;flex-direction:column;min-height:0}
+  .stage{flex:1 1 auto;height:auto;min-height:0;border-radius:12px 12px 0 0;touch-action:none}
+  .stage::after{inset:5px}
+  .deco.d3,.deco.d4,.deco.d6,.deco.d5{display:none}
+  .deco.d1{top:auto;bottom:12px;left:auto;right:10px;width:24px;height:24px}.deco.d2{top:10px;left:auto;right:10px;width:22px;height:22px}
+  .stage-bar{padding:5px 6px 6px;gap:6px}
   .ootd{display:none}
   .pose-line .row-label{display:none}
   .pose-line .opts{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:3px 2px;-webkit-overflow-scrolling:touch}
   .pose-line .opts::-webkit-scrollbar{display:none}
-  .pose-line .opt{flex:0 0 auto;font-size:12.5px;padding:2px 10px}
-  .stage-bar .btn{position:absolute;right:12px;z-index:4;width:52px;height:52px;padding:0;border-radius:50%;font-size:10.5px;letter-spacing:-.02em;line-height:1.1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
-  #btnShot{top:12px}#btnRandom{top:72px}#btnReset{top:132px}
-  .shot-btn svg{width:18px;height:18px}
-  .closet{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;padding-top:0;overflow:hidden}
-  .tabs{flex:0 0 auto;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:6px;padding:10px 10px 6px;-webkit-overflow-scrolling:touch}
+  .pose-line .opt{flex:0 0 auto;font-size:12px;padding:1px 9px}
+  .stage-bar .btn{position:absolute;left:8px;z-index:4;width:46px;height:46px;padding:0;border-radius:50%;font-size:10px;letter-spacing:-.03em;line-height:1.1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+  #btnShot{top:10px}#btnRandom{top:62px}#btnReset{top:114px}
+  .shot-btn svg{width:16px;height:16px}
+  .closet{min-height:0;display:flex;flex-direction:row-reverse;padding:0;overflow:hidden}
+  .tabs{flex:0 0 46px;flex-direction:column;flex-wrap:nowrap;overflow-y:auto;scrollbar-width:none;gap:5px;padding:8px 4px;border-left:2px dashed #F6C3D4}
   .tabs::-webkit-scrollbar{display:none}
-  .tab{flex:0 0 auto;font-size:14.5px;padding:4px 11px 3px}
+  .tab{flex:0 0 auto;font-size:12.5px;line-height:1.15;padding:6px 2px 5px;transform:none;writing-mode:horizontal-tb;text-align:center;border-radius:8px;border-left:0;border-right:0}
+  .tab .n{display:none}
   .hint-line{display:none}
-  .grid{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:10px 8px;padding:8px 10px 14px}
+  .grid{flex:1 1 auto;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:10px 7px;padding:10px 7px 14px}
   .card-btn{padding:4px 4px 5px;gap:3px;border-radius:12px}
-  .nm{font-size:11px;min-height:2.5em;line-height:1.25}
-  .badge{font-size:10px;padding:3px 6px 2px;top:-7px;left:-5px}
+  .nm{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:10.5px;min-height:2.45em;line-height:1.22;word-break:break-all}
+  .badge{font-size:9.5px;padding:3px 5px 2px;top:-6px;left:-4px}
 }
-@media (max-width:879px) and (min-height:760px){.stage{height:calc(52dvh - 70px)}}
+/* 放大缩小（手机和电脑都有）：双指捏 / 滚轮 / 右下角按钮；放大后可以拖着看 */
+.zoom-ctl{position:absolute;right:8px;bottom:8px;z-index:4;display:flex;flex-direction:column;gap:5px}
+.zoom-ctl button{width:32px;height:32px;border:2px solid var(--ink);border-radius:50%;background:#fff;font:700 17px/1 var(--f-round);cursor:pointer;box-shadow:0 2px 0 rgba(74,52,48,.2);padding:0}
+.zoom-ctl button:active{transform:translateY(1px)}
+#doll{transform-origin:0 0;will-change:transform}
+.stage.zoomed{cursor:grab}
+@media (max-width:879px){.zoom-ctl{bottom:40px}}
 </style>
 </head>
 <body>
@@ -329,6 +336,7 @@ select.name-in{flex:1 1 140px}
         <div class="floor" aria-hidden="true"></div>
         <div class="doll-live" id="dollLive"><svg class="doll" id="doll" viewBox="40 36 220 566" preserveAspectRatio="xMidYMax meet" role="img" aria-label="当前穿搭"></svg></div>
         <div class="sparkles" id="sparkles" aria-hidden="true"></div>
+        <div class="zoom-ctl" aria-label="缩放"><button type="button" id="zIn" aria-label="放大">+</button><button type="button" id="zOut" aria-label="缩小">−</button><button type="button" id="zFit" aria-label="还原大小" style="font-size:12px">1:1</button></div>
       </div>
       <div class="stage-bar">
         <p class="ootd" id="ootd"></p>
@@ -7863,6 +7871,34 @@ function boot(data) {
   try { window.claude?.hot?.snapshot?.(() => ({ outfit: state.outfit, tab: state.tab, pose: state.pose })); } catch (e) { }
 }
 if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.claude?.hot?.data ?? {});
+
+/* ---------------- 舞台缩放：双指捏 / 滚轮 / 按钮放大缩小，放大后单指拖着看，双击还原 ---------------- */
+(() => {
+  const stage = document.querySelector('.stage'), el = $('#doll'); if (!stage || !el) return;
+  const Z = { s: 1, x: 0, y: 0 }, MAX = 4;
+  const wrap = el.parentNode, base = () => ({ w: wrap.clientWidth || 1, h: wrap.clientHeight || 1 });   // #doll 铺满 .doll-live（SVG 没有 offsetWidth）
+  const apply = () => { const { w, h } = base(); Z.s = Math.max(1, Math.min(MAX, Z.s)); Z.x = Math.min(0, Math.max(w * (1 - Z.s), Z.x)); Z.y = Math.min(0, Math.max(h * (1 - Z.s), Z.y));
+    el.style.transform = Z.s === 1 ? '' : `translate(${Z.x}px, ${Z.y}px) scale(${Z.s})`; stage.classList.toggle('zoomed', Z.s > 1); };
+  // 以屏幕上的点 (cx, cy) 为中心缩放到 s
+  const zoomAt = (s, cx, cy) => { const r = wrap.getBoundingClientRect(), px = cx - r.left, py = cy - r.top, k = Math.max(1, Math.min(MAX, s)) / Z.s;
+    Z.x = px - (px - Z.x) * k; Z.y = py - (py - Z.y) * k; Z.s *= k; apply(); };
+  const center = () => { const r = stage.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height * .42]; };
+  $('#zIn').addEventListener('click', () => zoomAt(Z.s * 1.4, ...center()));
+  $('#zOut').addEventListener('click', () => zoomAt(Z.s / 1.4, ...center()));
+  $('#zFit').addEventListener('click', () => { Z.s = 1; Z.x = Z.y = 0; apply(); });
+  stage.addEventListener('wheel', e => { e.preventDefault(); zoomAt(Z.s * Math.exp(-e.deltaY * .0022), e.clientX, e.clientY); }, { passive: false });
+  const P = new Map(); let pinch = null, last = 0;
+  const skip = e => e.target.closest('button');
+  stage.addEventListener('pointerdown', e => { if (skip(e)) return; P.set(e.pointerId, [e.clientX, e.clientY]); try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+    if (P.size === 2) { const [a, b] = [...P.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, s: Z.s }; }
+    if (P.size === 1) { const now = Date.now(); if (now - last < 300) { if (Z.s > 1) { Z.s = 1; Z.x = Z.y = 0; apply(); } else zoomAt(2.2, e.clientX, e.clientY); } last = now; } });
+  stage.addEventListener('pointermove', e => { if (!P.has(e.pointerId)) return; const prev = P.get(e.pointerId); P.set(e.pointerId, [e.clientX, e.clientY]);
+    if (P.size >= 2 && pinch) { const [a, b] = [...P.values()]; zoomAt(pinch.s * (Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d), (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); }
+    else if (P.size === 1 && Z.s > 1) { Z.x += e.clientX - prev[0]; Z.y += e.clientY - prev[1]; apply(); } });
+  const up = e => { P.delete(e.pointerId); if (P.size < 2) pinch = null; };
+  stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+  addEventListener('resize', apply);
+})();
 </script>
 
 </body>
