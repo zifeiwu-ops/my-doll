@@ -5508,7 +5508,16 @@ function dollSVG(outfit, over = {}, pose = null) {
   const [cami, shorts] = underwearParts();
   if (!top && !fullDress) L.push({ z: 12, svg: cami });
   if (!bottom && !dress) L.push({ z: 12, svg: shorts });
-  [slot('hair'), top, slot('outer'), bottom, dress, slot('legs'), dress && tplOf(dress) && tplOf(dress).long ? null : slot('warmer'), slot('shoes')].forEach(it => { if (it) (isHead(it) ? H : L).push(...partsOf(it).map(l => ({ ...l, cat: it.cat, drawn: !!it.shape }))); });
+  // 长裙、阔腿/喇叭裤会盖住腿套，这时不穿腿套（紧身裤可以把腿套套在外面）
+  [slot('hair'), top, slot('outer'), bottom, dress, slot('legs'), (dress && tplOf(dress) && tplOf(dress).long) || (bottom && PANTS_OVER.has(bottom.tpl) && !PANTS_TUCK.has(bottom.tpl)) ? null : slot('warmer'), slot('shoes')].forEach(it => { if (it) (isHead(it) ? H : L).push(...partsOf(it).map(l => ({ ...l, cat: it.cat, drawn: !!it.shape }))); });
+  // 高筒靴（靴口在小腿以上）：腿套收进靴筒里，不然靴子上的扣带会从腿套边上戳出来
+  const wm = slot('warmer'), sh = slot('shoes');
+  const bootTop = sh ? +thumbOf(sh).split(' ')[1] : 600;
+  if (wm && bootTop < 480) L.forEach((l, i) => {   // 两条腿各一块裁切（窄于 60，摆姿势时各自跟着小腿转）
+    if (l.z !== 42 || l.cat !== 'legs') return;
+    const c = uid('wt'), y = bootTop + 20, leg = (a, b) => `<path d="M ${a} 382 L ${b} 382 L ${b} ${y} L ${a} ${y} Z"/>`;
+    L[i] = { ...l, z: 39, svg: `<clipPath id="${c}">${leg(90, 148)}${leg(152, 210)}</clipPath><g clip-path="url(#${c})">${l.svg}</g>` };
+  });
   const accL = [], P = pose ? POSES[pose] || POSES.stand : null;   // 没传姿势（DIY 画布）时保持原始比例，画的形状才对得上
   (outfit.acc || []).forEach(id => { const it = byId(id); if (it) { const Q = partsOf(it); if (isHead(it)) H.push(...Q); else if (P && (BAGS.has(id) || HELD[id] || it.sub === 'bag' || it.sub === 'waist')) accL.push(...Q.map(l => ({ ...l, bag: id }))); else L.push(...Q.map(l => ({ ...l, cat: 'acc', id }))); } });
   // 戴帽子时，帽顶以上的头发（丸子、高马尾、呆毛）收进帽子里，不会从帽子上穿出来；遮阳帽没有帽顶，不收
@@ -5516,7 +5525,7 @@ function dollSVG(outfit, over = {}, pose = null) {
     const hide = (l, y) => { const c = uid('hc'); return { ...l, svg: `<clipPath id="${c}"><rect x="-40" y="${y}" width="380" height="700"/></clipPath><g clip-path="url(#${c})">${l.svg}</g>` }; };
     H.forEach((l, i) => { if (l.cat === 'hair') { const y = l.z < 10 ? 78 : 60; H[i] = hide(l, P ? f1(y + propOffset(150, y)[1]) : y); } });   // 有姿势时身体按时装比例变形过，裁切线跟着挪
   }
-  L.push(...pantsOverShoes(bottom, slot('shoes')));
+  L.push(...pantsOverShoes(bottom, slot('shoes'), P ? y => y + propOffset(150, y)[1] : y => y));   // 有姿势时裁切线跟着时装比例挪
   if (P) return posedSVG(P, L, H, accL, { bottom });
   return layersSVG(L.concat(headWrap(H)));
 }
@@ -5605,7 +5614,12 @@ function posedSVG(P, L, H, bags, W0) {
   // 包：斜挎 / 腰包不跟手臂变形；拎在手上的包整只平移到手上（小臂举过头时挂在手肘上）
   bags.forEach(l => {
     const k = HELD[l.bag];
-    if (!k) { out.push({ z: front.length && l.z >= 40 ? Math.max(l.z, 49.8) : l.z, svg: warpSVG(l.svg, W, { arms: false }) }); return; }
+    if (!k) {
+      const s = warpSVG(l.svg, W, { arms: false }); out.push({ z: l.z, svg: s });
+      // 手挡在身前时手压在背带上；只有肩膀外侧那一段背带要再盖回手臂上面（背带是搭在肩上的）
+      if (front.length && l.z >= 40) { const c = uid('bs'); out.push({ z: 49.8, svg: `<clipPath id="${c}"><rect x="-60" y="-60" width="178" height="285"/><rect x="182" y="-60" width="178" height="285"/></clipPath><g clip-path="url(#${c})">${s}</g>` }); }
+      return;
+    }
     const A = P[k] || {}, tot = Math.abs((A.up || 0) + (A.fore || 0)), h0 = HAND[k];
     const at = tot > 100 ? sideJ(k, RIG.E) : h0, u = warpAt(W, at[0], at[1], { force: k }), dx = at[0] + u[0] - h0[0], dy = at[1] + u[1] - h0[1] + (tot > 100 ? 4 : 0);
     out.push({ z: moves(k) && !A.back && front.includes(k) ? 49.45 : l.z, svg: `<g transform="translate(${f2(dx)} ${f2(dy)})">${l.svg}</g>` });
@@ -5617,11 +5631,11 @@ function posedSVG(P, L, H, bags, W0) {
    小脚裤 / 工装裤配靴子时照旧塞进靴筒里 */
 const PANTS_OVER = new Set(['widePants', 'cargo', 'flareJeans', 'skinnyJeans', 'slacks', 'sashPants', 'skirtJeans', 'wideFlare', 'wrapCargo', 'balloonPants']);
 const PANTS_TUCK = new Set(['skinnyJeans', 'cargo', 'wrapCargo']);
-function pantsOverShoes(bottom, shoes) {
+function pantsOverShoes(bottom, shoes, ym) {
   if (!bottom || !shoes || !PANTS_OVER.has(bottom.tpl)) return [];
   const sTop = +thumbOf(shoes).split(' ')[1], boot = sTop < 505;
   if (boot && PANTS_TUCK.has(bottom.tpl)) return [];
-  const y = boot ? sTop - 8 : 496;
+  const y = f1(ym(boot ? sTop - 8 : 496));
   return partsOf(bottom).filter(p => p.z >= 15 && p.z < 30).map(p => { const id = uid('an'); return { z: 41, svg: `<clipPath id="${id}"><rect x="0" y="${y}" width="300" height="${600 - y}"/></clipPath><g clip-path="url(#${id})">${p.svg}</g>` }; });
 }
 function thumbSVG(it) {
