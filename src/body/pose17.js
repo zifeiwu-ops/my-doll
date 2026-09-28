@@ -76,11 +76,17 @@ function warpAt(W, x, y, o = {}) {
   const A = W.arms && W.arms[k];
   if (m && A) {
     const bw = Math.abs(A.fore || 0) > 110 ? 3.5 : 7, we = m * sstep(RIG.yE - bw, RIG.yE + bw, y);   // 折得很深时关节过渡收窄，内侧的肉 / 布不会翻出一片
+    // 透视缩短：小臂往前 / 往后伸（叉腰、捧东西）时，从正面看会变短。沿着小臂方向压缩，粗细不变
+    if (A.len != null && A.len !== 1 && we) { const E = sideJ(k, RIG.E), H = sideJ(k, [84, 336]), ax = H[0] - E[0], ay = H[1] - E[1], al = Math.hypot(ax, ay), nx = ax / al, ny = ay / al, t = (px - E[0]) * nx + (py - E[1]) * ny, f = 1 + (A.len - 1) * we;
+      px -= nx * t * (1 - f); py -= ny * t * (1 - f); }
     if (A.fore && we) [px, py] = rotP(px, py, sideJ(k, RIG.E), A.fore * we);
     if (A.up) [px, py] = rotP(px, py, sideJ(k, RIG.S), A.up * m);
   }
   // 6) 踢腿：右腿膝盖以下绕膝盖转
-  if (W.leg && o.leg !== false) { const wl = ((o.legSide ? o.legSide === 'R' : x > 150) ? 1 : 0) * sstep(RIG.yK - 18, RIG.yK + 8, y); if (wl) [px, py] = rotP(px, py, RIG.K, W.leg * wl); }
+  if ((W.leg || W.legLen) && o.leg !== false) { const wl = ((o.legSide ? o.legSide === 'R' : x > 150) ? 1 : 0) * sstep(RIG.yK - 18, RIG.yK + 8, y);
+    // 膝盖只能往前后弯：从正面看，小腿往后抬 = 小腿变短、脚跟抬起；只留一点点往外的角度，不再整条小腿往侧面折
+    if (wl && W.legLen) py = RIG.K[1] + (py - RIG.K[1]) * (1 + (W.legLen - 1) * wl);
+    if (wl && W.leg) [px, py] = rotP(px, py, RIG.K, W.leg * wl); }
   const pr = propOffset(x, y);
   return [ux + px - x + pr[0], uy + py - y + pr[1]];
 }

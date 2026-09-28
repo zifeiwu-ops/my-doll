@@ -2,7 +2,7 @@
    姿势切换 + 拍照小屋
    ===================================================================== */
 const POSE_KEY = 'y2k-closet-pose';
-function loadPose() { try { const p = localStorage.getItem(POSE_KEY); return POSES[p] && p !== 'stand' ? p : 'relax'; } catch (e) { return 'relax'; } }
+function loadPose() { try { const p = localStorage.getItem(POSE_KEY); return POSES[p] ? p : 'stand'; } catch (e) { return 'stand'; } }   // 旧存档里的 relax 已经并进 stand
 function savePose() { try { localStorage.setItem(POSE_KEY, state.pose); } catch (e) { } }
 const poseChips = (cur, attr) => Object.entries(POSES).map(([k, p]) => `<button type="button" class="opt${p.isNew ? ' is-new' : ''}" role="radio" ${attr}="${k}" aria-checked="${k === cur}">${p.name}</button>`).join('');
 function renderPoseRow() { const r = $('#poseRow'); if (r) r.innerHTML = poseChips(state.pose, 'data-pose'); }
@@ -128,7 +128,7 @@ const STICKERS = {
 };
 
 /* ---------------- 拍照小屋 ---------------- */
-const studio = { scene: 'winter', frame: 'polaroid', filter: 'none', face: 'keep', crop: 'full', pose: 'relax', stickers: [], sel: -1, cap: '', album: [], busy: false };
+const studio = { scene: 'winter', frame: 'polaroid', filter: 'none', face: 'keep', crop: 'full', pose: 'stand', stickers: [], sel: -1, cap: '', album: [], busy: false };
 const ALBUM_KEY = 'y2k-closet-album';
 let DL = null;
 (async () => { try { DL = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch (e) { DL = null; } })();

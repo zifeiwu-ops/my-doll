@@ -42,7 +42,7 @@ const thumbOf = it => it.thumb || (it.tpl && TPL[it.tpl].thumb) || '0 0 300 600'
 function layersSVG(list) { return list.sort((a, b) => a.z - b.z).map(l => l.svg).join(''); }
 const headWrap = L => L;
 
-const state = { outfit: null, tab: 'top', custom: [], pose: 'relax' };
+const state = { outfit: null, tab: 'top', custom: [], pose: 'stand' };
 const SLOTS = ['hair', 'top', 'outer', 'bottom', 'dress', 'legs', 'warmer', 'shoes'];
 const DEFAULT_OUTFIT = { hair: 'h4', top: 't5', outer: null, bottom: 'b4', dress: null, legs: null, warmer: 'l3', shoes: 's6', acc: ['a9'], face: { ...DEFAULT_FACE } };
 const allItems = () => WARDROBE.concat(state.custom);
@@ -90,22 +90,21 @@ function dollSVG(outfit, over = {}, pose = null) {
 const LEAN = { hip: 4.6, kneeL: 3.4, footL: 1.4, tilt: .02 };            // 重心放在右腿上
 const LEAN_L = { hip: -4.2, kneeR: 3.2, footR: 1.4, tilt: -.018 };       // 重心放在左腿上
 const POSES = {
-  relax: { name: '自然站立', warp: 'relax' },
+  stand: { name: '自然站立' },   // 自然站立 = 原来的立正站姿（直立、双手自然垂下）
   shy: { name: '内八俏皮', warp: 'shy', isNew: true, skirt: { flare: -1.2 } },
-  stand: { name: '立正' },
   clasp: { name: '乖巧', head: -4, body: LEAN, L: { up: -4, fore: -44 }, R: { up: 4, fore: 44 } },
   behind: { name: '背手', head: 4, body: LEAN_L, L: { up: 6, fore: -30, back: true }, R: { up: -6, fore: 30, back: true } },
-  hip: { name: '叉腰', head: -5, body: LEAN, L: { up: 24, fore: -78 }, R: { up: -4, fore: -6 } },
+  hip: { name: '叉腰', head: -5, body: LEAN, L: { up: 24, fore: -98, len: .64 }, R: { up: -4, fore: -6 } },   // len：小臂往后收时的透视缩短，手才落在腰侧
   wave: { name: '打招呼', head: 5, body: LEAN_L, skirt: { sway: 1.2 }, hair: { sway: 1.6 }, R: { up: -16, fore: -150, over: true }, L: { up: 4, fore: 6 } },
-  kick: { name: '踢腿', head: 4, body: { hip: -3, tilt: -.02 }, leg: -30, hair: { sway: -3.5, flare: 2.4, lift: 1.2 }, L: { up: 10, fore: 12 }, R: { up: -12, fore: -14 } },
+  kick: { name: '踢腿', head: 4, body: { hip: -3, tilt: -.02 }, leg: -7, legLen: .58, hair: { sway: -3.5, flare: 2.4, lift: 1.2 }, L: { up: 10, fore: 12 }, R: { up: -12, fore: -14 } },
   /* Coquette 芭蕾甜心 */
   curtsy: { name: '提裙', head: -6, body: LEAN, skirt: { flare: 5.5, lift: 2.6 }, hair: { flare: 1.2 }, L: { up: 14, fore: 16 }, R: { up: -14, fore: -16 } },
   heart: { name: '比心', head: 5, body: LEAN_L, L: { up: -8, fore: -140 }, R: { up: 8, fore: 140 }, extra: `<path d="${heartD(150, 199, 6)}" fill="#F48FB1" stroke="#fff" stroke-width="2" paint-order="stroke"/><path d="M 146.4 196 Q 147 194 149 194" fill="none" stroke="#fff" stroke-width="1" stroke-linecap="round"/>` },
   /* 参考时尚插画里的站姿 */
-  drink: { name: '拿饮料', isNew: true, head: 5, body: LEAN_L, L: { up: 24, fore: -78 }, R: { up: -46, fore: 158 }, hair: { sway: 1.2 }, extra: `<g transform="translate(176 206) rotate(6)"><path d="M -8 -12 L 8 -12 L 6 16 L -6 16 Z" fill="#F48FB1" stroke="#3D3134" stroke-width=".8" stroke-linejoin="round"/><path d="M -8.6 -12 L 8.6 -12 L 8.2 -9 L -8.2 -9 Z" fill="#fff" stroke="#3D3134" stroke-width=".7"/><path d="M 2 -12 L 5 -24 L 9 -22" fill="none" stroke="#3D3134" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M 2 -12 L 5 -24 L 9 -22" fill="none" stroke="#FFE27A" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="${heartD(0, 3, 3.6)}" fill="#fff"/><path d="M -5 -6 L -4 10" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity=".6"/></g>` },
-  camera: { name: '拿相机', isNew: true, head: -4, body: LEAN, L: { up: 28, fore: -140 }, R: { up: -28, fore: 140 }, extra: `<g transform="translate(150 234)"><rect x="-15" y="-10" width="30" height="20" rx="4" fill="#F7D56A" stroke="#3D3134" stroke-width=".8"/><rect x="-15" y="-10" width="30" height="6" rx="3" fill="#F48FB1" stroke="#3D3134" stroke-width=".7"/><circle r="6.4" cy="1.6" fill="#4A4450" stroke="#3D3134" stroke-width=".8"/><circle r="3.8" cy="1.6" fill="#8FB8E0"/><circle r="1.3" cx="-1.4" cy=".4" fill="#fff"/><rect x="7" y="-8.6" width="5" height="3" rx="1" fill="#fff"/></g>` },
-  stride: { name: '迈步', isNew: true, head: 3, body: { hip: -3.6, kneeL: 1.6, tilt: -.02 }, leg: -16, L: { up: -8, fore: -12 }, R: { up: -10, fore: -10 }, skirt: { sway: 1.6, flare: 1.4 }, hair: { sway: -1.6 } },
-  spread: { name: '芭蕾展臂', head: -5, body: LEAN, skirt: { flare: 3.2, lift: 1.2 }, hair: { flare: 2.6, lift: 1 }, L: { up: 52, fore: 18 }, R: { up: -52, fore: -18 } }
+  drink: { name: '拿饮料', isNew: true, head: 5, body: LEAN_L, L: { up: 24, fore: -98, len: .64 }, R: { up: -10, fore: 168, len: .76 }, hair: { sway: 1.2 }, extra: `<g transform="translate(176 206) rotate(6)"><path d="M -8 -12 L 8 -12 L 6 16 L -6 16 Z" fill="#F48FB1" stroke="#3D3134" stroke-width=".8" stroke-linejoin="round"/><path d="M -8.6 -12 L 8.6 -12 L 8.2 -9 L -8.2 -9 Z" fill="#fff" stroke="#3D3134" stroke-width=".7"/><path d="M 2 -12 L 5 -24 L 9 -22" fill="none" stroke="#3D3134" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M 2 -12 L 5 -24 L 9 -22" fill="none" stroke="#FFE27A" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="${heartD(0, 3, 3.6)}" fill="#fff"/><path d="M -5 -6 L -4 10" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity=".6"/></g>` },
+  camera: { name: '拿相机', isNew: true, head: -4, body: LEAN, L: { up: 18, fore: -144, len: .84 }, R: { up: -18, fore: 144, len: .84 }, extra: `<g transform="translate(150 236)"><rect x="-15" y="-10" width="30" height="20" rx="4" fill="#F7D56A" stroke="#3D3134" stroke-width=".8"/><rect x="-15" y="-10" width="30" height="6" rx="3" fill="#F48FB1" stroke="#3D3134" stroke-width=".7"/><circle r="6.4" cy="1.6" fill="#4A4450" stroke="#3D3134" stroke-width=".8"/><circle r="3.8" cy="1.6" fill="#8FB8E0"/><circle r="1.3" cx="-1.4" cy=".4" fill="#fff"/><rect x="7" y="-8.6" width="5" height="3" rx="1" fill="#fff"/></g>` },
+  stride: { name: '迈步', isNew: true, head: 3, body: { hip: -3.6, kneeL: 1.6, tilt: -.02 }, leg: -5, legLen: .84, L: { up: -8, fore: -12 }, R: { up: -10, fore: -10 }, skirt: { sway: 1.6, flare: 1.4 }, hair: { sway: -1.6 } },
+  spread: { name: '芭蕾展臂', head: -5, body: LEAN, skirt: { flare: 3.2, lift: 1.2 }, hair: { flare: 2.6, lift: 1 }, L: { up: 28, fore: 12 }, R: { up: -28, fore: -12 } }
 };
 const BAGS = new Set(['a4', 'a27', 'a33', 'a34', 'a47', 'a58', 'a42', 'a53', 'a48', 'a49', 'a50']);        // 包不跟着手臂变形，整只保留在原处
 const OPEN_HATS = new Set(['a95']);                                                                    // 没有帽顶的帽子（遮阳帽）
@@ -132,9 +131,9 @@ const HAND = { L: [84, 336], R: [216, 336] };
 function posedSVG(P, L, H, bags, W0) {
   // 裙子 / 连衣裙 / 长外套盖过膝盖（裤子除外）就不踢腿：直接看这一层的布片有没有伸到膝盖以下
   const reachesKnee = l => { let hit = false; l.svg.replace(/ d="([^"]*)"/g, (m, d) => { if (hit || /[a-y]/.test(d)) return m; const n = d.match(/-?\d*\.?\d+/g) || []; for (let i = 0; i + 1 < n.length; i += 2) if (+n[i + 1] > RIG.yK - 4 && +n[i] > 150.6) { hit = true; break; } return m; }); return hit; };
-  const legOK = P.leg && !L.some(l => (l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(W0.bottom.tpl)))) && reachesKnee(l));
+  const legOK = (P.leg || P.legLen) && !L.some(l => (l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(W0.bottom.tpl)))) && reachesKnee(l));
   const base = P.warp ? WARP_POSES[P.warp] : {};
-  const W = { head: 0, hip: 0, kneeL: 0, footL: 0, kneeR: 0, footR: 0, armL: 0, armR: 0, tilt: 0, ...base, ...(P.body || {}), head: P.head ?? base.head ?? 0, arms: { L: P.L, R: P.R }, leg: legOK ? P.leg : 0 };
+  const W = { head: 0, hip: 0, kneeL: 0, footL: 0, kneeR: 0, footR: 0, armL: 0, armR: 0, tilt: 0, ...base, ...(P.body || {}), head: P.head ?? base.head ?? 0, arms: { L: P.L, R: P.R }, leg: legOK ? P.leg : 0, legLen: legOK ? P.legLen : 0 };
   // 裙摆：默认跟着胯的反方向轻轻荡；发尾：默认跟着歪头方向顺一点。姿势里的 skirt / hair 再加上动作本身的甩动
   const kick = legOK ? 1 : 0, sk = P.skirt || {}, hr = P.hair || {};
   Object.assign(W, { skirtSway: -.34 * W.hip + (sk.sway || 0) + kick * 2.4, skirtFlare: (sk.flare || 0) + kick * 3.2, skirtLift: sk.lift || 0,

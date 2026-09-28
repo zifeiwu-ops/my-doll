@@ -1,6 +1,6 @@
 /* ---------------- 姿势 / 拍照小屋 · 糖果装饰风 + 甜酷街头 ---------------- */
 Object.assign(POSES, {
-  handsHips: { name: '双手叉腰', head: 3, body: LEAN, L: { up: 24, fore: -78 }, R: { up: -24, fore: 78 } },
+  handsHips: { name: '双手叉腰', head: 3, body: LEAN, L: { up: 24, fore: -98, len: .64 }, R: { up: -24, fore: 98, len: .64 } },
   cupFace: { name: '双手捧心', head: 6, body: LEAN_L, L: { up: 4, fore: -160, over: true }, R: { up: -4, fore: 160, over: true } }
 });
 ['curtsy', 'heart', 'spread'].forEach(k => { delete POSES[k].isNew; });
