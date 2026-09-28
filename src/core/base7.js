@@ -6,14 +6,15 @@ const INK = '#2B2322';
 const SKIN = '#FFEBE1';
 const SH = '#E7CFD6';      // 正片叠底阴影色
 const SH_DEEP = '#CFB2C0';
+const CEL = '#B094A6';     // 赛璐璐硬边阴影（正片叠底，深浅布料都看得出来）
 let _uid = 0;
 const uid = p => (p || 'c') + (++_uid);
 const f1 = n => +n.toFixed(1);
 
 /* 路径可附带自动垂坠褶皱（String 对象 + .folds），piece() 会自动画上；mir() 会一起镜像 */
-const withFolds = (d, folds) => { const o = new String(d); o.folds = folds; return o; };
+const withFolds = (d, folds, cel) => { const o = new String(d); o.folds = folds; if (cel) o.cel = cel; return o; };   // cel：跟着形状走的硬边阴影
 function mir(d) {
-  if (d && d.folds) return withFolds(mir(String(d)), d.folds.map(mir));
+  if (d && d.folds) return withFolds(mir(String(d)), d.folds.map(mir), d.cel && d.cel.map(c => c && mir(c)));
   return d.replace(/([MLCQmlcq])([^MLCQZmlcqz]*)/g, (m, cmd, args) => {
     const nums = args.trim().split(/[\s,]+/).filter(Boolean).map(Number);
     const abs = cmd === cmd.toUpperCase();
@@ -143,12 +144,14 @@ function inkLine(d, w, fade = 0) {
   return out || null;
 }
 function piece(d, fill, o = {}) {
-  if (d && d.folds) { if (o.autoFolds !== false) o = { ...o, folds: (o.folds || []).concat(d.folds) }; d = String(d); }
+  if (d && d.folds) { if (o.autoFolds !== false) o = { ...o, folds: (o.folds || []).concat(d.folds) }; if (d.cel && o.autoCel !== false) o = { ...o, cel: (o.cel || []).concat(d.cel) }; d = String(d); }
   const id = uid('k');
   const sc = o.sc || STYLE.shade;
   if (!o.oc) o = { ...o, oc: lineOf(fill) };
   const fr = o.evenodd ? ' fill-rule="evenodd" clip-rule="evenodd"' : '';
   let inner = `<path d="${d}" fill="${fill}"${fr}/>` + (o.under || '');
+  /* 赛璐璐硬边阴影：清楚的色块，不糊（重画的衣服用） */
+  (o.cel || []).forEach(p => { if (p) inner += `<path d="${p}" fill="${o.celC || CEL}" style="mix-blend-mode:multiply" opacity="${o.celOp ?? .5}"/>`; });
   const rim = o.rim === false ? null : (o.rim || [4.5, 2.5]);
   /* 体积感阴影（对齐参考图）：不是一道硬边月牙，而是从布片右下边缘往里、柔和过渡的一层喷枪式阴影 */
   if (rim) inner += `<path d="${d}" fill="${sc}" filter="url(#${rim[0] > 3 ? 'vol' : 'vols'})" style="mix-blend-mode:multiply" opacity="${o.volOp ?? STYLE.volOp}"${fr}/>`;

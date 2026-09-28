@@ -14,7 +14,7 @@ DOC = '''/* ====================================================================
    层级：发型后片 2 · 底模 10 · 袜子 15 · 下装 20 · 连衣裙 25 · 上衣 30 · 外套 35 · 鞋 40 · 腿套 42 · 发型前片 50 · 小物 55+
    ===================================================================== */
 '''
-PARTS = ['base7.js', 'colors7.js', 'body7_data.js', 'body7.js', 'pat7.js', 'pat10.js', 'pat11.js', 'pat13.js', 'pat15.js', 'pat16.js', 'tpl7.js', 'tpl7b.js', 'tpl7c.js', 'tpl10.js', 'tpl11.js', 'fx14.js', 'tpl15.js', 'tpl16.js', 'hair7.js', 'hair7b.js', 'hair10.js', 'hair11.js', 'hair13.js', 'hair15.js', 'hair16.js', 'items7.js', 'items7b.js', 'items10.js', 'items11.js', 'items13.js', 'items15.js', 'items16.js', 'wardrobe7.js', 'wardrobe10.js', 'wardrobe11.js', 'wardrobe13.js', 'wardrobe15.js', 'wardrobe16.js', 'acc13.js', 'render7.js', 'pose17.js', 'draw9.js', 'vision7.js', 'studio12.js', 'studio13.js', 'studio15.js', 'ui7.js']
+PARTS = ['base7.js', 'colors7.js', 'body7_data.js', 'body7.js', 'pat7.js', 'pat10.js', 'pat11.js', 'pat13.js', 'pat15.js', 'pat16.js', 'tpl7.js', 'tpl7b.js', 'tpl7c.js', 'tpl10.js', 'tpl11.js', 'fx14.js', 'tpl15.js', 'tpl16.js', 'redraw18.js', 'hair7.js', 'hair7b.js', 'hair10.js', 'hair11.js', 'hair13.js', 'hair15.js', 'hair16.js', 'items7.js', 'items7b.js', 'items10.js', 'items11.js', 'items13.js', 'items15.js', 'items16.js', 'wardrobe7.js', 'wardrobe10.js', 'wardrobe11.js', 'wardrobe13.js', 'wardrobe15.js', 'wardrobe16.js', 'acc13.js', 'render7.js', 'pose17.js', 'draw9.js', 'vision7.js', 'studio12.js', 'studio13.js', 'studio15.js', 'ui7.js']
 # 源码按分区放在 src/ 的子文件夹里（core / body / patterns / templates / hair / items / wardrobe / studio / ui）。
 # PARTS 只写文件名、按拼接顺序排列；这里自动去子文件夹里找到对应文件。
 def find(name):
