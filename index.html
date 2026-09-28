@@ -307,6 +307,32 @@ select.name-in{flex:1 1 140px}
 .hc[aria-checked="true"]{outline:3px solid var(--pink);outline-offset:2px}
 .hc-orig{width:auto;padding:0 9px;white-space:nowrap;border-radius:999px;background:#fff;font-family:var(--f-display);font-size:12px;box-shadow:none}
 @media (max-width:879px){.hair-colors{gap:5px}.hc{width:24px;height:24px;flex:0 0 auto}.hc-label{flex:1 0 100%}.hair-colors .hc-orig{width:auto;height:24px;padding:0 8px}}
+
+/* 衣橱筛选 */
+.flt{grid-column:1/-1;display:flex;flex-direction:column;gap:5px;padding-bottom:6px;border-bottom:2px dashed #F6C3D4}
+.flt-row{display:flex;align-items:flex-start;gap:6px}
+.flt-label{flex:0 0 auto;font-size:12.5px;color:var(--ink-soft);padding-top:4px;min-width:2.4em}
+.flt-opts{display:flex;flex-wrap:wrap;gap:5px}
+.flt .opt{font-size:12.5px;padding:1px 9px}
+.cdot{width:22px;height:22px;padding:0;border-radius:50%;border:2px solid var(--ink);background:var(--c);cursor:pointer}
+.cdot[aria-pressed="true"]{outline:3px solid var(--pink);outline-offset:1px}
+.looks{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 2px;scrollbar-width:thin}
+.look-btn{flex:0 0 auto;width:74px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 3px;border:2px solid var(--ink);border-radius:12px;background:#FFF2F6;cursor:pointer;font-size:10.5px;line-height:1.2}
+.look-btn svg{width:62px;height:150px;display:block}
+.look-btn:hover{background:var(--pink-soft)}
+.flt-toggle{display:none}
+.flt-body{display:flex;flex-direction:column;gap:5px}
+.flt-opts .opt{flex:0 0 auto;width:auto}
+@media (max-width:879px){
+  .flt-toggle{display:inline-flex;align-self:flex-start;align-items:center;gap:4px;border:2px solid var(--ink);border-radius:999px;background:#fff;padding:2px 12px;font-family:var(--f-display);font-size:13px;cursor:pointer}
+  .flt-toggle .n{font-size:11px;color:#fff;background:var(--pink);border-radius:999px;padding:0 6px}
+  .flt:not(.open) .flt-body{display:none}
+  .flt-body{display:flex;flex-direction:column;gap:5px}
+  .flt-row{flex-direction:column;gap:3px}.flt-label{padding-top:0}
+  .flt .opt{font-size:11.5px;padding:0 7px}.cdot{width:18px;height:18px}
+  .look-btn{width:64px}.look-btn svg{width:54px;height:130px}
+  .card-add .plus{width:30px;height:30px}.card-add .nm{font-size:11px}
+}
 </style>
 </head>
 <body>
@@ -6303,6 +6329,55 @@ WARDROBE.forEach(i => { if (V16_IDS.has(i.id)) i.isNew = true; });
   WARDROBE.unshift(...NEW16, ...fresh);
 })();
 
+/* =====================================================================
+   联动：偶像活动（Aikatsu!）风格的 8 套私服造型 —— 按参考图的搭配思路用本作的版型重画（不描原图）
+   每件衣服带 ip / 风格标签；衣橱里可以按「系列 / 颜色 / 风格」筛选，选了系列还能一键换上整套造型
+   ===================================================================== */
+PATTERN_DEFS += `
+<pattern id="pat-navydotsW" patternUnits="userSpaceOnUse" width="16" height="16"><rect width="16" height="16" fill="#FBFAF4"/><circle cx="4" cy="4" r="3" fill="#2A3A6E"/><circle cx="12" cy="12" r="3" fill="#2A3A6E"/><circle cx="3.2" cy="3.2" r=".8" fill="#5A6A9E"/><circle cx="11.2" cy="11.2" r=".8" fill="#5A6A9E"/></pattern>
+<pattern id="pat-violetfloral" patternUnits="userSpaceOnUse" width="30" height="30"><rect width="30" height="30" fill="#3E3A8A"/>${_flower5(8, 8, 5.4, '#F6E08A', '#FFFFFF')}${_flower5(22, 21, 4.6, '#FFFFFF', '#F6E08A')}${_flower5(24, 6, 2.6, '#B9A8F0', '#FFFFFF')}${_flower5(6, 24, 3, '#F6E08A', '#FFFFFF')}<ellipse cx="15" cy="13" rx="2.4" ry="1" fill="#7EA0D8" transform="rotate(-30 15 13)"/></pattern>
+<pattern id="pat-greengingham" patternUnits="userSpaceOnUse" width="8" height="8"><rect width="8" height="8" fill="#F2FAEC"/><rect width="4" height="8" fill="#5EB85A" opacity=".55"/><rect width="8" height="4" fill="#5EB85A" opacity=".55"/></pattern>
+<pattern id="pat-harlequin" patternUnits="userSpaceOnUse" width="16" height="20"><rect width="16" height="20" fill="#F7A6C6"/><path d="M 8 0 L 16 10 L 8 20 L 0 10 Z" fill="#7ED6E0"/><path d="M 8 4 L 12.8 10 L 8 16 L 3.2 10 Z" fill="#FFF3A6"/><path d="M 0 0 L 16 20 M 16 0 L 0 20" stroke="#FFFFFF" stroke-width=".6" opacity=".7"/></pattern>
+<pattern id="pat-sheerblue" patternUnits="userSpaceOnUse" width="6" height="6"><rect width="6" height="6" fill="#DDF0FA"/><circle cx="3" cy="3" r=".7" fill="#FFFFFF"/></pattern>`;
+Object.assign(PAT_BASE, { navydotsW: '#C8CCDA', violetfloral: '#4A4690', greengingham: '#8ACB84', harlequin: '#B8C0D6', sheerblue: '#DDF0FA' });
+
+const IDOL20 = [
+  { id: 'd26', cat: 'dress', tpl: 'dotTunic', name: '白底藏青大波点连衣裙', fill: { p: 'navydotsW' }, alt: '#FBFAF4', rib: '#2A3A6E' },
+  { id: 'd27', cat: 'dress', tpl: 'slipDress', name: '紫夜花朵吊带长裙', fill: { p: 'violetfloral' } },
+  { id: 'd28', cat: 'dress', tpl: 'dotTunic', name: '粉蓝菱格小洋装', fill: { p: 'harlequin' }, alt: '#FBFAF4', rib: '#F48FB1' },
+  { id: 't86', cat: 'top', tpl: 'offShoulderTee', name: '粉色露肩荷叶上衣', fill: { c: '#F8C8D6' }, alt: '#FBFAF4', rib: '#F48FB1' },
+  { id: 't87', cat: 'top', tpl: 'puffBlouse', name: '冰蓝纱感泡泡袖衬衫', fill: { p: 'sheerblue' }, alt: '#EAF6FC', rib: '#6FC7BE', print: 'bow' },
+  { id: 't88', cat: 'top', tpl: 'buttonShirt', name: '绿格纹宽松衬衫', fill: { p: 'greengingham' } },
+  { id: 't89', cat: 'top', tpl: 'babyTee', name: '粉色小短T', fill: { c: '#F6B6CA' }, alt: '#F6B6CA', rib: '#FBFAF4' },
+  { id: 'o43', cat: 'outer', tpl: 'zipHoodieOpen', name: '白色紫边连帽外套', fill: { c: '#FBFAF4' }, sleeve: '#FBFAF4', rib: '#9A7ADA' },
+  { id: 'b77', cat: 'bottom', tpl: 'shorts', name: '浅蓝卷边牛仔短裤', fill: { p: 'lightdenim' }, stitch: '#F6E08A' },
+  { id: 'b78', cat: 'bottom', tpl: 'tierSkirt', name: '薄荷蛋糕纱裙', fill: { c: '#A8E6DC' }, alt: '#C8F2EA', rib: '#F6E08A', print: 'bow' },
+  { id: 'b79', cat: 'bottom', tpl: 'denimFrillMini', name: '牛仔荷叶短裙', fill: { p: 'lightdenim' }, alt: '#FBFAF4' },
+  { id: 'b80', cat: 'bottom', tpl: 'aMini', name: '柠檬黄花朵A字裙', fill: { p: 'lemonfloral' } },
+  { id: 'b81', cat: 'bottom', tpl: 'hotShorts', name: '湖蓝短裤', fill: { c: '#5EC8C8' } }
+];
+IDOL20.forEach(i => { i.isNew = true; i.ip = 'aikatsu'; });
+WARDROBE.unshift(...IDOL20);
+
+/* 整套造型：一键换上（发型用本作的发型 + 发色） */
+const LOOKS = [
+  { name: '白波点 · 公主卷', ip: 'aikatsu', o: { hair: 'h27', hairColor: '#E4EAD6', dress: 'd26', top: null, bottom: null, outer: null, legs: 'l7', warmer: null, shoes: 's2', acc: ['a90'] } },
+  { name: '紫夜花裙', ip: 'aikatsu', o: { hair: 'h20', hairColor: '#A8532E', dress: 'd27', top: null, bottom: null, outer: null, legs: null, warmer: null, shoes: 's17', acc: ['a74'] } },
+  { name: '露肩 · 牛仔短裤', ip: 'aikatsu', o: { hair: 'h12', hairColor: '#B9A0E0', top: 't86', bottom: 'b77', dress: null, outer: null, legs: null, warmer: null, shoes: 's11', acc: [] } },
+  { name: '冰蓝 · 薄荷纱裙', ip: 'aikatsu', o: { hair: 'h7', hairColor: '#F2DC7A', top: 't87', bottom: 'b78', dress: null, outer: null, legs: null, warmer: null, shoes: 's34', acc: ['a115'] } },
+  { name: '绿格衬衫 · 牛仔', ip: 'aikatsu', o: { hair: 'h32', hairColor: '#3E5AB8', top: 't88', bottom: 'b79', dress: null, outer: null, legs: 'l33', warmer: null, shoes: 's8', acc: ['a89'] } },
+  { name: '薄荷 · 柠檬花裙', ip: 'aikatsu', o: { hair: 'h17', hairColor: '#F4AFC8', top: 't61', bottom: 'b80', dress: null, outer: null, legs: null, warmer: null, shoes: 's1', acc: [] } },
+  { name: '粉蓝菱格', ip: 'aikatsu', o: { hair: 'h37', hairColor: '#D98A4A', dress: 'd28', top: null, bottom: null, outer: null, legs: null, warmer: null, shoes: 's34', acc: ['a47'] } },
+  { name: '白紫连帽 · 湖蓝短裤', ip: 'aikatsu', o: { hair: 'h5', hairColor: '#D8323C', top: 't89', outer: 'o43', bottom: 'b81', dress: null, legs: 'l7', warmer: null, shoes: 's8', acc: [] } }
+];
+
+/* ---------- 筛选标签 ---------- */
+const IP_LABEL = { aikatsu: '偶像活动' };
+const STYLE_RULES = [['甜美', /蝴蝶结|荷叶|蕾丝|泡泡|蛋糕|爱心|草莓|娃娃|公主|芭蕾|纱|粉色/], ['街头', /卫衣|连帽|工装|运动|链条|破洞|摇滚|马丁|老爹|热裤|阔腿|网/], ['复古', /格纹|格|波点|碎花|花朵|灯芯绒|菱格|古着|麻花|费尔岛|豹纹/],
+  ['学院', /水手|百褶|领结|背带|领带|乐福|牛津|马甲/], ['休闲', /T|牛仔|短裤|衬衫|开衫|条纹|针织|毛衣|帆布/]];
+const styleOf = it => STYLE_RULES.filter(([, re]) => re.test(it.name)).map(([k]) => k);
+const colorOf = it => { if (!it.fill && !it.diy) return null; try { const r = resolveFill(it); return r.base && /^#[0-9a-f]{6}$/i.test(r.base) ? colorName(r.base) : null; } catch (e) { return null; } };
+
 /* ---------- 小物分区：帽子 / 发饰 / 耳饰 / 眼镜 / 颈饰 / 包包 / 手饰 / 腰饰 ---------- */
 const ACC_GROUPS = [['hat', '帽子头巾'], ['hairacc', '发饰'], ['ear', '耳饰'], ['glasses', '眼镜'], ['neck', '项链颈饰'], ['bag', '包包'], ['hand', '手饰'], ['waist', '腰饰胸针'], ['deco', '贴纸创可贴']];
 const ACC_SUB = {
@@ -7710,7 +7785,7 @@ function cleanOutfit(o) {
   if (!byId(out.hair)) out.hair = 'h4';
   if (out.dress) { out.top = null; out.bottom = null; }
   if (Array.isArray(o.acc)) out.acc = oneEach(o.acc.filter(id => byId(id)));
-  out.hairColor = HAIR_COLORS.some(([c]) => c === o.hairColor) ? o.hairColor : null;
+  out.hairColor = /^#[0-9a-f]{6}$/i.test(o.hairColor || '') ? o.hairColor : null;   // 色块里的颜色，或者整套造型自带的发色
   return out;
 }
 
@@ -7788,7 +7863,7 @@ function renderGrid() {
   else if (t === 'acc') html = accPanelHTML();
   else if (t === 'diy') html = ADD_CARD('top') + (state.custom.length ? state.custom.map(cardHTML).join('') : '<p class="empty">还没有 DIY 的衣服。用一张照片做一件，或者直接在娃娃身上画一件。</p>');
   else {
-    html = WARDROBE.filter(i => i.cat === t).map(cardHTML).join('') + state.custom.filter(i => i.cat === t).map(cardHTML).join('');
+    html = filterBarHTML(t) + WARDROBE.filter(i => i.cat === t && passFilter(i)).map(cardHTML).join('') + state.custom.filter(i => i.cat === t && passFilter(i)).map(cardHTML).join('');
     if (['top', 'outer', 'bottom', 'dress'].includes(t)) html += ADD_CARD(t);
   }
   $('#grid').innerHTML = html;
@@ -7799,6 +7874,24 @@ function hairColorRow() {
   return `<div class="hair-colors" role="radiogroup" aria-label="发色"><span class="hc-label">发色</span>` +
     `<button type="button" class="hc hc-orig" data-hc="" role="radio" aria-checked="${!cur}" title="原色"><span>原色</span></button>` +
     HAIR_COLORS.map(([c, n]) => `<button type="button" class="hc" data-hc="${c}" role="radio" aria-checked="${cur === c}" title="${n}" aria-label="${n}" style="--c:${c}"></button>`).join('') + '</div>';
+}
+/* ---------- 衣橱筛选：系列（IP）/ 颜色 / 风格；选了系列时最上面一排是这个系列的整套造型，点一下全身换上 ---------- */
+const COLOR_DOT = { 奶油白: '#FBF4DE', 酷黑: '#2A2528', 银灰: '#C8C6CE', 炭灰: '#6A666C', 樱花粉: '#F7B8CC', 樱桃红: '#D8323C', 蜜桃粉: '#F8C4A8', 焦糖棕: '#8A5A3A', 蜜桃橘: '#F29A5A', 卡其: '#A89A6A', 柠檬黄: '#F6E27A', 薄荷绿: '#A8E6C8', 抹茶绿: '#5E9A5A', 汽水蓝: '#7ED6E0', 牛仔蓝: '#6F92BC', 天空蓝: '#8EC0E6', 香芋紫: '#B9A0E0', 泡泡粉: '#F4AFC8', 芭比粉: '#E0508A' };
+const flt = () => (state.filter = state.filter || { ip: '', color: '', style: '' });
+function passFilter(it) { const f = flt(); return (!f.ip || it.ip === f.ip) && (!f.color || colorOf(it) === f.color) && (!f.style || styleOf(it).includes(f.style)); }
+function filterBarHTML(t) {
+  const f = flt(), items = allItems().filter(i => i.cat === t);
+  const chip = (k, v, label, n) => `<button type="button" class="opt" data-flt="${k}" data-v="${v}" aria-pressed="${f[k] === v}">${label}${n != null ? `<span class="n">${n}</span>` : ''}</button>`;
+  const ips = [...new Set(items.map(i => i.ip).filter(Boolean))], cols = [...new Set(items.map(colorOf).filter(Boolean))], sts = STYLE_RULES.map(([k]) => k).filter(k => items.some(i => styleOf(i).includes(k)));
+  const row = (label, body) => `<div class="flt-row"><span class="flt-label">${label}</span><div class="flt-opts">${body}</div></div>`;
+  const looks = f.ip ? LOOKS.filter(L => L.ip === f.ip) : [];
+  const on = ['ip', 'color', 'style'].filter(k => f[k]).length;
+  return `<div class="flt${state.fltOpen ? ' open' : ''}"><button type="button" class="flt-toggle" data-flttoggle aria-expanded="${!!state.fltOpen}">筛选${on ? `<span class="n">${on}</span>` : ''} ▾</button><div class="flt-body">` +
+    row('系列', chip('ip', '', '全部') + ips.map(k => chip('ip', k, IP_LABEL[k] || k, items.filter(i => i.ip === k).length)).join('')) +
+    (cols.length > 1 ? row('颜色', `<button type="button" class="opt" data-flt="color" data-v="" aria-pressed="${!f.color}">全部</button>` + cols.map(c => `<button type="button" class="cdot" data-flt="color" data-v="${c}" aria-pressed="${f.color === c}" title="${c}" aria-label="${c}" style="--c:${COLOR_DOT[c] || '#ccc'}"></button>`).join('')) : '') +
+    (sts.length ? row('风格', chip('style', '', '全部') + sts.map(k => chip('style', k, k)).join('')) : '') +
+    (looks.length ? `<div class="looks">${looks.map((L, i) => `<button type="button" class="look-btn" data-look="${LOOKS.indexOf(L)}" aria-label="换上整套：${L.name}"><svg viewBox="70 40 160 540" aria-hidden="true">${dollSVG({ ...state.outfit, ...L.o, face: state.outfit.face }, {}, null)}</svg><span>${L.name}</span></button>`).join('')}</div>` : '') +
+    `</div></div>` + (items.some(passFilter) ? '' : '<p class="empty">这个分类里没有符合筛选的单品。</p>');
 }
 /* 小物按分区显示：全部时每个分区一个小标题 */
 function accPanelHTML() {
@@ -8004,6 +8097,9 @@ function bind() {
     }
     const labBtn = e.target.closest('[data-lab]'); if (labBtn) { openLab(labBtn.dataset.lab, labBtn, 'tpl'); return; }
     const drawBtn = e.target.closest('[data-draw]'); if (drawBtn) { openLab(drawBtn.dataset.draw, drawBtn, 'draw'); return; }
+    if (e.target.closest('[data-flttoggle]')) { state.fltOpen = !state.fltOpen; renderGrid(); return; }
+    const fb2 = e.target.closest('[data-flt]'); if (fb2) { const f = flt(); f[fb2.dataset.flt] = f[fb2.dataset.flt] === fb2.dataset.v ? '' : fb2.dataset.v; renderGrid(); const again = $(`[data-flt="${fb2.dataset.flt}"][data-v="${fb2.dataset.v}"]`); if (again) again.focus(); return; }
+    const lk = e.target.closest('[data-look]'); if (lk) { const L = LOOKS[+lk.dataset.look]; state.outfit = cleanOutfit({ ...state.outfit, ...L.o, face: state.outfit.face }); save(); renderStage(true); renderGrid(); return; }
     const hc = e.target.closest('[data-hc]'); if (hc) { state.outfit.hairColor = hc.dataset.hc || null; save(); renderStage(false); renderGrid(); const again = $(`[data-hc="${hc.dataset.hc}"]`); if (again) again.focus(); return; }
     const sb = e.target.closest('[data-sub]'); if (sb) { state.accSub = sb.dataset.sub; renderGrid(); const again = $(`[data-sub="${state.accSub}"]`); if (again) again.focus(); return; }
     const b = e.target.closest('[data-id]'); if (!b) return;

@@ -302,6 +302,32 @@ select.name-in{flex:1 1 140px}
 .hc[aria-checked="true"]{outline:3px solid var(--pink);outline-offset:2px}
 .hc-orig{width:auto;padding:0 9px;white-space:nowrap;border-radius:999px;background:#fff;font-family:var(--f-display);font-size:12px;box-shadow:none}
 @media (max-width:879px){.hair-colors{gap:5px}.hc{width:24px;height:24px;flex:0 0 auto}.hc-label{flex:1 0 100%}.hair-colors .hc-orig{width:auto;height:24px;padding:0 8px}}
+
+/* 衣橱筛选 */
+.flt{grid-column:1/-1;display:flex;flex-direction:column;gap:5px;padding-bottom:6px;border-bottom:2px dashed #F6C3D4}
+.flt-row{display:flex;align-items:flex-start;gap:6px}
+.flt-label{flex:0 0 auto;font-size:12.5px;color:var(--ink-soft);padding-top:4px;min-width:2.4em}
+.flt-opts{display:flex;flex-wrap:wrap;gap:5px}
+.flt .opt{font-size:12.5px;padding:1px 9px}
+.cdot{width:22px;height:22px;padding:0;border-radius:50%;border:2px solid var(--ink);background:var(--c);cursor:pointer}
+.cdot[aria-pressed="true"]{outline:3px solid var(--pink);outline-offset:1px}
+.looks{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 2px;scrollbar-width:thin}
+.look-btn{flex:0 0 auto;width:74px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 3px;border:2px solid var(--ink);border-radius:12px;background:#FFF2F6;cursor:pointer;font-size:10.5px;line-height:1.2}
+.look-btn svg{width:62px;height:150px;display:block}
+.look-btn:hover{background:var(--pink-soft)}
+.flt-toggle{display:none}
+.flt-body{display:flex;flex-direction:column;gap:5px}
+.flt-opts .opt{flex:0 0 auto;width:auto}
+@media (max-width:879px){
+  .flt-toggle{display:inline-flex;align-self:flex-start;align-items:center;gap:4px;border:2px solid var(--ink);border-radius:999px;background:#fff;padding:2px 12px;font-family:var(--f-display);font-size:13px;cursor:pointer}
+  .flt-toggle .n{font-size:11px;color:#fff;background:var(--pink);border-radius:999px;padding:0 6px}
+  .flt:not(.open) .flt-body{display:none}
+  .flt-body{display:flex;flex-direction:column;gap:5px}
+  .flt-row{flex-direction:column;gap:3px}.flt-label{padding-top:0}
+  .flt .opt{font-size:11.5px;padding:0 7px}.cdot{width:18px;height:18px}
+  .look-btn{width:64px}.look-btn svg{width:54px;height:130px}
+  .card-add .plus{width:30px;height:30px}.card-add .nm{font-size:11px}
+}
 </style>
 
 <svg width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false">

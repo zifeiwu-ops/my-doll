@@ -27,7 +27,7 @@ function cleanOutfit(o) {
   if (!byId(out.hair)) out.hair = 'h4';
   if (out.dress) { out.top = null; out.bottom = null; }
   if (Array.isArray(o.acc)) out.acc = oneEach(o.acc.filter(id => byId(id)));
-  out.hairColor = HAIR_COLORS.some(([c]) => c === o.hairColor) ? o.hairColor : null;
+  out.hairColor = /^#[0-9a-f]{6}$/i.test(o.hairColor || '') ? o.hairColor : null;   // 色块里的颜色，或者整套造型自带的发色
   return out;
 }
 
@@ -105,7 +105,7 @@ function renderGrid() {
   else if (t === 'acc') html = accPanelHTML();
   else if (t === 'diy') html = ADD_CARD('top') + (state.custom.length ? state.custom.map(cardHTML).join('') : '<p class="empty">还没有 DIY 的衣服。用一张照片做一件，或者直接在娃娃身上画一件。</p>');
   else {
-    html = WARDROBE.filter(i => i.cat === t).map(cardHTML).join('') + state.custom.filter(i => i.cat === t).map(cardHTML).join('');
+    html = filterBarHTML(t) + WARDROBE.filter(i => i.cat === t && passFilter(i)).map(cardHTML).join('') + state.custom.filter(i => i.cat === t && passFilter(i)).map(cardHTML).join('');
     if (['top', 'outer', 'bottom', 'dress'].includes(t)) html += ADD_CARD(t);
   }
   $('#grid').innerHTML = html;
@@ -116,6 +116,24 @@ function hairColorRow() {
   return `<div class="hair-colors" role="radiogroup" aria-label="发色"><span class="hc-label">发色</span>` +
     `<button type="button" class="hc hc-orig" data-hc="" role="radio" aria-checked="${!cur}" title="原色"><span>原色</span></button>` +
     HAIR_COLORS.map(([c, n]) => `<button type="button" class="hc" data-hc="${c}" role="radio" aria-checked="${cur === c}" title="${n}" aria-label="${n}" style="--c:${c}"></button>`).join('') + '</div>';
+}
+/* ---------- 衣橱筛选：系列（IP）/ 颜色 / 风格；选了系列时最上面一排是这个系列的整套造型，点一下全身换上 ---------- */
+const COLOR_DOT = { 奶油白: '#FBF4DE', 酷黑: '#2A2528', 银灰: '#C8C6CE', 炭灰: '#6A666C', 樱花粉: '#F7B8CC', 樱桃红: '#D8323C', 蜜桃粉: '#F8C4A8', 焦糖棕: '#8A5A3A', 蜜桃橘: '#F29A5A', 卡其: '#A89A6A', 柠檬黄: '#F6E27A', 薄荷绿: '#A8E6C8', 抹茶绿: '#5E9A5A', 汽水蓝: '#7ED6E0', 牛仔蓝: '#6F92BC', 天空蓝: '#8EC0E6', 香芋紫: '#B9A0E0', 泡泡粉: '#F4AFC8', 芭比粉: '#E0508A' };
+const flt = () => (state.filter = state.filter || { ip: '', color: '', style: '' });
+function passFilter(it) { const f = flt(); return (!f.ip || it.ip === f.ip) && (!f.color || colorOf(it) === f.color) && (!f.style || styleOf(it).includes(f.style)); }
+function filterBarHTML(t) {
+  const f = flt(), items = allItems().filter(i => i.cat === t);
+  const chip = (k, v, label, n) => `<button type="button" class="opt" data-flt="${k}" data-v="${v}" aria-pressed="${f[k] === v}">${label}${n != null ? `<span class="n">${n}</span>` : ''}</button>`;
+  const ips = [...new Set(items.map(i => i.ip).filter(Boolean))], cols = [...new Set(items.map(colorOf).filter(Boolean))], sts = STYLE_RULES.map(([k]) => k).filter(k => items.some(i => styleOf(i).includes(k)));
+  const row = (label, body) => `<div class="flt-row"><span class="flt-label">${label}</span><div class="flt-opts">${body}</div></div>`;
+  const looks = f.ip ? LOOKS.filter(L => L.ip === f.ip) : [];
+  const on = ['ip', 'color', 'style'].filter(k => f[k]).length;
+  return `<div class="flt${state.fltOpen ? ' open' : ''}"><button type="button" class="flt-toggle" data-flttoggle aria-expanded="${!!state.fltOpen}">筛选${on ? `<span class="n">${on}</span>` : ''} ▾</button><div class="flt-body">` +
+    row('系列', chip('ip', '', '全部') + ips.map(k => chip('ip', k, IP_LABEL[k] || k, items.filter(i => i.ip === k).length)).join('')) +
+    (cols.length > 1 ? row('颜色', `<button type="button" class="opt" data-flt="color" data-v="" aria-pressed="${!f.color}">全部</button>` + cols.map(c => `<button type="button" class="cdot" data-flt="color" data-v="${c}" aria-pressed="${f.color === c}" title="${c}" aria-label="${c}" style="--c:${COLOR_DOT[c] || '#ccc'}"></button>`).join('')) : '') +
+    (sts.length ? row('风格', chip('style', '', '全部') + sts.map(k => chip('style', k, k)).join('')) : '') +
+    (looks.length ? `<div class="looks">${looks.map((L, i) => `<button type="button" class="look-btn" data-look="${LOOKS.indexOf(L)}" aria-label="换上整套：${L.name}"><svg viewBox="70 40 160 540" aria-hidden="true">${dollSVG({ ...state.outfit, ...L.o, face: state.outfit.face }, {}, null)}</svg><span>${L.name}</span></button>`).join('')}</div>` : '') +
+    `</div></div>` + (items.some(passFilter) ? '' : '<p class="empty">这个分类里没有符合筛选的单品。</p>');
 }
 /* 小物按分区显示：全部时每个分区一个小标题 */
 function accPanelHTML() {
@@ -321,6 +339,9 @@ function bind() {
     }
     const labBtn = e.target.closest('[data-lab]'); if (labBtn) { openLab(labBtn.dataset.lab, labBtn, 'tpl'); return; }
     const drawBtn = e.target.closest('[data-draw]'); if (drawBtn) { openLab(drawBtn.dataset.draw, drawBtn, 'draw'); return; }
+    if (e.target.closest('[data-flttoggle]')) { state.fltOpen = !state.fltOpen; renderGrid(); return; }
+    const fb2 = e.target.closest('[data-flt]'); if (fb2) { const f = flt(); f[fb2.dataset.flt] = f[fb2.dataset.flt] === fb2.dataset.v ? '' : fb2.dataset.v; renderGrid(); const again = $(`[data-flt="${fb2.dataset.flt}"][data-v="${fb2.dataset.v}"]`); if (again) again.focus(); return; }
+    const lk = e.target.closest('[data-look]'); if (lk) { const L = LOOKS[+lk.dataset.look]; state.outfit = cleanOutfit({ ...state.outfit, ...L.o, face: state.outfit.face }); save(); renderStage(true); renderGrid(); return; }
     const hc = e.target.closest('[data-hc]'); if (hc) { state.outfit.hairColor = hc.dataset.hc || null; save(); renderStage(false); renderGrid(); const again = $(`[data-hc="${hc.dataset.hc}"]`); if (again) again.focus(); return; }
     const sb = e.target.closest('[data-sub]'); if (sb) { state.accSub = sb.dataset.sub; renderGrid(); const again = $(`[data-sub="${state.accSub}"]`); if (again) again.focus(); return; }
     const b = e.target.closest('[data-id]'); if (!b) return;
