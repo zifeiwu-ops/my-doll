@@ -15,9 +15,15 @@ DOC = '''/* ====================================================================
    ===================================================================== */
 '''
 PARTS = ['base7.js', 'colors7.js', 'body7_data.js', 'body7.js', 'pat7.js', 'pat10.js', 'pat11.js', 'pat13.js', 'pat15.js', 'pat16.js', 'tpl7.js', 'tpl7b.js', 'tpl7c.js', 'tpl10.js', 'tpl11.js', 'fx14.js', 'tpl15.js', 'tpl16.js', 'hair7.js', 'hair7b.js', 'hair10.js', 'hair11.js', 'hair13.js', 'hair15.js', 'hair16.js', 'items7.js', 'items7b.js', 'items10.js', 'items11.js', 'items13.js', 'items15.js', 'items16.js', 'wardrobe7.js', 'wardrobe10.js', 'wardrobe11.js', 'wardrobe13.js', 'wardrobe15.js', 'wardrobe16.js', 'acc13.js', 'render7.js', 'pose17.js', 'draw9.js', 'vision7.js', 'studio12.js', 'studio13.js', 'studio15.js', 'ui7.js']
+# 源码按分区放在 src/ 的子文件夹里（core / body / patterns / templates / hair / items / wardrobe / studio / ui）。
+# PARTS 只写文件名、按拼接顺序排列；这里自动去子文件夹里找到对应文件。
+def find(name):
+    for root, _, files in os.walk(D):
+        if name in files: return os.path.join(root, name)
+    raise FileNotFoundError('src/ 里找不到 ' + name)
 def build():
-    h = open(D + 'head7.html', encoding='utf-8').read()
-    js = DOC + '\n'.join(open(D + p, encoding='utf-8').read() for p in PARTS)
+    h = open(find('head7.html'), encoding='utf-8').read()
+    js = DOC + '\n'.join(open(find(p), encoding='utf-8').read() for p in PARTS)
     out = h + '\n<script>\n' + js + '</script>\n'
     i = out.index('</style>') + 8
     page = '<!doctype html>\n<html lang="zh-CN">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n' + out[:i] + '\n</head>\n<body>\n' + out[i:] + '\n</body>\n</html>\n'
