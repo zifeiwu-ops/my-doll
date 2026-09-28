@@ -5968,7 +5968,7 @@ function dollSVG(outfit, over = {}, pose = null) {
     const hide = (l, y) => { const c = uid('hc'); return { ...l, svg: `<clipPath id="${c}"><rect x="-40" y="${y}" width="380" height="700"/></clipPath><g clip-path="url(#${c})">${l.svg}</g>` }; };
     H.forEach((l, i) => { if (l.cat === 'hair') { const y = l.z < 10 ? 78 : 60; H[i] = hide(l, P ? f1(y + propOffset(150, y)[1]) : y); } });   // 有姿势时身体按时装比例变形过，裁切线跟着挪
   }
-  L.push(...pantsOverShoes(bottom, slot('shoes'), P ? y => y + propOffset(150, y)[1] : y => y));   // 有姿势时裁切线跟着时装比例挪
+  L.push(...hangOverShoes(L, bottom, slot('shoes'), P ? y => y + propOffset(150, y)[1] : y => y));   // 有姿势时裁切线跟着时装比例挪
   if (P) return posedSVG(P, L, H, accL, { bottom });
   return layersSVG(L.concat(headWrap(H)));
 }
@@ -6074,12 +6074,13 @@ function posedSVG(P, L, H, bags, W0) {
    小脚裤 / 工装裤配靴子时照旧塞进靴筒里 */
 const PANTS_OVER = new Set(['widePants', 'cargo', 'flareJeans', 'skinnyJeans', 'slacks', 'sashPants', 'skirtJeans', 'wideFlare', 'wrapCargo', 'balloonPants']);
 const PANTS_TUCK = new Set(['skinnyJeans', 'cargo', 'wrapCargo']);
-function pantsOverShoes(bottom, shoes, ym) {
-  if (!bottom || !shoes || !PANTS_OVER.has(bottom.tpl)) return [];
-  const sTop = +thumbOf(shoes).split(' ')[1], boot = sTop < 505;
-  if (boot && PANTS_TUCK.has(bottom.tpl)) return [];
-  const y = f1(ym(boot ? sTop - 8 : 496));
-  return partsOf(bottom).filter(p => p.z >= 15 && p.z < 30).map(p => { const id = uid('an'); return { z: 41, svg: `<clipPath id="${id}"><rect x="0" y="${y}" width="300" height="${600 - y}"/></clipPath><g clip-path="url(#${id})">${p.svg}</g>` }; });
+/* 垂下来的衣服（长裙、连衣裙、不收脚的裤子、长外套）盖在鞋子 / 腿套外面：膝盖以下那截在鞋子上面再画一遍。
+   紧身打底裤、收进靴子里的裤子不算（它们在鞋子里面） */
+function hangOverShoes(L, bottom, shoes, ym) {
+  const sTop = shoes ? +thumbOf(shoes).split(' ')[1] : 600, boot = sTop < 505;
+  const skipBottom = bottom && (bottom.tpl === 'leggings' || (boot && PANTS_TUCK.has(bottom.tpl)));
+  const y = f1(ym(404)), zs = { bottom: 43, dress: 43.2, outer: 43.4 };
+  return L.filter(l => zs[l.cat] && !(l.cat === 'bottom' && skipBottom) && l.z >= 15 && l.z < 40).map(l => { const id = uid('an'); return { z: zs[l.cat] + l.z / 1000, svg: `<clipPath id="${id}"><rect x="-60" y="${y}" width="420" height="${f1(700 - y)}"/></clipPath><g clip-path="url(#${id})">${l.svg}</g>` }; });
 }
 function thumbSVG(it) {
   const L = partsOf(it).slice();
