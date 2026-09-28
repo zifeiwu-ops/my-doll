@@ -4,7 +4,7 @@
    ===================================================================== */
 /* 柔软画法：描边用发色压暗的深棕（不用纯黑）、线更细，内侧高光和月牙阴影都收轻，发丝线更细更淡 */
 const hairInk = c => (/^#[0-9a-f]{6}$/i.test(c) ? mix(c, INK, .7) : INK);
-const hairPiece = (d, c, o = {}) => piece(d, c, { rim: [1.7, 1.4], sw: 1.02, oc: hairInk(c), lit: false, cls: 'ho', ...o, ...(o.gloss ? { glossOp: .3 } : {}), over: (o.over || '') + (o.auto === false ? '' : autoStrands(d, c)) });
+const hairPiece = (d, c, o = {}) => piece(d, c, { rim: [1.7, 1.4], sw: .85, oc: hairInk(c), lit: false, fx: false, cls: 'ho', ...o, ...(o.gloss ? { glossOp: .3 } : {}), over: (o.over || '') + (o.auto === false ? '' : autoStrands(d, c)) });
 /* 自动发丝：沿这一片头发的走向，在左右边缘之间排几根两头尖的细发丝（参考图里每一片头发都有一层细密的发丝线） */
 function autoStrands(d, c) {
   if (!SOFT || !/^#[0-9a-f]{6}$/i.test(c)) return '';
@@ -60,7 +60,7 @@ const CAP_PTS = [[150, 59], [139, 59.8], [129, 62.6], [121, 67.6], [114.6, 74.4]
 const CAP = symS([[150, 59], [139, 59.8], [129, 62.6], [121, 67.6], [114.6, 74.4], [110.4, 82.6], [108, 92], [107.2, 102], [107.6, 112], [109.4, 121, 'c'], [116, 104], [126, 92], [138, 86.4], [150, 85]]);
 /* 发顶：只描外轮廓，下缘（发际线）不描边，好让刘海发束从下面自然长出来 */
 function capPiece(d, outline, c, o = {}) {
-  return piece(d, c, { rim: false, sw: 0, lit: false, ...o }).replace(/<path d="[^"]*" fill="none" stroke="[^"]*" stroke-width="0"[^>]*\/>$/, '') + `<path class="ho" d="${outline}" fill="none" stroke="${hairInk(c)}" stroke-width="1.02" stroke-linecap="round" stroke-linejoin="round"/>`;
+  return piece(d, c, { rim: false, sw: 0, lit: false, fx: false, ...o }).replace(/<path d="[^"]*" fill="none" stroke="[^"]*" stroke-width="0"[^>]*\/>$/, '') + `<path class="ho" d="${outline}" fill="none" stroke="${hairInk(c)}" stroke-width=".85" stroke-linecap="round" stroke-linejoin="round"/>`;
 }
 const CAP_LINE = line(CAP_PTS.slice().reverse().concat(CAP_PTS.slice(1).map(mx)));
 const capHair = (c, ln, extra = '') => capPiece(CAP, CAP_LINE, c, { lines: capLines(ln), shade: ['M 170 62 C 186 72 192 90 191 118 L 200 118 L 200 60 Z'], over: extra });

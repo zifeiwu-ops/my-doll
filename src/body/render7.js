@@ -70,17 +70,17 @@ const LEAN = { hip: 4.6, kneeL: 3.4, footL: 1.4, tilt: .02 };            // 重�
 const LEAN_L = { hip: -4.2, kneeR: 3.2, footR: 1.4, tilt: -.018 };       // 重心放在左腿上
 const POSES = {
   relax: { name: '自然站立', warp: 'relax' },
-  shy: { name: '内八俏皮', warp: 'shy', isNew: true },
+  shy: { name: '内八俏皮', warp: 'shy', isNew: true, skirt: { flare: -1.2 } },
   stand: { name: '立正' },
   clasp: { name: '乖巧', head: -4, body: LEAN, L: { up: -4, fore: -44 }, R: { up: 4, fore: 44 } },
   behind: { name: '背手', head: 4, body: LEAN_L, L: { up: 6, fore: -30, back: true }, R: { up: -6, fore: 30, back: true } },
   hip: { name: '叉腰', head: -5, body: LEAN, L: { up: 24, fore: -78 }, R: { up: -4, fore: -6 } },
-  wave: { name: '打招呼', head: 5, body: LEAN_L, R: { up: -16, fore: -150, over: true }, L: { up: 4, fore: 6 } },
-  kick: { name: '踢腿', head: 4, body: { hip: -3, tilt: -.02 }, leg: -30, L: { up: 10, fore: 12 }, R: { up: -12, fore: -14 } },
+  wave: { name: '打招呼', head: 5, body: LEAN_L, skirt: { sway: 1.2 }, hair: { sway: 1.6 }, R: { up: -16, fore: -150, over: true }, L: { up: 4, fore: 6 } },
+  kick: { name: '踢腿', head: 4, body: { hip: -3, tilt: -.02 }, leg: -30, hair: { sway: -3.5, flare: 2.4, lift: 1.2 }, L: { up: 10, fore: 12 }, R: { up: -12, fore: -14 } },
   /* Coquette 芭蕾甜心 */
-  curtsy: { name: '提裙', head: -6, body: LEAN, L: { up: 14, fore: 16 }, R: { up: -14, fore: -16 } },
+  curtsy: { name: '提裙', head: -6, body: LEAN, skirt: { flare: 5.5, lift: 2.6 }, hair: { flare: 1.2 }, L: { up: 14, fore: 16 }, R: { up: -14, fore: -16 } },
   heart: { name: '比心', head: 5, body: LEAN_L, L: { up: -8, fore: -140 }, R: { up: 8, fore: 140 }, extra: `<path d="${heartD(150, 199, 6)}" fill="#F48FB1" stroke="#fff" stroke-width="2" paint-order="stroke"/><path d="M 146.4 196 Q 147 194 149 194" fill="none" stroke="#fff" stroke-width="1" stroke-linecap="round"/>` },
-  spread: { name: '芭蕾展臂', head: -5, body: LEAN, L: { up: 52, fore: 18 }, R: { up: -52, fore: -18 } }
+  spread: { name: '芭蕾展臂', head: -5, body: LEAN, skirt: { flare: 3.2, lift: 1.2 }, hair: { flare: 2.6, lift: 1 }, L: { up: 52, fore: 18 }, R: { up: -52, fore: -18 } }
 };
 const BAGS = new Set(['a4', 'a27', 'a33', 'a34', 'a47', 'a58', 'a42', 'a53', 'a48', 'a49', 'a50']);        // 包不跟着手臂变形，整只保留在原处
 const HELD = { a47: 'L', a34: 'R', a73: 'L', a90: 'L' };                                               // 拎在手上的包跟着那只手走
@@ -97,7 +97,7 @@ const RIG = (() => {
   const handBits = d => (String(d).match(/M[^M]*/g) || []).filter(q => { const n = q.match(/-?\d*\.?\d+/g); return n && +n[0] < 104 && +n[1] > 296 && +n[1] < 362; }).join('');
   const armSkin = () => { const m = uid('m');
     return `<path d="${skin}" fill="${SKIN}"/><mask id="${m}" maskUnits="userSpaceOnUse" x="-20" y="-20" width="340" height="640"><rect x="-20" y="-20" width="340" height="640" fill="#fff"/><path d="${skin}" transform="translate(-2.6 -1)" fill="#000"/></mask><path d="${skin}" fill="#F7D9CF" mask="url(#${m})"/>` +
-      `<path d="${edge}" fill="none" stroke="${INK}" stroke-width="1.45" stroke-linejoin="round"/>` +
+      `<path d="${edge}" fill="none" stroke="${INK}" stroke-width="1.15" stroke-linejoin="round"/>` +
       `<path d="${handBits(DETAIL_SOFT)}" fill="${SKIN_LINE}" opacity=".78"/><path d="${handBits(DETAIL_DARK)}" fill="${INK}"/>`; };
   const back = band(200, 384, b);
   return { yE, yK, S: [113, 198], E, K, SKIN: { L: () => armSkin(), R: () => `<g transform="translate(300 0) scale(-1 1)">${armSkin()}</g>` }, BACK: { L: back, R: mir(back) } };
@@ -109,14 +109,20 @@ function posedSVG(P, L, H, bags, W0) {
   const legOK = P.leg && !L.some(l => (l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(W0.bottom.tpl)))) && reachesKnee(l));
   const base = P.warp ? WARP_POSES[P.warp] : {};
   const W = { head: 0, hip: 0, kneeL: 0, footL: 0, kneeR: 0, footR: 0, armL: 0, armR: 0, tilt: 0, ...base, ...(P.body || {}), head: P.head ?? base.head ?? 0, arms: { L: P.L, R: P.R }, leg: legOK ? P.leg : 0 };
+  // 裙摆：默认跟着胯的反方向轻轻荡；发尾：默认跟着歪头方向顺一点。姿势里的 skirt / hair 再加上动作本身的甩动
+  const kick = legOK ? 1 : 0, sk = P.skirt || {}, hr = P.hair || {};
+  Object.assign(W, { skirtSway: -.34 * W.hip + (sk.sway || 0) + kick * 2.4, skirtFlare: (sk.flare || 0) + kick * 3.2, skirtLift: sk.lift || 0,
+    hairSway: .28 * W.head + (hr.sway || 0), hairFlare: hr.flare || 0, hairLift: hr.lift || 0 });
   const moves = k => !!(P[k] && (P[k].up || P[k].fore));
   const inward = k => (k === 'L' ? -1 : 1) * ((P[k].up || 0) + (P[k].fore || 0)) > 20;
   const front = ['L', 'R'].filter(k => moves(k) && !P[k].back && (inward(k) || P[k].over)), back = ['L', 'R'].filter(k => moves(k) && P[k].back);
   const garment = l => l.cat !== 'body' && l.cat !== 'acc' && !l.drawn;
-  const opt = l => (garment(l) ? { garment: true } : {}), FREE = { arms: false, leg: false };
+  const skirty = l => l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(W0.bottom.tpl)));
+  const opt = l => (garment(l) ? { garment: true, skirt: skirty(l) } : {}), FREE = { arms: false, leg: false };
   const Ls = L.slice().sort((a, b) => a.z - b.z);
   const out = Ls.map(l => ({ z: l.z, svg: warpSVG(l.svg, W, opt(l)) }));
-  H.forEach(l => out.push({ z: l.z, svg: warpSVG(l.svg, W, FREE) }));   // 头发不被手臂带走
+  const hopt = l => (l.cat === 'hair' ? { ...FREE, hair: true } : FREE);
+  H.forEach(l => out.push({ z: l.z, svg: warpSVG(l.svg, W, hopt(l)) }));   // 头发不被手臂带走
   // 手挡在身前：只把这只手（皮肤 + 认出来的袖子 + 手上的小物）在上层再画一遍
   front.forEach(k => {
     const re = new RegExp(`<!--arm${k}-->([\\s\\S]*?)<!--\\/arm${k}-->`, 'g');
@@ -126,7 +132,7 @@ function posedSVG(P, L, H, bags, W0) {
   });
   // 背手：把整个画面（去掉背过去的手臂）在最上层再画一遍，盖住藏到身后的手
   if (back.length) {
-    const m = uid('pm'), all = Ls.map(l => ({ z: l.z, svg: warpSVG(l.svg, W, { ...opt(l), arms: false }) })).concat(H.map(l => ({ z: l.z, svg: warpSVG(l.svg, W, FREE) })));
+    const m = uid('pm'), all = Ls.map(l => ({ z: l.z, svg: warpSVG(l.svg, W, { ...opt(l), arms: false }) })).concat(H.map(l => ({ z: l.z, svg: warpSVG(l.svg, W, hopt(l)) })));
     out.push({ z: 99, svg: `<mask id="${m}" maskUnits="userSpaceOnUse" x="-60" y="-60" width="420" height="740"><rect x="-60" y="-60" width="420" height="740" fill="#fff"/>${back.map(k => `<path d="${RIG.BACK[k]}" fill="#000"/>`).join('')}</mask><g mask="url(#${m})">${layersSVG(all)}</g>` });
   }
   // 包：斜挎 / 腰包不跟手臂变形；拎在手上的包整只平移到手上（小臂举过头时挂在手肘上）

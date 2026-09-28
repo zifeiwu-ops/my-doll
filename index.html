@@ -458,15 +458,29 @@ function mir(d) {
 const mx = p => [300 - p[0], p[1], p[2]];
 
 /* 平滑曲线：点列 → 三次贝塞尔（Catmull-Rom）。点可带第三项 'c' 表示尖角 */
-/* SOFT > 0 时，标了 'c' 的尖角也带一点圆弧（画头发时打开：发梢柔软、不扎手） */
+/* SOFT > 0 时，标了 'c' 的尖角也带一点圆弧（画头发时打开：发梢柔软、不扎手）；
+   CSOFT：衣服、鞋子的尖角平时也倒一个小圆角（半径约 2），布料边角不再像纸片一样方；只圆角、不动直边，叠在一起的布片照样对齐 */
 let SOFT = 0;
+const CSOFT = 2.2;
+function filletPts(pts, closed) {
+  const n = pts.length, out = [];
+  pts.forEach((C, i) => {
+    if (C[2] !== 'c' || (!closed && (i === 0 || i === n - 1))) { out.push(C); return; }
+    const P = pts[(i - 1 + n) % n], N = pts[(i + 1) % n], lp = Math.hypot(P[0] - C[0], P[1] - C[1]), ln = Math.hypot(N[0] - C[0], N[1] - C[1]), r = Math.min(CSOFT, lp * .3, ln * .3);
+    if (r < .4) { out.push(C); return; }
+    out.push([C[0] + (P[0] - C[0]) / lp * r, C[1] + (P[1] - C[1]) / lp * r, 'c', C], [C[0] + (N[0] - C[0]) / ln * r, C[1] + (N[1] - C[1]) / ln * r, 'c']);
+  });
+  return out;
+}
 function spline(pts, closed = true, t = .5) {
+  if (!SOFT && CSOFT) pts = filletPts(pts, closed);
   const n = pts.length, P = i => pts[closed ? (i + n) % n : Math.max(0, Math.min(n - 1, i))];
   let d = `M ${f1(pts[0][0])} ${f1(pts[0][1])}`;
   const last = closed ? n : n - 1;
   for (let i = 0; i < last; i++) {
     const p0 = P(i - 1), p1 = P(i), p2 = P(i + 1), p3 = P(i + 2);
     const k1 = p1[2] === 'c' ? t * SOFT : t, k2 = p2[2] === 'c' ? t * SOFT : t;
+    if (p1[3]) { const C = p1[3]; d += ` C ${f1(p1[0] + (C[0] - p1[0]) * .55)} ${f1(p1[1] + (C[1] - p1[1]) * .55)} ${f1(p2[0] + (C[0] - p2[0]) * .55)} ${f1(p2[1] + (C[1] - p2[1]) * .55)} ${f1(p2[0])} ${f1(p2[1])}`; continue; }   // 圆角
     const c1 = [p1[0] + (p2[0] - p0[0]) * k1 / 3, p1[1] + (p2[1] - p0[1]) * k1 / 3];
     const c2 = [p2[0] - (p3[0] - p1[0]) * k2 / 3, p2[1] - (p3[1] - p1[1]) * k2 / 3];
     d += ` C ${f1(c1[0])} ${f1(c1[1])} ${f1(c2[0])} ${f1(c2[1])} ${f1(p2[0])} ${f1(p2[1])}`;
@@ -484,7 +498,7 @@ const line = (pts, t) => spline(pts, false, t);
    --------------------------------------------------------------------- */
 /* 统一画风（对齐 Y2K COLLECTION SPRITE SHEET）：和身体一样的深棕描边、偏暖的粉紫阴影（边缘略柔）、
    很淡的内侧高光；褶皱线画成两头尖的笔触（像手绘勾线），不再是一样粗的死线 */
-const STYLE = { line: '#3D3134', sw: .85, shade: '#E2C0CE', lit: false, litOp: .2, foldW: .52, foldOp: .42, foldShadeW: 4.4, foldShadeOp: .62, brush: true, volOp: .95 };
+const STYLE = { line: '#3D3134', sw: .62, shade: '#E2C0CE', lit: false, litOp: .2, foldW: .52, foldOp: .42, foldShadeW: 4.4, foldShadeOp: .62, brush: true, volOp: .95 };
 /* 布料的底色（给褶皱线配同色系的深色） */
 function baseOf(fill) {
   if (!fill || typeof fill !== 'string') return null;
@@ -531,15 +545,45 @@ const resamp = (P, n = 10) => { const seg = [], L = [0]; for (let i = 1; i < P.l
 /* 一条线 → 两头尖的笔触（填充路径） */
 function brushD(d, w, head = .55) { const S = pathPolys(d); if (!S) return null; const P = S.filter(p => p.length > 1); return P.length ? P.map(p => taperD(resamp(p, 10), w, head)).join(' ') : null; }
 
+/* 同色系彩色线稿：描边用布料本身的颜色压暗，浅色衣服的线不再是一圈死黑 */
+const lineOf = fill => { const b = baseOf(fill); return !b ? STYLE.line : hsl(b)[2] < .24 ? '#0C070A' : mix(b, '#2A1B24', .7); };   // 深色布料的线再压暗一档，边缘不会糊掉
+/* 阴影跟着布料颜色走：在布料色的基础上往冷紫偏一点（正片叠底），不再每件都是同一种粉紫 */
+const shadeOf = fill => { const b = baseOf(fill); return b ? mix(mix(b, '#FFFFFF', .42), '#8E78B4', .34) : STYLE.shade; };
+/* 自然的褶皱笔触：沿原来的褶线轻轻 S 弯、两头随机收短、粗细不一，偶尔在末端分一个小叉 */
+function foldBrush(d, w) {
+  const S = pathPolys(d); if (!S) return null;
+  let out = '';
+  S.filter(p => p.length > 1).forEach(p => {
+    const Q = resamp(p, 14), L = Q.reduce((s, q, i) => s + (i ? Math.hypot(q[0] - Q[i - 1][0], q[1] - Q[i - 1][1]) : 0), 0);
+    const r = RNG(Math.round(Math.abs(Q[0][0] * 13 + Q[0][1] * 7 + Q[14][0] * 3 + Q[14][1])) + 1);
+    const a0 = r() * .14, a1 = 1 - r() * .16, amp = Math.min(2.2, L * (.03 + r() * .045)) * (r() < .5 ? -1 : 1), fq = .8 + r() * 1.1, ph = r() * Math.PI;
+    const at = t => { const k = t * 14, j = Math.min(13, Math.floor(k)), u = k - j; return [Q[j][0] + (Q[j + 1][0] - Q[j][0]) * u, Q[j][1] + (Q[j + 1][1] - Q[j][1]) * u]; };
+    const pts = [];
+    for (let k = 0; k <= 12; k++) {
+      const t = a0 + (a1 - a0) * k / 12, a = at(Math.max(0, t - .02)), b = at(Math.min(1, t + .02)), c = at(t), dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1;
+      const off = amp * Math.sin(Math.PI * (k / 12)) * Math.sin(Math.PI * fq * (k / 12) + ph);
+      pts.push([c[0] - dy / l * off, c[1] + dx / l * off]);
+    }
+    out += taperD(pts, w * (.7 + r() * .65), .3 + r() * .4) + ' ';
+    if (L > 14 && r() < .42) {                               // 小分叉：褶子在下摆附近分成两道
+      const t = .55 + r() * .2, c = at(t), n = at(Math.min(1, t + .08)), ang = Math.atan2(n[1] - c[1], n[0] - c[0]) + (r() < .5 ? -1 : 1) * (.35 + r() * .3), bl = L * (.22 + r() * .14);
+      out += taperD(Array.from({ length: 6 }, (_, k) => [c[0] + Math.cos(ang) * bl * k / 5, c[1] + Math.sin(ang) * bl * k / 5]), w * .7, .35) + ' ';
+    }
+  });
+  return out || null;
+}
 function piece(d, fill, o = {}) {
   if (d && d.folds) { if (o.autoFolds !== false) o = { ...o, folds: (o.folds || []).concat(d.folds) }; d = String(d); }
   const id = uid('k');
-  const sc = o.sc || STYLE.shade;
+  const sc = o.sc || shadeOf(fill);
+  if (!o.oc) o = { ...o, oc: lineOf(fill) };
   const fr = o.evenodd ? ' fill-rule="evenodd" clip-rule="evenodd"' : '';
   let inner = `<path d="${d}" fill="${fill}"${fr}/>` + (o.under || '');
   const rim = o.rim === false ? null : (o.rim || [4.5, 2.5]);
   /* 体积感阴影（对齐参考图）：不是一道硬边月牙，而是从布片右下边缘往里、柔和过渡的一层喷枪式阴影 */
   if (rim) inner += `<path d="${d}" fill="${sc}" filter="url(#${rim[0] > 3 ? 'vol' : 'vols'})" style="mix-blend-mode:multiply" opacity="${o.volOp ?? STYLE.volOp}"${fr}/>`;
+  /* 受光：左上方柔和亮一点、右下方稍暗（按每块布自己的范围铺渐变），颜色不再是一块平涂 */
+  if (o.fx !== false) inner += `<path d="${d}" fill="url(#fxLit)"${fr}/>`;
   const lit = o.lit === false ? null : (o.lit || (STYLE.lit ? [1.9, 1.7] : null));
   if (lit && o.litOp == null && !o.lit) o = { ...o, litOp: STYLE.litOp };
   if (lit) {
@@ -553,7 +597,7 @@ function piece(d, fill, o = {}) {
   if ((o.folds || []).length) {
     if (o.foldShade !== false) inner += `<g filter="url(#shsoft2)" style="mix-blend-mode:multiply" opacity="${STYLE.foldShadeOp}">${o.folds.map(p => `<path d="${p}" fill="none" stroke="${sc}" stroke-width="${STYLE.foldShadeW}" stroke-linecap="round" transform="translate(1.4 .6)"/>`).join('')}</g>`;
     const fc = o.fc || foldInk(fill);
-    inner += o.folds.map(p => { const b = STYLE.brush && o.brush !== false ? brushD(p, (o.fw || STYLE.foldW) * 1.9) : null;
+    inner += o.folds.map(p => { const b = STYLE.brush && o.brush !== false ? foldBrush(p, (o.fw || STYLE.foldW) * 1.9) : null;
       return b ? `<path d="${b}" fill="${fc}" opacity="${o.foldOp ?? STYLE.foldOp}"/>` : `<path d="${p}" fill="none" stroke="${fc}" stroke-width="${o.fw || STYLE.foldW}" stroke-linecap="round" opacity="${o.foldOp ?? STYLE.foldOp}"/>`; }).join('');
   }
   (o.lines || []).forEach(l => { const b = l.taper && STYLE.brush ? brushD(l.d, (l.w || 1) * 1.9, l.head ?? .4) : null;
@@ -710,23 +754,23 @@ const armO = drapeTable(armO0, 200, 346, -1, DRAPE.arm);
 const armI = drapeTable(y => armI0(y), 222, 346, 1, DRAPE.arm);
 
 function earSVG() {
-  const one = (d, dd) => `<path d="${d}" fill="${SKIN}" stroke="${INK}" stroke-width="1.35" stroke-linejoin="round"/><path d="${dd}" fill="${SKIN_LINE}" opacity=".9"/>`;
+  const one = (d, dd) => `<path d="${d}" fill="${SKIN}" stroke="${INK}" stroke-width="1.1" stroke-linejoin="round"/><path d="${dd}" fill="${SKIN_LINE}" opacity=".9"/>`;
   return one(EAR_D, EAR_DETAIL) + one(mir(EAR_D), mir(EAR_DETAIL));
 }
 const HEAD_PATH = symS([[150, 65.9], [139.2, 67], [131.8, 70], [125, 74.8], [118.7, 82], [115.2, 91], [114, 103], [115, 111.5], [117.4, 119], [120.3, 126], [124.1, 134.6], [128.4, 141.6], [133.4, 146.3], [139.2, 149.8], [144.8, 152.4], [150, 154.2]], .5);
 function headSVG() {
-  return earSVG() + `<path d="${HEAD_PATH}" fill="${SKIN}" stroke="${INK}" stroke-width="1.25" stroke-linejoin="round"/>`;
+  return earSVG() + `<path d="${HEAD_PATH}" fill="${SKIN}" stroke="${INK}" stroke-width="1.05" stroke-linejoin="round"/>`;
 }
 function bodySVG() {
   const m = uid('m');
-  return `<path d="${BODY_D}" fill="${SKIN}"/><mask id="${m}" maskUnits="userSpaceOnUse" x="-20" y="-20" width="340" height="640"><rect x="-20" y="-20" width="340" height="640" fill="#fff"/><path d="${BODY_D}" transform="translate(-2.6 -1)" fill="#000"/></mask><path d="${BODY_D}" fill="#F7D9CF" mask="url(#${m})"/><path d="${BODY_D}" fill="none" stroke="${INK}" stroke-width="1.45" stroke-linejoin="round"/>` +
+  return `<path d="${BODY_D}" fill="${SKIN}"/><mask id="${m}" maskUnits="userSpaceOnUse" x="-20" y="-20" width="340" height="640"><rect x="-20" y="-20" width="340" height="640" fill="#fff"/><path d="${BODY_D}" transform="translate(-2.6 -1)" fill="#000"/></mask><path d="${BODY_D}" fill="#F7D9CF" mask="url(#${m})"/><path d="${BODY_D}" fill="none" stroke="${INK}" stroke-width="1.15" stroke-linejoin="round"/>` +
     `<path d="M 142.4 150 L 157.6 150 L 157.6 156.5 Q 150 162.5 142.4 156.5 Z" fill="#F6CCC4"/>` +
     `<path d="M 129.6 172.8 Q 137 171 144 174.4 M 170.4 172.8 Q 163 171 156 174.4" fill="none" stroke="#CFA79D" stroke-width=".8" stroke-linecap="round"/><path d="${DETAIL_SOFT}" fill="${SKIN_LINE}" opacity=".78"/><path d="${DETAIL_DARK}" fill="${INK}"/>`;
 }
 /* 打底：蜜桃色细吊带 + 白色安全裤（穿上衣 / 下装 / 连衣裙时自动隐藏） */
 function underwearParts() {
-  return [piece(CAMI_D, '#FED1B4', { rim: [3.5, 1.5], sc: '#F2C6B8', over: `<path d="${CAMI_FOLD}" fill="#C98F72" opacity=".9"/>`, sw: 1.3 }),
-    piece(SHORTS_D, '#FFF7F1', { rim: [3.5, 1.5], sc: '#EEDFE0', over: `<path d="${SHORTS_FOLD}" fill="#B5A29C"/>`, sw: 1.3 })];
+  return [piece(CAMI_D, '#FED1B4', { rim: [3.5, 1.5], sc: '#F2C6B8', over: `<path d="${CAMI_FOLD}" fill="#C98F72" opacity=".9"/>`, sw: 1 }),
+    piece(SHORTS_D, '#FFF7F1', { rim: [3.5, 1.5], sc: '#EEDFE0', over: `<path d="${SHORTS_FOLD}" fill="#B5A29C"/>`, sw: 1 })];
 }
 
 /* =====================================================================
@@ -859,6 +903,7 @@ function irisDefsHTML() {
 const _hp = (x, y, r, c, extra = '') => `<path d="${heartD(x, y, r)}" fill="${c}"${extra}/>`;
 const _fl = (x, y, r, c) => { let s = ''; for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5 - Math.PI / 2; s += `<circle cx="${f1(x + Math.cos(a) * r * .62)}" cy="${f1(y + Math.sin(a) * r * .62)}" r="${f1(r * .48)}" fill="${c}"/>`; } return s; };
 let PATTERN_DEFS = `
+<linearGradient id="fxLit" x1="0" y1="0" x2=".75" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".26"/><stop offset=".42" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#3A2440" stop-opacity=".1"/></linearGradient>
 <pattern id="pat-refbody" patternUnits="userSpaceOnUse" width="30" height="30"><rect width="30" height="30" fill="#FCEFF1"/>${[[6, 6, '#E4B4C2'], [21, 13, '#D7B3BD'], [10, 23, '#E6BCC7'], [26, 28, '#DAC0C6']].map(([x, y, c]) => `<circle cx="${x}" cy="${y}" r="3.5" fill="${c}"/><circle cx="${x - .3}" cy="${y - .3}" r="1.9" fill="#F4DAE1" opacity=".9"/>`).join('')}</pattern>
 <pattern id="pat-refsleeve" patternUnits="userSpaceOnUse" width="30" height="30"><rect width="30" height="30" fill="#F4B3C8"/><defs><radialGradient id="rsd"><stop offset="0" stop-color="#FFF4F7"/><stop offset=".55" stop-color="#FFF4F7" stop-opacity=".9"/><stop offset="1" stop-color="#FFF4F7" stop-opacity="0"/></radialGradient></defs><circle cx="7" cy="8" r="5.4" fill="url(#rsd)"/><circle cx="22" cy="22" r="5" fill="url(#rsd)"/><circle cx="23.6" cy="5" r="2.2" fill="url(#rsd)" opacity=".75"/><circle cx="5" cy="24" r="1.9" fill="url(#rsd)" opacity=".7"/></pattern>
 <pattern id="pat-pinkdots" patternUnits="userSpaceOnUse" width="13" height="13"><rect width="13" height="13" fill="#FFEFF2"/><circle cx="3.2" cy="3.2" r="1.75" fill="#F5A3BE"/><circle cx="9.7" cy="9.7" r="1.75" fill="#F5A3BE"/>${_hp(9.7, 3.3, 1.3, '#F5A3BE')}<circle cx="3.2" cy="9.8" r=".7" fill="#F5A3BE" opacity=".6"/></pattern>
@@ -2480,7 +2525,7 @@ function drapeSVG(list, o = {}) {
     const P = foldPts(f[0], f[1], f[2], f[3], f[4] || 0, 10), w = f[5] ?? 3.2;
     sh += `<path d="${taperD(P, w, f[7] ?? .72)}"/>`;
     const Q = P.slice(Math.min(8, Math.round((f[6] ?? .3) * 10)));
-    ln += `<path d="${taperD(resamp(Q, 10), (o.lw ?? .62) * 1.9, .6)}"/>`;
+    ln += `<path d="${foldBrush('M ' + Q.map(P2).join(' L '), (o.lw ?? .62) * 1.9) || taperD(resamp(Q, 10), (o.lw ?? .62) * 1.9, .6)}"/>`;
   });
   return `<g fill="${o.sc || '#D9C2D0'}" opacity="${o.op ?? .85}" style="mix-blend-mode:multiply" filter="url(#shsoft)">${sh}</g>` +
     `<g fill="${o.lc || STYLE.line}" opacity="${o.lo ?? .72}">${ln}</g>`;
@@ -3142,7 +3187,7 @@ Object.assign(TPL, {
    ===================================================================== */
 /* 柔软画法：描边用发色压暗的深棕（不用纯黑）、线更细，内侧高光和月牙阴影都收轻，发丝线更细更淡 */
 const hairInk = c => (/^#[0-9a-f]{6}$/i.test(c) ? mix(c, INK, .7) : INK);
-const hairPiece = (d, c, o = {}) => piece(d, c, { rim: [1.7, 1.4], sw: 1.02, oc: hairInk(c), lit: false, cls: 'ho', ...o, ...(o.gloss ? { glossOp: .3 } : {}), over: (o.over || '') + (o.auto === false ? '' : autoStrands(d, c)) });
+const hairPiece = (d, c, o = {}) => piece(d, c, { rim: [1.7, 1.4], sw: .85, oc: hairInk(c), lit: false, fx: false, cls: 'ho', ...o, ...(o.gloss ? { glossOp: .3 } : {}), over: (o.over || '') + (o.auto === false ? '' : autoStrands(d, c)) });
 /* 自动发丝：沿这一片头发的走向，在左右边缘之间排几根两头尖的细发丝（参考图里每一片头发都有一层细密的发丝线） */
 function autoStrands(d, c) {
   if (!SOFT || !/^#[0-9a-f]{6}$/i.test(c)) return '';
@@ -3198,7 +3243,7 @@ const CAP_PTS = [[150, 59], [139, 59.8], [129, 62.6], [121, 67.6], [114.6, 74.4]
 const CAP = symS([[150, 59], [139, 59.8], [129, 62.6], [121, 67.6], [114.6, 74.4], [110.4, 82.6], [108, 92], [107.2, 102], [107.6, 112], [109.4, 121, 'c'], [116, 104], [126, 92], [138, 86.4], [150, 85]]);
 /* 发顶：只描外轮廓，下缘（发际线）不描边，好让刘海发束从下面自然长出来 */
 function capPiece(d, outline, c, o = {}) {
-  return piece(d, c, { rim: false, sw: 0, lit: false, ...o }).replace(/<path d="[^"]*" fill="none" stroke="[^"]*" stroke-width="0"[^>]*\/>$/, '') + `<path class="ho" d="${outline}" fill="none" stroke="${hairInk(c)}" stroke-width="1.02" stroke-linecap="round" stroke-linejoin="round"/>`;
+  return piece(d, c, { rim: false, sw: 0, lit: false, fx: false, ...o }).replace(/<path d="[^"]*" fill="none" stroke="[^"]*" stroke-width="0"[^>]*\/>$/, '') + `<path class="ho" d="${outline}" fill="none" stroke="${hairInk(c)}" stroke-width=".85" stroke-linecap="round" stroke-linejoin="round"/>`;
 }
 const CAP_LINE = line(CAP_PTS.slice().reverse().concat(CAP_PTS.slice(1).map(mx)));
 const capHair = (c, ln, extra = '') => capPiece(CAP, CAP_LINE, c, { lines: capLines(ln), shade: ['M 170 62 C 186 72 192 90 191 118 L 200 118 L 200 60 Z'], over: extra });
@@ -5459,17 +5504,17 @@ const LEAN = { hip: 4.6, kneeL: 3.4, footL: 1.4, tilt: .02 };            // 重�
 const LEAN_L = { hip: -4.2, kneeR: 3.2, footR: 1.4, tilt: -.018 };       // 重心放在左腿上
 const POSES = {
   relax: { name: '自然站立', warp: 'relax' },
-  shy: { name: '内八俏皮', warp: 'shy', isNew: true },
+  shy: { name: '内八俏皮', warp: 'shy', isNew: true, skirt: { flare: -1.2 } },
   stand: { name: '立正' },
   clasp: { name: '乖巧', head: -4, body: LEAN, L: { up: -4, fore: -44 }, R: { up: 4, fore: 44 } },
   behind: { name: '背手', head: 4, body: LEAN_L, L: { up: 6, fore: -30, back: true }, R: { up: -6, fore: 30, back: true } },
   hip: { name: '叉腰', head: -5, body: LEAN, L: { up: 24, fore: -78 }, R: { up: -4, fore: -6 } },
-  wave: { name: '打招呼', head: 5, body: LEAN_L, R: { up: -16, fore: -150, over: true }, L: { up: 4, fore: 6 } },
-  kick: { name: '踢腿', head: 4, body: { hip: -3, tilt: -.02 }, leg: -30, L: { up: 10, fore: 12 }, R: { up: -12, fore: -14 } },
+  wave: { name: '打招呼', head: 5, body: LEAN_L, skirt: { sway: 1.2 }, hair: { sway: 1.6 }, R: { up: -16, fore: -150, over: true }, L: { up: 4, fore: 6 } },
+  kick: { name: '踢腿', head: 4, body: { hip: -3, tilt: -.02 }, leg: -30, hair: { sway: -3.5, flare: 2.4, lift: 1.2 }, L: { up: 10, fore: 12 }, R: { up: -12, fore: -14 } },
   /* Coquette 芭蕾甜心 */
-  curtsy: { name: '提裙', head: -6, body: LEAN, L: { up: 14, fore: 16 }, R: { up: -14, fore: -16 } },
+  curtsy: { name: '提裙', head: -6, body: LEAN, skirt: { flare: 5.5, lift: 2.6 }, hair: { flare: 1.2 }, L: { up: 14, fore: 16 }, R: { up: -14, fore: -16 } },
   heart: { name: '比心', head: 5, body: LEAN_L, L: { up: -8, fore: -140 }, R: { up: 8, fore: 140 }, extra: `<path d="${heartD(150, 199, 6)}" fill="#F48FB1" stroke="#fff" stroke-width="2" paint-order="stroke"/><path d="M 146.4 196 Q 147 194 149 194" fill="none" stroke="#fff" stroke-width="1" stroke-linecap="round"/>` },
-  spread: { name: '芭蕾展臂', head: -5, body: LEAN, L: { up: 52, fore: 18 }, R: { up: -52, fore: -18 } }
+  spread: { name: '芭蕾展臂', head: -5, body: LEAN, skirt: { flare: 3.2, lift: 1.2 }, hair: { flare: 2.6, lift: 1 }, L: { up: 52, fore: 18 }, R: { up: -52, fore: -18 } }
 };
 const BAGS = new Set(['a4', 'a27', 'a33', 'a34', 'a47', 'a58', 'a42', 'a53', 'a48', 'a49', 'a50']);        // 包不跟着手臂变形，整只保留在原处
 const HELD = { a47: 'L', a34: 'R', a73: 'L', a90: 'L' };                                               // 拎在手上的包跟着那只手走
@@ -5486,7 +5531,7 @@ const RIG = (() => {
   const handBits = d => (String(d).match(/M[^M]*/g) || []).filter(q => { const n = q.match(/-?\d*\.?\d+/g); return n && +n[0] < 104 && +n[1] > 296 && +n[1] < 362; }).join('');
   const armSkin = () => { const m = uid('m');
     return `<path d="${skin}" fill="${SKIN}"/><mask id="${m}" maskUnits="userSpaceOnUse" x="-20" y="-20" width="340" height="640"><rect x="-20" y="-20" width="340" height="640" fill="#fff"/><path d="${skin}" transform="translate(-2.6 -1)" fill="#000"/></mask><path d="${skin}" fill="#F7D9CF" mask="url(#${m})"/>` +
-      `<path d="${edge}" fill="none" stroke="${INK}" stroke-width="1.45" stroke-linejoin="round"/>` +
+      `<path d="${edge}" fill="none" stroke="${INK}" stroke-width="1.15" stroke-linejoin="round"/>` +
       `<path d="${handBits(DETAIL_SOFT)}" fill="${SKIN_LINE}" opacity=".78"/><path d="${handBits(DETAIL_DARK)}" fill="${INK}"/>`; };
   const back = band(200, 384, b);
   return { yE, yK, S: [113, 198], E, K, SKIN: { L: () => armSkin(), R: () => `<g transform="translate(300 0) scale(-1 1)">${armSkin()}</g>` }, BACK: { L: back, R: mir(back) } };
@@ -5498,14 +5543,20 @@ function posedSVG(P, L, H, bags, W0) {
   const legOK = P.leg && !L.some(l => (l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(W0.bottom.tpl)))) && reachesKnee(l));
   const base = P.warp ? WARP_POSES[P.warp] : {};
   const W = { head: 0, hip: 0, kneeL: 0, footL: 0, kneeR: 0, footR: 0, armL: 0, armR: 0, tilt: 0, ...base, ...(P.body || {}), head: P.head ?? base.head ?? 0, arms: { L: P.L, R: P.R }, leg: legOK ? P.leg : 0 };
+  // 裙摆：默认跟着胯的反方向轻轻荡；发尾：默认跟着歪头方向顺一点。姿势里的 skirt / hair 再加上动作本身的甩动
+  const kick = legOK ? 1 : 0, sk = P.skirt || {}, hr = P.hair || {};
+  Object.assign(W, { skirtSway: -.34 * W.hip + (sk.sway || 0) + kick * 2.4, skirtFlare: (sk.flare || 0) + kick * 3.2, skirtLift: sk.lift || 0,
+    hairSway: .28 * W.head + (hr.sway || 0), hairFlare: hr.flare || 0, hairLift: hr.lift || 0 });
   const moves = k => !!(P[k] && (P[k].up || P[k].fore));
   const inward = k => (k === 'L' ? -1 : 1) * ((P[k].up || 0) + (P[k].fore || 0)) > 20;
   const front = ['L', 'R'].filter(k => moves(k) && !P[k].back && (inward(k) || P[k].over)), back = ['L', 'R'].filter(k => moves(k) && P[k].back);
   const garment = l => l.cat !== 'body' && l.cat !== 'acc' && !l.drawn;
-  const opt = l => (garment(l) ? { garment: true } : {}), FREE = { arms: false, leg: false };
+  const skirty = l => l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(W0.bottom.tpl)));
+  const opt = l => (garment(l) ? { garment: true, skirt: skirty(l) } : {}), FREE = { arms: false, leg: false };
   const Ls = L.slice().sort((a, b) => a.z - b.z);
   const out = Ls.map(l => ({ z: l.z, svg: warpSVG(l.svg, W, opt(l)) }));
-  H.forEach(l => out.push({ z: l.z, svg: warpSVG(l.svg, W, FREE) }));   // 头发不被手臂带走
+  const hopt = l => (l.cat === 'hair' ? { ...FREE, hair: true } : FREE);
+  H.forEach(l => out.push({ z: l.z, svg: warpSVG(l.svg, W, hopt(l)) }));   // 头发不被手臂带走
   // 手挡在身前：只把这只手（皮肤 + 认出来的袖子 + 手上的小物）在上层再画一遍
   front.forEach(k => {
     const re = new RegExp(`<!--arm${k}-->([\\s\\S]*?)<!--\\/arm${k}-->`, 'g');
@@ -5515,7 +5566,7 @@ function posedSVG(P, L, H, bags, W0) {
   });
   // 背手：把整个画面（去掉背过去的手臂）在最上层再画一遍，盖住藏到身后的手
   if (back.length) {
-    const m = uid('pm'), all = Ls.map(l => ({ z: l.z, svg: warpSVG(l.svg, W, { ...opt(l), arms: false }) })).concat(H.map(l => ({ z: l.z, svg: warpSVG(l.svg, W, FREE) })));
+    const m = uid('pm'), all = Ls.map(l => ({ z: l.z, svg: warpSVG(l.svg, W, { ...opt(l), arms: false }) })).concat(H.map(l => ({ z: l.z, svg: warpSVG(l.svg, W, hopt(l)) })));
     out.push({ z: 99, svg: `<mask id="${m}" maskUnits="userSpaceOnUse" x="-60" y="-60" width="420" height="740"><rect x="-60" y="-60" width="420" height="740" fill="#fff"/>${back.map(k => `<path d="${RIG.BACK[k]}" fill="#000"/>`).join('')}</mask><g mask="url(#${m})">${layersSVG(all)}</g>` });
   }
   // 包：斜挎 / 腰包不跟手臂变形；拎在手上的包整只平移到手上（小臂举过头时挂在手肘上）
@@ -5616,6 +5667,9 @@ function warpAt(W, x, y, o = {}) {
     const a = W.head * Math.PI / 180, dx = x - 150, dy = y - 154;
     ux += wh * (dx * Math.cos(a) - dy * Math.sin(a) - dx); uy += wh * (dx * Math.sin(a) + dy * Math.cos(a) - dy);
   }
+  // 4.5) 二次运动：裙摆跟着重心往反方向荡、踢腿 / 转圈时往外撒开；发尾跟着动作甩一点（越往下越明显）
+  if (o.skirt && y > 288) { const s = sstep(288, 470, y), sp = Math.max(-1, Math.min(1, (x - 150) / 45)); ux += (W.skirtSway || 0) * s + (W.skirtFlare || 0) * s * sp; uy -= (W.skirtLift || 0) * s * Math.abs(sp); }
+  if (o.hair && y > 150) { const s = sstep(150, 330, y), sp = Math.max(-1, Math.min(1, (x - 150) / 40)); ux += (W.hairSway || 0) * s + (W.hairFlare || 0) * s * sp; uy -= (W.hairLift || 0) * s * Math.abs(sp); }
   // 5) 抬手 / 弯手肘：先绕手肘弯小臂，再绕肩膀转整条手臂。关节附近按权重一点点转过去，所以是弯过去的，不是折过去的
   let px = x, py = y;
   const A = W.arms && W.arms[k];

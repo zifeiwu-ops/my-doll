@@ -26,7 +26,7 @@ function drapeSVG(list, o = {}) {
     const P = foldPts(f[0], f[1], f[2], f[3], f[4] || 0, 10), w = f[5] ?? 3.2;
     sh += `<path d="${taperD(P, w, f[7] ?? .72)}"/>`;
     const Q = P.slice(Math.min(8, Math.round((f[6] ?? .3) * 10)));
-    ln += `<path d="${taperD(resamp(Q, 10), (o.lw ?? .62) * 1.9, .6)}"/>`;
+    ln += `<path d="${foldBrush('M ' + Q.map(P2).join(' L '), (o.lw ?? .62) * 1.9) || taperD(resamp(Q, 10), (o.lw ?? .62) * 1.9, .6)}"/>`;
   });
   return `<g fill="${o.sc || '#D9C2D0'}" opacity="${o.op ?? .85}" style="mix-blend-mode:multiply" filter="url(#shsoft)">${sh}</g>` +
     `<g fill="${o.lc || STYLE.line}" opacity="${o.lo ?? .72}">${ln}</g>`;

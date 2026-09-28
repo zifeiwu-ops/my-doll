@@ -23,15 +23,29 @@ function mir(d) {
 const mx = p => [300 - p[0], p[1], p[2]];
 
 /* 平滑曲线：点列 → 三次贝塞尔（Catmull-Rom）。点可带第三项 'c' 表示尖角 */
-/* SOFT > 0 时，标了 'c' 的尖角也带一点圆弧（画头发时打开：发梢柔软、不扎手） */
+/* SOFT > 0 时，标了 'c' 的尖角也带一点圆弧（画头发时打开：发梢柔软、不扎手）；
+   CSOFT：衣服、鞋子的尖角平时也倒一个小圆角（半径约 2），布料边角不再像纸片一样方；只圆角、不动直边，叠在一起的布片照样对齐 */
 let SOFT = 0;
+const CSOFT = 2.2;
+function filletPts(pts, closed) {
+  const n = pts.length, out = [];
+  pts.forEach((C, i) => {
+    if (C[2] !== 'c' || (!closed && (i === 0 || i === n - 1))) { out.push(C); return; }
+    const P = pts[(i - 1 + n) % n], N = pts[(i + 1) % n], lp = Math.hypot(P[0] - C[0], P[1] - C[1]), ln = Math.hypot(N[0] - C[0], N[1] - C[1]), r = Math.min(CSOFT, lp * .3, ln * .3);
+    if (r < .4) { out.push(C); return; }
+    out.push([C[0] + (P[0] - C[0]) / lp * r, C[1] + (P[1] - C[1]) / lp * r, 'c', C], [C[0] + (N[0] - C[0]) / ln * r, C[1] + (N[1] - C[1]) / ln * r, 'c']);
+  });
+  return out;
+}
 function spline(pts, closed = true, t = .5) {
+  if (!SOFT && CSOFT) pts = filletPts(pts, closed);
   const n = pts.length, P = i => pts[closed ? (i + n) % n : Math.max(0, Math.min(n - 1, i))];
   let d = `M ${f1(pts[0][0])} ${f1(pts[0][1])}`;
   const last = closed ? n : n - 1;
   for (let i = 0; i < last; i++) {
     const p0 = P(i - 1), p1 = P(i), p2 = P(i + 1), p3 = P(i + 2);
     const k1 = p1[2] === 'c' ? t * SOFT : t, k2 = p2[2] === 'c' ? t * SOFT : t;
+    if (p1[3]) { const C = p1[3]; d += ` C ${f1(p1[0] + (C[0] - p1[0]) * .55)} ${f1(p1[1] + (C[1] - p1[1]) * .55)} ${f1(p2[0] + (C[0] - p2[0]) * .55)} ${f1(p2[1] + (C[1] - p2[1]) * .55)} ${f1(p2[0])} ${f1(p2[1])}`; continue; }   // 圆角
     const c1 = [p1[0] + (p2[0] - p0[0]) * k1 / 3, p1[1] + (p2[1] - p0[1]) * k1 / 3];
     const c2 = [p2[0] - (p3[0] - p1[0]) * k2 / 3, p2[1] - (p3[1] - p1[1]) * k2 / 3];
     d += ` C ${f1(c1[0])} ${f1(c1[1])} ${f1(c2[0])} ${f1(c2[1])} ${f1(p2[0])} ${f1(p2[1])}`;
@@ -49,7 +63,7 @@ const line = (pts, t) => spline(pts, false, t);
    --------------------------------------------------------------------- */
 /* 统一画风（对齐 Y2K COLLECTION SPRITE SHEET）：和身体一样的深棕描边、偏暖的粉紫阴影（边缘略柔）、
    很淡的内侧高光；褶皱线画成两头尖的笔触（像手绘勾线），不再是一样粗的死线 */
-const STYLE = { line: '#3D3134', sw: .85, shade: '#E2C0CE', lit: false, litOp: .2, foldW: .52, foldOp: .42, foldShadeW: 4.4, foldShadeOp: .62, brush: true, volOp: .95 };
+const STYLE = { line: '#3D3134', sw: .62, shade: '#E2C0CE', lit: false, litOp: .2, foldW: .52, foldOp: .42, foldShadeW: 4.4, foldShadeOp: .62, brush: true, volOp: .95 };
 /* 布料的底色（给褶皱线配同色系的深色） */
 function baseOf(fill) {
   if (!fill || typeof fill !== 'string') return null;
@@ -96,15 +110,45 @@ const resamp = (P, n = 10) => { const seg = [], L = [0]; for (let i = 1; i < P.l
 /* 一条线 → 两头尖的笔触（填充路径） */
 function brushD(d, w, head = .55) { const S = pathPolys(d); if (!S) return null; const P = S.filter(p => p.length > 1); return P.length ? P.map(p => taperD(resamp(p, 10), w, head)).join(' ') : null; }
 
+/* 同色系彩色线稿：描边用布料本身的颜色压暗，浅色衣服的线不再是一圈死黑 */
+const lineOf = fill => { const b = baseOf(fill); return !b ? STYLE.line : hsl(b)[2] < .24 ? '#0C070A' : mix(b, '#2A1B24', .7); };   // 深色布料的线再压暗一档，边缘不会糊掉
+/* 阴影跟着布料颜色走：在布料色的基础上往冷紫偏一点（正片叠底），不再每件都是同一种粉紫 */
+const shadeOf = fill => { const b = baseOf(fill); return b ? mix(mix(b, '#FFFFFF', .42), '#8E78B4', .34) : STYLE.shade; };
+/* 自然的褶皱笔触：沿原来的褶线轻轻 S 弯、两头随机收短、粗细不一，偶尔在末端分一个小叉 */
+function foldBrush(d, w) {
+  const S = pathPolys(d); if (!S) return null;
+  let out = '';
+  S.filter(p => p.length > 1).forEach(p => {
+    const Q = resamp(p, 14), L = Q.reduce((s, q, i) => s + (i ? Math.hypot(q[0] - Q[i - 1][0], q[1] - Q[i - 1][1]) : 0), 0);
+    const r = RNG(Math.round(Math.abs(Q[0][0] * 13 + Q[0][1] * 7 + Q[14][0] * 3 + Q[14][1])) + 1);
+    const a0 = r() * .14, a1 = 1 - r() * .16, amp = Math.min(2.2, L * (.03 + r() * .045)) * (r() < .5 ? -1 : 1), fq = .8 + r() * 1.1, ph = r() * Math.PI;
+    const at = t => { const k = t * 14, j = Math.min(13, Math.floor(k)), u = k - j; return [Q[j][0] + (Q[j + 1][0] - Q[j][0]) * u, Q[j][1] + (Q[j + 1][1] - Q[j][1]) * u]; };
+    const pts = [];
+    for (let k = 0; k <= 12; k++) {
+      const t = a0 + (a1 - a0) * k / 12, a = at(Math.max(0, t - .02)), b = at(Math.min(1, t + .02)), c = at(t), dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1;
+      const off = amp * Math.sin(Math.PI * (k / 12)) * Math.sin(Math.PI * fq * (k / 12) + ph);
+      pts.push([c[0] - dy / l * off, c[1] + dx / l * off]);
+    }
+    out += taperD(pts, w * (.7 + r() * .65), .3 + r() * .4) + ' ';
+    if (L > 14 && r() < .42) {                               // 小分叉：褶子在下摆附近分成两道
+      const t = .55 + r() * .2, c = at(t), n = at(Math.min(1, t + .08)), ang = Math.atan2(n[1] - c[1], n[0] - c[0]) + (r() < .5 ? -1 : 1) * (.35 + r() * .3), bl = L * (.22 + r() * .14);
+      out += taperD(Array.from({ length: 6 }, (_, k) => [c[0] + Math.cos(ang) * bl * k / 5, c[1] + Math.sin(ang) * bl * k / 5]), w * .7, .35) + ' ';
+    }
+  });
+  return out || null;
+}
 function piece(d, fill, o = {}) {
   if (d && d.folds) { if (o.autoFolds !== false) o = { ...o, folds: (o.folds || []).concat(d.folds) }; d = String(d); }
   const id = uid('k');
-  const sc = o.sc || STYLE.shade;
+  const sc = o.sc || shadeOf(fill);
+  if (!o.oc) o = { ...o, oc: lineOf(fill) };
   const fr = o.evenodd ? ' fill-rule="evenodd" clip-rule="evenodd"' : '';
   let inner = `<path d="${d}" fill="${fill}"${fr}/>` + (o.under || '');
   const rim = o.rim === false ? null : (o.rim || [4.5, 2.5]);
   /* 体积感阴影（对齐参考图）：不是一道硬边月牙，而是从布片右下边缘往里、柔和过渡的一层喷枪式阴影 */
   if (rim) inner += `<path d="${d}" fill="${sc}" filter="url(#${rim[0] > 3 ? 'vol' : 'vols'})" style="mix-blend-mode:multiply" opacity="${o.volOp ?? STYLE.volOp}"${fr}/>`;
+  /* 受光：左上方柔和亮一点、右下方稍暗（按每块布自己的范围铺渐变），颜色不再是一块平涂 */
+  if (o.fx !== false) inner += `<path d="${d}" fill="url(#fxLit)"${fr}/>`;
   const lit = o.lit === false ? null : (o.lit || (STYLE.lit ? [1.9, 1.7] : null));
   if (lit && o.litOp == null && !o.lit) o = { ...o, litOp: STYLE.litOp };
   if (lit) {
@@ -118,7 +162,7 @@ function piece(d, fill, o = {}) {
   if ((o.folds || []).length) {
     if (o.foldShade !== false) inner += `<g filter="url(#shsoft2)" style="mix-blend-mode:multiply" opacity="${STYLE.foldShadeOp}">${o.folds.map(p => `<path d="${p}" fill="none" stroke="${sc}" stroke-width="${STYLE.foldShadeW}" stroke-linecap="round" transform="translate(1.4 .6)"/>`).join('')}</g>`;
     const fc = o.fc || foldInk(fill);
-    inner += o.folds.map(p => { const b = STYLE.brush && o.brush !== false ? brushD(p, (o.fw || STYLE.foldW) * 1.9) : null;
+    inner += o.folds.map(p => { const b = STYLE.brush && o.brush !== false ? foldBrush(p, (o.fw || STYLE.foldW) * 1.9) : null;
       return b ? `<path d="${b}" fill="${fc}" opacity="${o.foldOp ?? STYLE.foldOp}"/>` : `<path d="${p}" fill="none" stroke="${fc}" stroke-width="${o.fw || STYLE.foldW}" stroke-linecap="round" opacity="${o.foldOp ?? STYLE.foldOp}"/>`; }).join('');
   }
   (o.lines || []).forEach(l => { const b = l.taper && STYLE.brush ? brushD(l.d, (l.w || 1) * 1.9, l.head ?? .4) : null;

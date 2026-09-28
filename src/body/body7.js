@@ -47,23 +47,23 @@ const armO = drapeTable(armO0, 200, 346, -1, DRAPE.arm);
 const armI = drapeTable(y => armI0(y), 222, 346, 1, DRAPE.arm);
 
 function earSVG() {
-  const one = (d, dd) => `<path d="${d}" fill="${SKIN}" stroke="${INK}" stroke-width="1.35" stroke-linejoin="round"/><path d="${dd}" fill="${SKIN_LINE}" opacity=".9"/>`;
+  const one = (d, dd) => `<path d="${d}" fill="${SKIN}" stroke="${INK}" stroke-width="1.1" stroke-linejoin="round"/><path d="${dd}" fill="${SKIN_LINE}" opacity=".9"/>`;
   return one(EAR_D, EAR_DETAIL) + one(mir(EAR_D), mir(EAR_DETAIL));
 }
 const HEAD_PATH = symS([[150, 65.9], [139.2, 67], [131.8, 70], [125, 74.8], [118.7, 82], [115.2, 91], [114, 103], [115, 111.5], [117.4, 119], [120.3, 126], [124.1, 134.6], [128.4, 141.6], [133.4, 146.3], [139.2, 149.8], [144.8, 152.4], [150, 154.2]], .5);
 function headSVG() {
-  return earSVG() + `<path d="${HEAD_PATH}" fill="${SKIN}" stroke="${INK}" stroke-width="1.25" stroke-linejoin="round"/>`;
+  return earSVG() + `<path d="${HEAD_PATH}" fill="${SKIN}" stroke="${INK}" stroke-width="1.05" stroke-linejoin="round"/>`;
 }
 function bodySVG() {
   const m = uid('m');
-  return `<path d="${BODY_D}" fill="${SKIN}"/><mask id="${m}" maskUnits="userSpaceOnUse" x="-20" y="-20" width="340" height="640"><rect x="-20" y="-20" width="340" height="640" fill="#fff"/><path d="${BODY_D}" transform="translate(-2.6 -1)" fill="#000"/></mask><path d="${BODY_D}" fill="#F7D9CF" mask="url(#${m})"/><path d="${BODY_D}" fill="none" stroke="${INK}" stroke-width="1.45" stroke-linejoin="round"/>` +
+  return `<path d="${BODY_D}" fill="${SKIN}"/><mask id="${m}" maskUnits="userSpaceOnUse" x="-20" y="-20" width="340" height="640"><rect x="-20" y="-20" width="340" height="640" fill="#fff"/><path d="${BODY_D}" transform="translate(-2.6 -1)" fill="#000"/></mask><path d="${BODY_D}" fill="#F7D9CF" mask="url(#${m})"/><path d="${BODY_D}" fill="none" stroke="${INK}" stroke-width="1.15" stroke-linejoin="round"/>` +
     `<path d="M 142.4 150 L 157.6 150 L 157.6 156.5 Q 150 162.5 142.4 156.5 Z" fill="#F6CCC4"/>` +
     `<path d="M 129.6 172.8 Q 137 171 144 174.4 M 170.4 172.8 Q 163 171 156 174.4" fill="none" stroke="#CFA79D" stroke-width=".8" stroke-linecap="round"/><path d="${DETAIL_SOFT}" fill="${SKIN_LINE}" opacity=".78"/><path d="${DETAIL_DARK}" fill="${INK}"/>`;
 }
 /* 打底：蜜桃色细吊带 + 白色安全裤（穿上衣 / 下装 / 连衣裙时自动隐藏） */
 function underwearParts() {
-  return [piece(CAMI_D, '#FED1B4', { rim: [3.5, 1.5], sc: '#F2C6B8', over: `<path d="${CAMI_FOLD}" fill="#C98F72" opacity=".9"/>`, sw: 1.3 }),
-    piece(SHORTS_D, '#FFF7F1', { rim: [3.5, 1.5], sc: '#EEDFE0', over: `<path d="${SHORTS_FOLD}" fill="#B5A29C"/>`, sw: 1.3 })];
+  return [piece(CAMI_D, '#FED1B4', { rim: [3.5, 1.5], sc: '#F2C6B8', over: `<path d="${CAMI_FOLD}" fill="#C98F72" opacity=".9"/>`, sw: 1 }),
+    piece(SHORTS_D, '#FFF7F1', { rim: [3.5, 1.5], sc: '#EEDFE0', over: `<path d="${SHORTS_FOLD}" fill="#B5A29C"/>`, sw: 1 })];
 }
 
 /* =====================================================================
