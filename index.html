@@ -3832,7 +3832,10 @@ openPanel = function (hem, gap = 11, e = 5, top = 140.8) {
    ===================================================================== */
 /* 柔软画法：描边用发色压暗的深棕（不用纯黑）、线更细，内侧高光和月牙阴影都收轻，发丝线更细更淡 */
 const hairInk = c => (/^#[0-9a-f]{6}$/i.test(c) ? mix(c, INK, .7) : INK);
-const hairPiece = (d, c, o = {}) => piece(d, c, { rim: [1.7, 1.4], sw: .85, oc: hairInk(c), lit: false, cls: 'ho', ...o, ...(o.gloss ? { glossOp: .3 } : {}), over: (o.over || '') + (o.auto === false ? '' : autoStrands(d, c)) });
+const hairPiece = (d, c, o = {}) => { const hs = o.shape === false || typeof hairShape !== 'function' ? null : hairShape(d, c);   // 发尾变尖梢、侧边一缕缕（hair19）
+  if (hs) { d = hs.d; o = { ...o, over: (o.over || '') + (hs.lines.length ? `<g fill="${hairInk(c)}" opacity=".5">${hs.lines.map(q => `<path d="${q}"/>`).join('')}</g>` : '') }; }
+  return hairPiece0(d, c, o); };
+const hairPiece0 = (d, c, o = {}) => piece(d, c, { rim: [1.7, 1.4], sw: .85, oc: hairInk(c), lit: false, cls: 'ho', ...o, ...(o.gloss ? { glossOp: .3 } : {}), over: (o.over || '') + (o.auto === false ? '' : autoStrands(d, c)) });
 /* 发束阴影（参考日系平涂插画）：不再画一根根细发丝线，而是在发束之间放一两条从发根往发梢收尖的阴影块，
    把一整片头发分成几缕，又不会显得毛躁 */
 function autoStrands(d, c) {
@@ -4469,6 +4472,60 @@ HAIRS.push(
     }
   }
 );
+
+/* =====================================================================
+   发型（第 19 版）：让头发不再「一整块、边缘圆钝」
+   参考日系插画的画法：头发 = 一簇一簇的发束，发尾是长短不一、带一点弯的尖梢，侧边是一缕一缕微微鼓起、缕间有小凹口
+   hairShape 自动处理每一片头发（后片、马尾、长发、侧发）：
+   · 下缘（朝下的那段轮廓）变成一排尖梢：宽 7–12、长 3–12，每个尖梢往外甩一点，左右两片不会一样
+   · 侧边（朝外的那段轮廓）变成一缕缕鼓起 + 凹口
+   · 每个凹口往里画一条收尖的分缕线，把一整片分成几簇
+   已经是细细一缕（刘海、鬓角）的不动；本身就是尖的不动
+   ===================================================================== */
+function hairShape(d, c) {
+  const S = pathPolys(String(d)); if (!S || S.length !== 1) return null;
+  let P = S[0]; if (P.length < 8) return null;
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; P.forEach(([x, y]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); });
+  const H = y1 - y0, W = x1 - x0; if (H < 36 || W < 12) return null;
+  const spanAt = y => { const xs = []; for (let i = 0; i < P.length - 1; i++) { const a = P[i], b = P[i + 1]; if ((a[1] <= y && b[1] > y) || (b[1] <= y && a[1] > y)) xs.push(a[0] + (y - a[1]) / (b[1] - a[1]) * (b[0] - a[0])); } xs.sort((p, q) => p - q); return xs.length >= 2 ? xs[xs.length - 1] - xs[0] : 0; };
+  if (spanAt(y0 + H * .86) < 13) return null;                       // 下面已经收成一个尖：是一缕，不动
+  if (Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) > .5) P = P.concat([P[0]]);
+  let per = 0; for (let i = 1; i < P.length; i++) per += Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]);
+  const N = Math.max(48, Math.min(240, Math.round(per / 2.6))), Q = resamp(P, N).slice(0, N);
+  const cx = Q.reduce((s, p) => s + p[0], 0) / N, cy = Q.reduce((s, p) => s + p[1], 0) / N;
+  const nrm = Q.map((p, i) => { const a = Q[(i - 1 + N) % N], b = Q[(i + 1) % N], tx = b[0] - a[0], ty = b[1] - a[1], l = Math.hypot(tx, ty) || 1; return [ty / l, -tx / l]; });
+  const sg = Q.reduce((s, p, i) => s + nrm[i][0] * (p[0] - cx) + nrm[i][1] * (p[1] - cy), 0) < 0 ? -1 : 1;
+  const r = RNG(Math.round(Math.abs(x0 * 17 + y1 * 5 + W * 3 + (c ? parseInt(c.slice(1, 4), 16) || 0 : 0))) + 7);
+  const step = per / N, scale = Math.min(1, H / 110) * .7 + .3;
+  // 沿轮廓切成一段段：尖梢段（宽 7–12）和侧缕段（宽 14–20），各自带随机长度 / 甩向
+  const segs = (lo, hi) => { const out = []; let s = 0; while (s < per) { const w = lo + r() * (hi - lo); out.push([s, s + w, r(), r()]); s += w; } return out; };
+  const TIP = segs(8, 14), SIDE = segs(24, 40), find = (L, s) => L.find(q => s < q[1]) || L[L.length - 1];
+  const out = [], marks = [], splits = [];
+  let best = null;
+  Q.forEach((p, i) => {
+    const s = i * step, nx = nrm[i][0] * sg, ny = nrm[i][1] * sg, y = p[1];
+    const wb = ss18(.25, .7, ny) * ss18(y0 + H * .5, y0 + H * .8, y);
+    const ws = ss18(.5, .9, Math.abs(nx)) * ss18(y0 + H * .3, y0 + H * .6, y) * (1 - wb);
+    const T = find(TIP, s), u = (s - T[0]) / (T[1] - T[0]), tp = Math.pow(1 - Math.abs(2 * u - 1), 2.2);
+    const len = (4 + T[2] * 13) * scale, curl = (T[3] - .5) * 3.4;
+    const Sd = find(SIDE, s), u2 = (s - Sd[0]) / (Sd[1] - Sd[0]), bulge = (Math.sin(Math.PI * u2) * .55 - Math.pow(1 - Math.sin(Math.PI * u2), 14) * .9) * (.6 + Sd[2] * .8);
+    const e = wb * (len * tp - .9 * Math.pow(1 - tp, 8));
+    const dl = Math.hypot(nx * .35, 1);
+    out.push([p[0] + e * nx * .35 / dl + wb * tp * curl + ws * bulge * nx, p[1] + e / dl + ws * bulge * ny]);
+    // 记下尖梢的顶点和凹口（画成尖角），凹口往里长一条分缕线
+    if (wb > .3) {
+      const k = TIP.indexOf(T);
+      if (!best || best.k !== k) { if (best) marks.push(best.i); best = { k, i, v: tp }; } else if (tp > best.v) best = { k, i, v: tp };
+      if (u < step / (T[1] - T[0]) && wb > .55 && r() < .75) splits.push([out[i][0], out[i][1], -nx * .3, -1, (8 + r() * 14) * scale]);
+    } else if (ws > .6 && u2 < step / (Sd[1] - Sd[0]) && Sd[3] < .5) splits.push([p[0], p[1], -nx, -ny * .3 - .5, (6 + r() * 8) * scale]);
+  });
+  if (best) marks.push(best.i);
+  marks.forEach(i => { out[i] = [out[i][0], out[i][1], 'c']; });
+  const lines = splits.map(([x, y, dx, dy, L]) => { const l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l, bend = (r() - .5) * 3;
+    const pts = [0, .25, .5, .75, 1].map(t => [x + ux * L * t + (-uy) * bend * Math.sin(Math.PI * t), y + uy * L * t + ux * bend * Math.sin(Math.PI * t)]);
+    return taperD(pts, 1.1, .12); });
+  return { d: spline(out, true, .5), lines };
+}
 
 /* =====================================================================
    固定款：袜子 / 鞋 / 配饰（沿描摹底模的腿、脚、脖子、手腕画）
@@ -6230,7 +6287,7 @@ function posedSVG(P, L, H, bags, W0) {
   // 裙摆：默认跟着胯的反方向轻轻荡；发尾：默认跟着歪头方向顺一点。姿势里的 skirt / hair 再加上动作本身的甩动
   const kick = legOK ? 1 : 0, sk = P.skirt || {}, hr = P.hair || {};
   Object.assign(W, { skirtSway: -.34 * W.hip + (sk.sway || 0) + kick * 2.4, skirtFlare: (sk.flare || 0) + kick * 3.2, skirtLift: sk.lift || 0,
-    hairSway: .28 * W.head + (hr.sway || 0), hairFlare: hr.flare || 0, hairLift: hr.lift || 0 });
+    hairSway: .28 * W.head + (hr.sway || 0), hairFlare: hr.flare || 0, hairLift: hr.lift || 0, hairWave: 2.2 + (hr.wave || 0) });
   const moves = k => !!(P[k] && (P[k].up || P[k].fore));
   const inward = k => (k === 'L' ? -1 : 1) * ((P[k].up || 0) + (P[k].fore || 0)) > 20;
   const front = ['L', 'R'].filter(k => moves(k) && !P[k].back && (inward(k) || P[k].over)), back = ['L', 'R'].filter(k => moves(k) && P[k].back);
@@ -6367,7 +6424,9 @@ function warpAt(W, x, y, o = {}) {
   }
   // 4.5) 二次运动：裙摆跟着重心往反方向荡、踢腿 / 转圈时往外撒开；发尾跟着动作甩一点（越往下越明显）
   if (o.skirt && y > 288) { const s = sstep(288, 470, y), sp = Math.max(-1, Math.min(1, (x - 150) / 45)); ux += (W.skirtSway || 0) * s + (W.skirtFlare || 0) * s * sp; uy -= (W.skirtLift || 0) * s * Math.abs(sp); }
-  if (o.hair && y > 150) { const s = sstep(150, 330, y), sp = Math.max(-1, Math.min(1, (x - 150) / 40)); ux += (W.hairSway || 0) * s + (W.hairFlare || 0) * s * sp; uy -= (W.hairLift || 0) * s * Math.abs(sp); }
+  if (o.hair && y > 150) { const s = sstep(150, 330, y), sp = Math.max(-1, Math.min(1, (x - 150) / 40)); ux += (W.hairSway || 0) * s + (W.hairFlare || 0) * s * sp; uy -= (W.hairLift || 0) * s * Math.abs(sp);
+    // 长发的「流动感」：发尾不再笔直地垂成一块帘子，而是顺着肩膀往外散、再轻轻 S 形摆一下（左右相位不同，不对称）
+    if (W.hairWave) { const L = x < 150, s2 = sstep(150, 250, y); ux += W.hairWave * s2 * (Math.sin((y - 150) / 36 + (L ? 0 : 2.2)) * (L ? 1 : .8) + .5 * sp); } }
   // 5) 抬手 / 弯手肘：先绕手肘弯小臂，再绕肩膀转整条手臂。关节附近按权重一点点转过去，所以是弯过去的，不是折过去的
   let px = x, py = y;
   const A = W.arms && W.arms[k];

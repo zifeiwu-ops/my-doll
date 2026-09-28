@@ -4,7 +4,10 @@
    ===================================================================== */
 /* 柔软画法：描边用发色压暗的深棕（不用纯黑）、线更细，内侧高光和月牙阴影都收轻，发丝线更细更淡 */
 const hairInk = c => (/^#[0-9a-f]{6}$/i.test(c) ? mix(c, INK, .7) : INK);
-const hairPiece = (d, c, o = {}) => piece(d, c, { rim: [1.7, 1.4], sw: .85, oc: hairInk(c), lit: false, cls: 'ho', ...o, ...(o.gloss ? { glossOp: .3 } : {}), over: (o.over || '') + (o.auto === false ? '' : autoStrands(d, c)) });
+const hairPiece = (d, c, o = {}) => { const hs = o.shape === false || typeof hairShape !== 'function' ? null : hairShape(d, c);   // 发尾变尖梢、侧边一缕缕（hair19）
+  if (hs) { d = hs.d; o = { ...o, over: (o.over || '') + (hs.lines.length ? `<g fill="${hairInk(c)}" opacity=".5">${hs.lines.map(q => `<path d="${q}"/>`).join('')}</g>` : '') }; }
+  return hairPiece0(d, c, o); };
+const hairPiece0 = (d, c, o = {}) => piece(d, c, { rim: [1.7, 1.4], sw: .85, oc: hairInk(c), lit: false, cls: 'ho', ...o, ...(o.gloss ? { glossOp: .3 } : {}), over: (o.over || '') + (o.auto === false ? '' : autoStrands(d, c)) });
 /* 发束阴影（参考日系平涂插画）：不再画一根根细发丝线，而是在发束之间放一两条从发根往发梢收尖的阴影块，
    把一整片头发分成几缕，又不会显得毛躁 */
 function autoStrands(d, c) {

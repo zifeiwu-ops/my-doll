@@ -138,7 +138,7 @@ function posedSVG(P, L, H, bags, W0) {
   // 裙摆：默认跟着胯的反方向轻轻荡；发尾：默认跟着歪头方向顺一点。姿势里的 skirt / hair 再加上动作本身的甩动
   const kick = legOK ? 1 : 0, sk = P.skirt || {}, hr = P.hair || {};
   Object.assign(W, { skirtSway: -.34 * W.hip + (sk.sway || 0) + kick * 2.4, skirtFlare: (sk.flare || 0) + kick * 3.2, skirtLift: sk.lift || 0,
-    hairSway: .28 * W.head + (hr.sway || 0), hairFlare: hr.flare || 0, hairLift: hr.lift || 0 });
+    hairSway: .28 * W.head + (hr.sway || 0), hairFlare: hr.flare || 0, hairLift: hr.lift || 0, hairWave: 2.2 + (hr.wave || 0) });
   const moves = k => !!(P[k] && (P[k].up || P[k].fore));
   const inward = k => (k === 'L' ? -1 : 1) * ((P[k].up || 0) + (P[k].fore || 0)) > 20;
   const front = ['L', 'R'].filter(k => moves(k) && !P[k].back && (inward(k) || P[k].over)), back = ['L', 'R'].filter(k => moves(k) && P[k].back);

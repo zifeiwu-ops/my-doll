@@ -68,7 +68,9 @@ function warpAt(W, x, y, o = {}) {
   }
   // 4.5) 二次运动：裙摆跟着重心往反方向荡、踢腿 / 转圈时往外撒开；发尾跟着动作甩一点（越往下越明显）
   if (o.skirt && y > 288) { const s = sstep(288, 470, y), sp = Math.max(-1, Math.min(1, (x - 150) / 45)); ux += (W.skirtSway || 0) * s + (W.skirtFlare || 0) * s * sp; uy -= (W.skirtLift || 0) * s * Math.abs(sp); }
-  if (o.hair && y > 150) { const s = sstep(150, 330, y), sp = Math.max(-1, Math.min(1, (x - 150) / 40)); ux += (W.hairSway || 0) * s + (W.hairFlare || 0) * s * sp; uy -= (W.hairLift || 0) * s * Math.abs(sp); }
+  if (o.hair && y > 150) { const s = sstep(150, 330, y), sp = Math.max(-1, Math.min(1, (x - 150) / 40)); ux += (W.hairSway || 0) * s + (W.hairFlare || 0) * s * sp; uy -= (W.hairLift || 0) * s * Math.abs(sp);
+    // 长发的「流动感」：发尾不再笔直地垂成一块帘子，而是顺着肩膀往外散、再轻轻 S 形摆一下（左右相位不同，不对称）
+    if (W.hairWave) { const L = x < 150, s2 = sstep(150, 250, y); ux += W.hairWave * s2 * (Math.sin((y - 150) / 36 + (L ? 0 : 2.2)) * (L ? 1 : .8) + .5 * sp); } }
   // 5) 抬手 / 弯手肘：先绕手肘弯小臂，再绕肩膀转整条手臂。关节附近按权重一点点转过去，所以是弯过去的，不是折过去的
   let px = x, py = y;
   const A = W.arms && W.arms[k];
