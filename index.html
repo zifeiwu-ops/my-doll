@@ -3840,7 +3840,7 @@ openPanel = function (hem, gap = 11, e = 5, top = 140.8) {
    ===================================================================== */
 /* 柔软画法：描边用发色压暗的深棕（不用纯黑）、线更细，内侧高光和月牙阴影都收轻，发丝线更细更淡 */
 const hairInk = c => (/^#[0-9a-f]{6}$/i.test(c) ? mix(c, INK, .7) : INK);
-const hairPiece = (d, c, o = {}) => { const hs = o.shape === false || typeof hairShape !== 'function' ? null : hairShape(d, c);   // 发尾变尖梢、侧边一缕缕（hair19）
+const hairPiece = (d, c, o = {}) => { const hs = o.shape === false || (d && d.noShape) || typeof hairShape !== 'function' ? null : hairShape(d, c);   // 发尾变尖梢、侧边一缕缕（hair19）
   if (hs) { d = hs.d; o = { ...o, over: (o.over || '') + (hs.lines.length ? `<g fill="${hairInk(c)}" opacity=".5">${hs.lines.map(q => `<path d="${q}"/>`).join('')}</g>` : '') }; }
   return hairPiece0(d, c, o); };
 const hairPiece0 = (d, c, o = {}) => piece(d, c, { rim: [1.7, 1.4], sw: .85, oc: hairInk(c), lit: false, cls: 'ho', ...o, ...(o.gloss ? { glossOp: .3 } : {}), over: (o.over || '') + (o.auto === false ? '' : autoStrands(d, c)) });
@@ -3916,7 +3916,7 @@ function capPiece(d, outline, c, o = {}) {
 }
 const CAP_LINE = line(CAP_PTS.slice().reverse().concat(CAP_PTS.slice(1).map(mx)));
 const capHair = (c, ln, extra = '') => capPiece(CAP, CAP_LINE, c, { lines: capLines(ln), shade: ['M 170 62 C 186 72 192 90 191 118 L 200 118 L 200 60 Z'], over: hairRing(c) });   // 头顶光泽统一用高光环
-const BACK_HEAD = h => symS([[150, 61], [136, 62.4], [123, 67.6], [113, 77], [107.4, 92], [106, 108], [106.8, 124], [109, 138], [113, 150], [121, h - 4], [134, h], [150, h + 1]]);
+var BACK_HEAD = h => symS([[150, 61], [136, 62.4], [123, 67.6], [113, 77], [107.4, 92], [106, 108], [106.8, 124], [109, 138], [113, 150], [121, h - 4], [134, h], [150, h + 1]]);
 const capLines = (ln) => strands(['M 136 62.6 C 126 70 120 80 118 94', 'M 164 62.6 C 174 70 180 80 182 94'], ln, .4);
 /* 头顶光泽：一小段柔和的弧光（不再用锯齿闪光） */
 const shine = (pts, c = '#FFF8EA') => pts.map(([x, y, r]) => `<path d="M ${x - 5} ${y + 1.6} Q ${x} ${y - 1.6} ${x + 5} ${y + 1.2}" fill="none" stroke="${c}" stroke-width="1.8" stroke-linecap="round" opacity=".4" transform="rotate(${r || 0} ${x} ${y})"/>`).join('');
@@ -4009,10 +4009,10 @@ const HAIRS = [
       const sp = []; for (let i = 0; i <= 16; i++) { const a = Math.PI + i * Math.PI / 16, r = i % 2 ? (SOFT ? 16 : 10) : 20.5; sp.push([150 + Math.cos(a) * r * 1.2, 55 + Math.sin(a) * r * .95, i % 2 ? undefined : 'c']); }
       sp.push([168, 60]); sp.push([150, 64]); sp.push([132, 60]);
       const bun = spline(sp);
-      const side = [[112.4, 104, 110.4, 166, 6.4, -3.4, 1.4]];
+      const side = [[112.4, 104, 110.6, 148, 8, -3, 1.4]];
       const bangs = [[122, 90, 120.4, 108, 9, -1.6], [178, 90, 179.6, 108, 9, 1.6], [131, 86, 129.6, 106, 9, -1], [169, 86, 170.4, 106, 9, 1], [140.4, 84, 139.6, 104.6, 9, -.6], [159.6, 84, 160.4, 104.6, 9, .6], [150, 83.4, 150, 106, 9, 0]];
       return [
-        { z: 2, svg: hairPiece(bun, c, { lines: strands(['M 150 55 L 150 37', 'M 150 55 L 134 41', 'M 150 55 L 166 41'], ln) }) + hairPiece(BACK_HEAD(140), c, { rim: false, deep: [BACK_HEAD(140)], dc: '#C9AFA4' }) },
+        { z: 2, svg: bunSVG(150, 47, 19, c, ln, true, .4) + hairPiece(BACK_HEAD(140), c, { rim: false, deep: [BACK_HEAD(140)], dc: '#C9AFA4' }) },
         { z: 50, svg: locks(side, c, ln) + locks(mirLocks(side), c, ln) + locks(bangs, c, ln) + capHair(c, ln) + flower(121, 88, 2.8, '#FFB6D5') + flower(179, 90, 2.5, '#B9E6F2') + flower(129, 81, 2.2, '#D8C8FF') }
       ];
     }
@@ -4267,8 +4267,8 @@ HAIRS.push(
       const tend = [[113, 100, 107.6, 172, 6.4, 3.4, 2.2], [117.6, 104, 118.6, 150, 4.6, 2.4, 1.6]];
       const tp = (m) => tend.map(([a, b, cc, d, w, n, amp]) => { const p = ringlet(a, b, cc, d, w, n, amp), l = ringletLines(a, b, cc, d, w, n, amp); return hairPiece(m ? mir(p) : p, c, { rim: [1.6, 1.2], lines: strands([m ? mir(l) : l], ln, .6) }); }).join('');
       return [
-        { z: 2, svg: hairPiece(bun, c, { lines: strands(loops, ln, .7) }) + hairPiece(BACK_HEAD(142), c, { rim: false, deep: [BACK_HEAD(142)], dc: '#D6A48C' }) },
-        { z: 50, svg: tp(false) + tp(true) + capHair(c, ln, shine([[132, 72, -20], [168, 72, 18]], '#E0986A')) +
+        { z: 2, svg: bunSVG(150, 49, 22, c, ln, true, .1) + hairPiece(BACK_HEAD(142), c, { rim: false, deep: [BACK_HEAD(142)], dc: '#D6A48C' }) },
+        { z: 50, svg: [false, true].map(m => { const X = x => (m ? 300 - x : x), b = m ? -1 : 1; return wisp(X(113), 100, X(109.6), 146, c, 5, -3 * b) + wisp(X(117.6), 104, X(119.6), 132, c, 3.4, 2 * b); }).join('') + capHair(c, ln, shine([[132, 72, -20], [168, 72, 18]], '#E0986A')) +
           locks([[149, 83.4, 128, 108, 10, -5.4, 2.4], [151, 83.4, 172, 110, 10, 5.4, -2.4], [144, 84, 126, 118, 6, -3.6, 1.8]], c, ln) }
       ];
     }
@@ -4310,8 +4310,8 @@ HAIRS.push(
       const tend = [[113, 100, 110.6, 160, 5.4, 2.2, 1.8], [117.4, 104, 119.4, 138, 3.6, 1.6, 1.2]];
       const tp = m => tend.map(([a, b, cc, d, w, n, amp]) => { const p = ringlet(a, b, cc, d, w, n, amp), l = ringletLines(a, b, cc, d, w, n, amp); return hairPiece(m ? mir(p) : p, c, { rim: [1.4, 1.2], lines: strands([m ? mir(l) : l], ln, .5) }); }).join('');
       return [
-        { z: 2, svg: hairPiece(bun, c, { lines: strands(wrap, ln, .6) }) + hairPiece(BACK_HEAD(140), c, { rim: false, deep: [BACK_HEAD(140)], dc: '#D6BFB2' }) },
-        { z: 50, svg: tp(false) + tp(true) + capHair(c, ln, shine([[132, 72, -20], [168, 72, 18]], '#A07A66')) + locks([[149, 83.4, 127, 104, 9, -4.4, 1.6], [151, 83.4, 173, 104, 9, 4.4, -1.6]], c, ln) }
+        { z: 2, svg: bunSVG(150, 47, 20, c, ln, false, .2) + hairPiece(BACK_HEAD(140), c, { rim: false, deep: [BACK_HEAD(140)], dc: '#D6BFB2' }) },
+        { z: 50, svg: [false, true].map(m => { const X = x => (m ? 300 - x : x), b = m ? -1 : 1; return wisp(X(113.4), 100, X(110.6), 144, c, 4.6, -2.6 * b) + wisp(X(117.6), 104, X(120), 130, c, 3.2, 1.8 * b); }).join('') + capHair(c, ln, shine([[132, 72, -20], [168, 72, 18]], '#A07A66')) + locks([[149, 83.4, 127, 104, 9, -4.4, 1.6], [151, 83.4, 173, 104, 9, 4.4, -1.6]], c, ln) }
       ];
     }
   },
@@ -4350,13 +4350,13 @@ HAIRS.push(
 const CHOP_BANGS = [[122, 90, 120.6, 117, 10, -2.4, 1], [131, 85.4, 129.4, 115, 10.4, -2], [140, 83.4, 138.8, 111, 9.4, -1], [150, 82.8, 150.4, 113, 8.6, .4], [160, 83.4, 161.2, 111, 9.4, 1], [169, 85.4, 170.6, 115, 10.4, 2], [178, 90, 179.4, 117, 10, 2.4, -1]];
 const SIDE_TUFT = [[112.4, 104, 114.2, 152, 7, -2.4, -1.2]];
 /* 丸子：圆的（wavy 起伏）或者炸毛的（尖尖一圈） */
-function bunSVG(cx, cy, r, c, ln, spiky = false, rot = 0) {
+var bunSVG = function (cx, cy, r, c, ln, spiky = false, rot = 0) {
   const pts = [], n = spiky ? 18 : 14;
   for (let i = 0; i < n; i++) { const a = rot + i * Math.PI * 2 / n, rr = spiky ? (i % 2 ? r * .66 : r * (1.02 + (i % 4 === 0 ? .14 : 0))) : r; pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * .92, spiky && i % 2 === 0 ? 'c' : undefined]); }
   const d = spiky ? spline(pts) : spline(wavy(pts.concat([pts[0]]), 1.4, 7).slice(0, -1));
   const sw = [`M ${f1(cx - r * .6)} ${f1(cy - r * .1)} C ${f1(cx - r * .3)} ${f1(cy - r * .7)} ${f1(cx + r * .5)} ${f1(cy - r * .6)} ${f1(cx + r * .5)} ${f1(cy)}`, `M ${f1(cx - r * .4)} ${f1(cy + r * .4)} C ${f1(cx)} ${f1(cy + r * .7)} ${f1(cx + r * .6)} ${f1(cy + r * .3)} ${f1(cx + r * .64)} ${f1(cy - r * .2)}`];
   return hairPiece(d, c, { lines: strands(sw, ln, .6) });
-}
+};
 const BOB_SIDE = h => spline([[114, 92], [108.4, 106], [106.4, 126], [106.2, 146], [107.6, h - 8], [112, h, 'c'], [116.6, h - 8], [118.6, h - 24], [119.8, 124], [121, 102]]);
 HAIRS.push(
   {
@@ -4430,7 +4430,7 @@ HAIRS.push(
 const SHORT_BACK = h => symS([[150, 60], [134, 61.6], [118, 68], [107, 82], [101, 100], [98.6, 122], [98.4, 144], [100.6, h - 6], [106, h, 'c'], [116, h - 6], [126, h - 2, 'c'], [134, h - 12], [150, h - 14]]);
 const shortSide = h => spline(wavy([[114, 92], [107.6, 106], [105, 126], [104.4, 146], [105.6, h - 8], [109, h, 'c'], [113, h - 6], [116.4, h - 1, 'c'], [118.6, h - 20], [119.2, 134], [120, 114], [121, 100]], 1.4, 5));
 const SHORT_BANGS = [[121.4, 90, 118.6, 120, 10, -3, 1.2], [130, 85, 127, 118, 11, -3.4], [139, 83, 136, 114, 10, -2.6], [148.6, 82.6, 146, 118, 9.4, -2.2], [158, 83, 160, 115, 10, 2.2], [167.6, 85, 171, 118, 11, 3.2], [177, 89, 181, 118, 10, 3, -1.2]];
-const smallTail = (x, y, c, ln, dir = 1) => { const p = [[x, y, 18 * dir, -14, 11, 4 * dir, -2 * dir], [x, y, 12 * dir, -22, 8, 2 * dir, 1 * dir], [x, y, 22 * dir, -4, 8, 5 * dir, -1 * dir]].map(([a, b, dx, dy, w, bd, cu]) => [a, b, a + dx, b + dy, w, bd, cu]); return locks(p, c, ln); };
+var smallTail = (x, y, c, ln, dir = 1) => { const p = [[x, y, 18 * dir, -14, 11, 4 * dir, -2 * dir], [x, y, 12 * dir, -22, 8, 2 * dir, 1 * dir], [x, y, 22 * dir, -4, 8, 5 * dir, -1 * dir]].map(([a, b, dx, dy, w, bd, cu]) => [a, b, a + dx, b + dy, w, bd, cu]); return locks(p, c, ln); };
 HAIRS.push(
   {
     id: 'h36', cat: 'hair', name: '栗色短发侧小揪', thumb: '76 40 150 140', isNew: true,
@@ -4450,8 +4450,8 @@ HAIRS.push(
       const bun = spline(wavy([[150, 26], [164, 30], [172, 42], [170, 56], [160, 64], [140, 64], [130, 56], [128, 42], [136, 30]].concat([[150, 26]]), 2.2, 9).slice(0, -1));
       const wisps = [[160, 34, 176, 18, 5, 4, 2], [140, 34, 126, 20, 5, -4, -2], [166, 50, 184, 46, 4, 2, 1]];
       return [
-        { z: 2, svg: hairPiece(bun, c, { lines: strands(['M 136 44 C 144 36 158 36 164 46', 'M 134 54 C 142 48 158 48 166 56'], ln) }) + locks(wisps, c, ln) + hairPiece(BACK_HEAD(150), c, { rim: false, deep: [BACK_HEAD(150)], dc: '#E0C4AE' }) },
-        { z: 50, svg: locks([[112.6, 102, 111, 158, 6.4, -2.4, 1.6], [117, 104, 118.6, 140, 4.4, 1.4]], c, ln) + locks(mirLocks([[112.6, 102, 111, 158, 6.4, -2.4, 1.6], [117, 104, 118.6, 140, 4.4, 1.4]]), c, ln) +
+        { z: 2, svg: bunSVG(150, 44, 20, c, ln, true, -.3) + hairPiece(BACK_HEAD(150), c, { rim: false, deep: [BACK_HEAD(150)], dc: '#E0C4AE' }) },
+        { z: 50, svg: [false, true].map(m => { const X = x => (m ? 300 - x : x), b = m ? -1 : 1; return wisp(X(113), 100, X(110.4), 146, c, 5, -2.6 * b) + wisp(X(117.4), 103, X(119.4), 132, c, 3.4, 2 * b); }).join('') +
           capHair(c, ln, shine([[132, 72, -20], [168, 72, 20]], '#E2B690')) + locks(SHORT_BANGS, c, ln) + hairTie(150, 62, '#2A2528', 0) }
       ];
     }
@@ -4521,9 +4521,9 @@ function hairShape(d, c) {
   const rw = Math.hypot(base(1)[0] - base(0)[0], base(1)[1] - base(0)[1]), n = Math.max(2, Math.min(5, Math.round(rw / 13)));
   const LEN = [1, .7, .88, .62, .8], tips = [], splits = [];
   for (let j = 0; j < n; j++) {
-    const f0 = j / n, f1 = (j + 1) / n, fm = (f0 + f1) / 2, len = (16 + r() * 8) * scale * LEN[(j + (r() < .5 ? 0 : 1)) % 5], curl = flow * (1 + r() * 1.4) * scale;
+    const f0 = j / n, f1 = (j + 1) / n, fm = (f0 + f1) / 2, len = Math.max(11, (16 + r() * 8) * scale) * LEN[(j + (r() < .5 ? 0 : 1)) % 5], curl = flow * (1 + r() * 1.4) * scale;
     const nb = base(f0), tp = base(fm), s1 = base(f0 + (f1 - f0) * .3), s2 = base(f0 + (f1 - f0) * .72);
-    if (j) { tips.push([nb[0], nb[1] - 2.2 * scale, 'c']); splits.push(nb); }
+    if (j) { tips.push([nb[0], nb[1] - Math.max(3, 3.4 * scale), 'c']); splits.push(nb); }
     const q1 = base(fm - (f1 - f0) * .14), q2 = base(fm + (f1 - f0) * .14);   // 两侧往里凹：尖梢细长，不是钝三角
     tips.push([s1[0] + curl * .15, s1[1] + len * .22], [q1[0] + curl * .6, q1[1] + len * .66], [tp[0] + curl, tp[1] + len, 'c'], [q2[0] + curl * .6, q2[1] + len * .7], [s2[0] + curl * .2, s2[1] + len * .26]);
   }
@@ -4607,6 +4607,53 @@ function frontLocks(c, ln, len, wave = 0, seed = 1) {
   };
   return [0, 1, 2].map(k => lock(k, false) + lock(k, true)).join('');
 }
+
+/* =====================================================================
+   丸子 / 小揪揪 / 碎发（重画）——参照日系插画的常规画法
+   · 丸子：一团圆鼓鼓的头发，轮廓是 3–4 个很缓的鼓包（不是一圈尖刺）；表面两三道绕着丸子转的发流线，
+     左上一小段高光；凌乱款在顶上 / 侧面翘出两三根细细的碎发
+   · 小揪揪：从发圈里扎出来的一小撮，3–4 缕从发圈往上、往外散开，发梢被重力带着往下弯
+   · 碎发（脸边、耳前）：很细的 S 形发丝，两头尖，描边淡，不再是粗粗的一条
+   ===================================================================== */
+/* 一根细发丝：(x0,y0) 发根 → (x1,y1) 发梢，bend 正 = 往画面右弯，s 形再反弯一次 */
+function wispD(x0, y0, x1, y1, w = 2.6, bend = 3, s = true) {
+  const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L, M = 14, C = [];
+  for (let i = 0; i <= M; i++) { const t = i / M, o = bend * (Math.sin(Math.PI * t) - (s ? .55 * Math.sin(2 * Math.PI * t) : 0)); C.push([x0 + dx * t - nx * o, y0 + dy * t - ny * o]); }
+  const A = [], B = []; C.forEach((p, i) => { const t = i / M, ww = w * Math.sin(Math.PI * Math.min(1, .15 + t * .95)) * (1 - t * .55) / 2, a = C[Math.max(0, i - 1)], b = C[Math.min(M, i + 1)], ex = b[0] - a[0], ey = b[1] - a[1], l = Math.hypot(ex, ey) || 1;
+    A.push([p[0] - ey / l * ww, p[1] + ex / l * ww]); B.push([p[0] + ey / l * ww, p[1] - ex / l * ww]); });
+  return spline([...A.slice(0, M), [C[M][0], C[M][1], 'c'], ...B.slice(0, M).reverse()]);
+}
+const wisp = (x0, y0, x1, y1, c, w, bend, s) => hairPiece0(wispD(x0, y0, x1, y1, w, bend, s), c, { rim: false, sw: .55, auto: false, cls: '' });   // 细线描边，不参与整片头发的加粗外轮廓
+
+bunSVG = function (cx, cy, r, c, ln, messy = false, rot = 0) {
+  const lobes = 4, pts = [];
+  for (let i = 0; i < 40; i++) { const a = rot + i / 40 * Math.PI * 2, rr = r * (1 + .045 * Math.cos(lobes * (a - rot) + .6)); pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * .9]); }
+  const d = spline(pts);
+  // 发流线：从丸子底部绕上去，像头发一圈圈盘上去
+  const arc = (a0, a1, k) => { const P = []; for (let i = 0; i <= 10; i++) { const a = a0 + (a1 - a0) * i / 10, rr = r * k; P.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * .9 - r * .08 * Math.sin(Math.PI * i / 10)]); } return P; };
+  const flow = [arc(2.7, 5.2, .74), arc(1.2, 3.6, .5), arc(4.3, 6.4, .56)].map(P => taperD(P, Math.max(1, r * .1), .45));
+  const hi = mix(c, '#FFFFFF', hsl(c)[2] < .3 ? .32 : .5), gl = taperD(arc(3.5, 4.5, .78), Math.max(1.4, r * .16), .5);
+  let out = hairPiece0(d, c, { rim: [1.4, 1.2], auto: false, over: `<g fill="${hairInk(c)}" opacity=".42">${flow.map(q => `<path d="${q}"/>`).join('')}</g><path d="${gl}" fill="${hi}" opacity=".7"/>` });
+  if (messy) {                                                             // 翘出来的碎发：贴着丸子表面顺着绕、只有发梢离开一点（不是朝外戳出去的角）
+    const W = [[-2.35, .55, 1], [-1.05, .6, -1], [.2, .5, 1]];
+    out += W.map(([a, span, s]) => { const a1 = a + span * s, x0 = cx + Math.cos(a) * r * .86, y0 = cy + Math.sin(a) * r * .8, x1 = cx + Math.cos(a1) * r * 1.16, y1 = cy + Math.sin(a1) * r * 1.02 + r * .12;
+      return wisp(x0, y0, x1, y1, c, Math.max(1.6, r * .11), 1.6 * s, false); }).join('');
+  }
+  return out;
+};
+
+/* 小揪揪：发圈在 (x,y)，dir = 1 朝画面右、-1 朝左 */
+smallTail = function (x, y, c, ln, dir = 1, s = 1.1) {
+  // 一整撮：发圈处收紧，往外散成三个尖（上面那个往上翘、下面那个被重力拉得往下垂），中间两道分缕线
+  const P = [[0, -3.4], [5, -8.4], [11, -12.4], [17.4, -14.2, 'c'], [14.4, -8, 'c'], [20.4, -6.4], [23.6, -3, 'c'], [16.6, .6, 'c'], [20.6, 4.6], [21.4, 10.6, 'c'], [14.2, 6.4], [7, 4.4], [0, 3.6]];
+  const T = ([px, py, k]) => [x + dir * px * s, y + py * s, k];
+  const d = spline(P.map(T));
+  const sp = [[[2, -1], [9, -4.6], [14.4, -8]], [[2, 1.2], [9, .4], [16.6, .6]]].map(L => taperD(L.map(T), 1.1 * s, .15));
+  return hairPiece0(d, c, { rim: [1.3, 1], sw: .8, auto: false, over: `<g fill="${hairInk(c)}" opacity=".45">${sp.map(q => `<path d="${q}"/>`).join('')}</g>` });
+};
+
+/* 盘发 / 扎起来的头发：后脑勺那片在发际线处是一条顺的弧（头发都扎上去了，不会垂出一排发梢） */
+BACK_HEAD = (BH => h => { const d = new String(BH(h)); d.noShape = true; return d; })(BACK_HEAD);
 
 /* =====================================================================
    固定款：袜子 / 鞋 / 配饰（沿描摹底模的腿、脚、脖子、手腕画）

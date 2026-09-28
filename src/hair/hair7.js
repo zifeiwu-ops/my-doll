@@ -4,7 +4,7 @@
    ===================================================================== */
 /* 柔软画法：描边用发色压暗的深棕（不用纯黑）、线更细，内侧高光和月牙阴影都收轻，发丝线更细更淡 */
 const hairInk = c => (/^#[0-9a-f]{6}$/i.test(c) ? mix(c, INK, .7) : INK);
-const hairPiece = (d, c, o = {}) => { const hs = o.shape === false || typeof hairShape !== 'function' ? null : hairShape(d, c);   // 发尾变尖梢、侧边一缕缕（hair19）
+const hairPiece = (d, c, o = {}) => { const hs = o.shape === false || (d && d.noShape) || typeof hairShape !== 'function' ? null : hairShape(d, c);   // 发尾变尖梢、侧边一缕缕（hair19）
   if (hs) { d = hs.d; o = { ...o, over: (o.over || '') + (hs.lines.length ? `<g fill="${hairInk(c)}" opacity=".5">${hs.lines.map(q => `<path d="${q}"/>`).join('')}</g>` : '') }; }
   return hairPiece0(d, c, o); };
 const hairPiece0 = (d, c, o = {}) => piece(d, c, { rim: [1.7, 1.4], sw: .85, oc: hairInk(c), lit: false, cls: 'ho', ...o, ...(o.gloss ? { glossOp: .3 } : {}), over: (o.over || '') + (o.auto === false ? '' : autoStrands(d, c)) });
@@ -80,7 +80,7 @@ function capPiece(d, outline, c, o = {}) {
 }
 const CAP_LINE = line(CAP_PTS.slice().reverse().concat(CAP_PTS.slice(1).map(mx)));
 const capHair = (c, ln, extra = '') => capPiece(CAP, CAP_LINE, c, { lines: capLines(ln), shade: ['M 170 62 C 186 72 192 90 191 118 L 200 118 L 200 60 Z'], over: hairRing(c) });   // 头顶光泽统一用高光环
-const BACK_HEAD = h => symS([[150, 61], [136, 62.4], [123, 67.6], [113, 77], [107.4, 92], [106, 108], [106.8, 124], [109, 138], [113, 150], [121, h - 4], [134, h], [150, h + 1]]);
+var BACK_HEAD = h => symS([[150, 61], [136, 62.4], [123, 67.6], [113, 77], [107.4, 92], [106, 108], [106.8, 124], [109, 138], [113, 150], [121, h - 4], [134, h], [150, h + 1]]);
 const capLines = (ln) => strands(['M 136 62.6 C 126 70 120 80 118 94', 'M 164 62.6 C 174 70 180 80 182 94'], ln, .4);
 /* 头顶光泽：一小段柔和的弧光（不再用锯齿闪光） */
 const shine = (pts, c = '#FFF8EA') => pts.map(([x, y, r]) => `<path d="M ${x - 5} ${y + 1.6} Q ${x} ${y - 1.6} ${x + 5} ${y + 1.2}" fill="none" stroke="${c}" stroke-width="1.8" stroke-linecap="round" opacity=".4" transform="rotate(${r || 0} ${x} ${y})"/>`).join('');
@@ -173,10 +173,10 @@ const HAIRS = [
       const sp = []; for (let i = 0; i <= 16; i++) { const a = Math.PI + i * Math.PI / 16, r = i % 2 ? (SOFT ? 16 : 10) : 20.5; sp.push([150 + Math.cos(a) * r * 1.2, 55 + Math.sin(a) * r * .95, i % 2 ? undefined : 'c']); }
       sp.push([168, 60]); sp.push([150, 64]); sp.push([132, 60]);
       const bun = spline(sp);
-      const side = [[112.4, 104, 110.4, 166, 6.4, -3.4, 1.4]];
+      const side = [[112.4, 104, 110.6, 148, 8, -3, 1.4]];
       const bangs = [[122, 90, 120.4, 108, 9, -1.6], [178, 90, 179.6, 108, 9, 1.6], [131, 86, 129.6, 106, 9, -1], [169, 86, 170.4, 106, 9, 1], [140.4, 84, 139.6, 104.6, 9, -.6], [159.6, 84, 160.4, 104.6, 9, .6], [150, 83.4, 150, 106, 9, 0]];
       return [
-        { z: 2, svg: hairPiece(bun, c, { lines: strands(['M 150 55 L 150 37', 'M 150 55 L 134 41', 'M 150 55 L 166 41'], ln) }) + hairPiece(BACK_HEAD(140), c, { rim: false, deep: [BACK_HEAD(140)], dc: '#C9AFA4' }) },
+        { z: 2, svg: bunSVG(150, 47, 19, c, ln, true, .4) + hairPiece(BACK_HEAD(140), c, { rim: false, deep: [BACK_HEAD(140)], dc: '#C9AFA4' }) },
         { z: 50, svg: locks(side, c, ln) + locks(mirLocks(side), c, ln) + locks(bangs, c, ln) + capHair(c, ln) + flower(121, 88, 2.8, '#FFB6D5') + flower(179, 90, 2.5, '#B9E6F2') + flower(129, 81, 2.2, '#D8C8FF') }
       ];
     }

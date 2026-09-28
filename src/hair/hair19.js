@@ -38,9 +38,9 @@ function hairShape(d, c) {
   const rw = Math.hypot(base(1)[0] - base(0)[0], base(1)[1] - base(0)[1]), n = Math.max(2, Math.min(5, Math.round(rw / 13)));
   const LEN = [1, .7, .88, .62, .8], tips = [], splits = [];
   for (let j = 0; j < n; j++) {
-    const f0 = j / n, f1 = (j + 1) / n, fm = (f0 + f1) / 2, len = (16 + r() * 8) * scale * LEN[(j + (r() < .5 ? 0 : 1)) % 5], curl = flow * (1 + r() * 1.4) * scale;
+    const f0 = j / n, f1 = (j + 1) / n, fm = (f0 + f1) / 2, len = Math.max(11, (16 + r() * 8) * scale) * LEN[(j + (r() < .5 ? 0 : 1)) % 5], curl = flow * (1 + r() * 1.4) * scale;
     const nb = base(f0), tp = base(fm), s1 = base(f0 + (f1 - f0) * .3), s2 = base(f0 + (f1 - f0) * .72);
-    if (j) { tips.push([nb[0], nb[1] - 2.2 * scale, 'c']); splits.push(nb); }
+    if (j) { tips.push([nb[0], nb[1] - Math.max(3, 3.4 * scale), 'c']); splits.push(nb); }
     const q1 = base(fm - (f1 - f0) * .14), q2 = base(fm + (f1 - f0) * .14);   // 两侧往里凹：尖梢细长，不是钝三角
     tips.push([s1[0] + curl * .15, s1[1] + len * .22], [q1[0] + curl * .6, q1[1] + len * .66], [tp[0] + curl, tp[1] + len, 'c'], [q2[0] + curl * .6, q2[1] + len * .7], [s2[0] + curl * .2, s2[1] + len * .26]);
   }
@@ -124,3 +124,50 @@ function frontLocks(c, ln, len, wave = 0, seed = 1) {
   };
   return [0, 1, 2].map(k => lock(k, false) + lock(k, true)).join('');
 }
+
+/* =====================================================================
+   丸子 / 小揪揪 / 碎发（重画）——参照日系插画的常规画法
+   · 丸子：一团圆鼓鼓的头发，轮廓是 3–4 个很缓的鼓包（不是一圈尖刺）；表面两三道绕着丸子转的发流线，
+     左上一小段高光；凌乱款在顶上 / 侧面翘出两三根细细的碎发
+   · 小揪揪：从发圈里扎出来的一小撮，3–4 缕从发圈往上、往外散开，发梢被重力带着往下弯
+   · 碎发（脸边、耳前）：很细的 S 形发丝，两头尖，描边淡，不再是粗粗的一条
+   ===================================================================== */
+/* 一根细发丝：(x0,y0) 发根 → (x1,y1) 发梢，bend 正 = 往画面右弯，s 形再反弯一次 */
+function wispD(x0, y0, x1, y1, w = 2.6, bend = 3, s = true) {
+  const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L, M = 14, C = [];
+  for (let i = 0; i <= M; i++) { const t = i / M, o = bend * (Math.sin(Math.PI * t) - (s ? .55 * Math.sin(2 * Math.PI * t) : 0)); C.push([x0 + dx * t - nx * o, y0 + dy * t - ny * o]); }
+  const A = [], B = []; C.forEach((p, i) => { const t = i / M, ww = w * Math.sin(Math.PI * Math.min(1, .15 + t * .95)) * (1 - t * .55) / 2, a = C[Math.max(0, i - 1)], b = C[Math.min(M, i + 1)], ex = b[0] - a[0], ey = b[1] - a[1], l = Math.hypot(ex, ey) || 1;
+    A.push([p[0] - ey / l * ww, p[1] + ex / l * ww]); B.push([p[0] + ey / l * ww, p[1] - ex / l * ww]); });
+  return spline([...A.slice(0, M), [C[M][0], C[M][1], 'c'], ...B.slice(0, M).reverse()]);
+}
+const wisp = (x0, y0, x1, y1, c, w, bend, s) => hairPiece0(wispD(x0, y0, x1, y1, w, bend, s), c, { rim: false, sw: .55, auto: false, cls: '' });   // 细线描边，不参与整片头发的加粗外轮廓
+
+bunSVG = function (cx, cy, r, c, ln, messy = false, rot = 0) {
+  const lobes = 4, pts = [];
+  for (let i = 0; i < 40; i++) { const a = rot + i / 40 * Math.PI * 2, rr = r * (1 + .045 * Math.cos(lobes * (a - rot) + .6)); pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * .9]); }
+  const d = spline(pts);
+  // 发流线：从丸子底部绕上去，像头发一圈圈盘上去
+  const arc = (a0, a1, k) => { const P = []; for (let i = 0; i <= 10; i++) { const a = a0 + (a1 - a0) * i / 10, rr = r * k; P.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * .9 - r * .08 * Math.sin(Math.PI * i / 10)]); } return P; };
+  const flow = [arc(2.7, 5.2, .74), arc(1.2, 3.6, .5), arc(4.3, 6.4, .56)].map(P => taperD(P, Math.max(1, r * .1), .45));
+  const hi = mix(c, '#FFFFFF', hsl(c)[2] < .3 ? .32 : .5), gl = taperD(arc(3.5, 4.5, .78), Math.max(1.4, r * .16), .5);
+  let out = hairPiece0(d, c, { rim: [1.4, 1.2], auto: false, over: `<g fill="${hairInk(c)}" opacity=".42">${flow.map(q => `<path d="${q}"/>`).join('')}</g><path d="${gl}" fill="${hi}" opacity=".7"/>` });
+  if (messy) {                                                             // 翘出来的碎发：贴着丸子表面顺着绕、只有发梢离开一点（不是朝外戳出去的角）
+    const W = [[-2.35, .55, 1], [-1.05, .6, -1], [.2, .5, 1]];
+    out += W.map(([a, span, s]) => { const a1 = a + span * s, x0 = cx + Math.cos(a) * r * .86, y0 = cy + Math.sin(a) * r * .8, x1 = cx + Math.cos(a1) * r * 1.16, y1 = cy + Math.sin(a1) * r * 1.02 + r * .12;
+      return wisp(x0, y0, x1, y1, c, Math.max(1.6, r * .11), 1.6 * s, false); }).join('');
+  }
+  return out;
+};
+
+/* 小揪揪：发圈在 (x,y)，dir = 1 朝画面右、-1 朝左 */
+smallTail = function (x, y, c, ln, dir = 1, s = 1.1) {
+  // 一整撮：发圈处收紧，往外散成三个尖（上面那个往上翘、下面那个被重力拉得往下垂），中间两道分缕线
+  const P = [[0, -3.4], [5, -8.4], [11, -12.4], [17.4, -14.2, 'c'], [14.4, -8, 'c'], [20.4, -6.4], [23.6, -3, 'c'], [16.6, .6, 'c'], [20.6, 4.6], [21.4, 10.6, 'c'], [14.2, 6.4], [7, 4.4], [0, 3.6]];
+  const T = ([px, py, k]) => [x + dir * px * s, y + py * s, k];
+  const d = spline(P.map(T));
+  const sp = [[[2, -1], [9, -4.6], [14.4, -8]], [[2, 1.2], [9, .4], [16.6, .6]]].map(L => taperD(L.map(T), 1.1 * s, .15));
+  return hairPiece0(d, c, { rim: [1.3, 1], sw: .8, auto: false, over: `<g fill="${hairInk(c)}" opacity=".45">${sp.map(q => `<path d="${q}"/>`).join('')}</g>` });
+};
+
+/* 盘发 / 扎起来的头发：后脑勺那片在发际线处是一条顺的弧（头发都扎上去了，不会垂出一排发梢） */
+BACK_HEAD = (BH => h => { const d = new String(BH(h)); d.noShape = true; return d; })(BACK_HEAD);

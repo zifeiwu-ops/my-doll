@@ -2,13 +2,13 @@
 const CHOP_BANGS = [[122, 90, 120.6, 117, 10, -2.4, 1], [131, 85.4, 129.4, 115, 10.4, -2], [140, 83.4, 138.8, 111, 9.4, -1], [150, 82.8, 150.4, 113, 8.6, .4], [160, 83.4, 161.2, 111, 9.4, 1], [169, 85.4, 170.6, 115, 10.4, 2], [178, 90, 179.4, 117, 10, 2.4, -1]];
 const SIDE_TUFT = [[112.4, 104, 114.2, 152, 7, -2.4, -1.2]];
 /* 丸子：圆的（wavy 起伏）或者炸毛的（尖尖一圈） */
-function bunSVG(cx, cy, r, c, ln, spiky = false, rot = 0) {
+var bunSVG = function (cx, cy, r, c, ln, spiky = false, rot = 0) {
   const pts = [], n = spiky ? 18 : 14;
   for (let i = 0; i < n; i++) { const a = rot + i * Math.PI * 2 / n, rr = spiky ? (i % 2 ? r * .66 : r * (1.02 + (i % 4 === 0 ? .14 : 0))) : r; pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * .92, spiky && i % 2 === 0 ? 'c' : undefined]); }
   const d = spiky ? spline(pts) : spline(wavy(pts.concat([pts[0]]), 1.4, 7).slice(0, -1));
   const sw = [`M ${f1(cx - r * .6)} ${f1(cy - r * .1)} C ${f1(cx - r * .3)} ${f1(cy - r * .7)} ${f1(cx + r * .5)} ${f1(cy - r * .6)} ${f1(cx + r * .5)} ${f1(cy)}`, `M ${f1(cx - r * .4)} ${f1(cy + r * .4)} C ${f1(cx)} ${f1(cy + r * .7)} ${f1(cx + r * .6)} ${f1(cy + r * .3)} ${f1(cx + r * .64)} ${f1(cy - r * .2)}`];
   return hairPiece(d, c, { lines: strands(sw, ln, .6) });
-}
+};
 const BOB_SIDE = h => spline([[114, 92], [108.4, 106], [106.4, 126], [106.2, 146], [107.6, h - 8], [112, h, 'c'], [116.6, h - 8], [118.6, h - 24], [119.8, 124], [121, 102]]);
 HAIRS.push(
   {

@@ -2,7 +2,7 @@
 const SHORT_BACK = h => symS([[150, 60], [134, 61.6], [118, 68], [107, 82], [101, 100], [98.6, 122], [98.4, 144], [100.6, h - 6], [106, h, 'c'], [116, h - 6], [126, h - 2, 'c'], [134, h - 12], [150, h - 14]]);
 const shortSide = h => spline(wavy([[114, 92], [107.6, 106], [105, 126], [104.4, 146], [105.6, h - 8], [109, h, 'c'], [113, h - 6], [116.4, h - 1, 'c'], [118.6, h - 20], [119.2, 134], [120, 114], [121, 100]], 1.4, 5));
 const SHORT_BANGS = [[121.4, 90, 118.6, 120, 10, -3, 1.2], [130, 85, 127, 118, 11, -3.4], [139, 83, 136, 114, 10, -2.6], [148.6, 82.6, 146, 118, 9.4, -2.2], [158, 83, 160, 115, 10, 2.2], [167.6, 85, 171, 118, 11, 3.2], [177, 89, 181, 118, 10, 3, -1.2]];
-const smallTail = (x, y, c, ln, dir = 1) => { const p = [[x, y, 18 * dir, -14, 11, 4 * dir, -2 * dir], [x, y, 12 * dir, -22, 8, 2 * dir, 1 * dir], [x, y, 22 * dir, -4, 8, 5 * dir, -1 * dir]].map(([a, b, dx, dy, w, bd, cu]) => [a, b, a + dx, b + dy, w, bd, cu]); return locks(p, c, ln); };
+var smallTail = (x, y, c, ln, dir = 1) => { const p = [[x, y, 18 * dir, -14, 11, 4 * dir, -2 * dir], [x, y, 12 * dir, -22, 8, 2 * dir, 1 * dir], [x, y, 22 * dir, -4, 8, 5 * dir, -1 * dir]].map(([a, b, dx, dy, w, bd, cu]) => [a, b, a + dx, b + dy, w, bd, cu]); return locks(p, c, ln); };
 HAIRS.push(
   {
     id: 'h36', cat: 'hair', name: '栗色短发侧小揪', thumb: '76 40 150 140', isNew: true,
@@ -22,8 +22,8 @@ HAIRS.push(
       const bun = spline(wavy([[150, 26], [164, 30], [172, 42], [170, 56], [160, 64], [140, 64], [130, 56], [128, 42], [136, 30]].concat([[150, 26]]), 2.2, 9).slice(0, -1));
       const wisps = [[160, 34, 176, 18, 5, 4, 2], [140, 34, 126, 20, 5, -4, -2], [166, 50, 184, 46, 4, 2, 1]];
       return [
-        { z: 2, svg: hairPiece(bun, c, { lines: strands(['M 136 44 C 144 36 158 36 164 46', 'M 134 54 C 142 48 158 48 166 56'], ln) }) + locks(wisps, c, ln) + hairPiece(BACK_HEAD(150), c, { rim: false, deep: [BACK_HEAD(150)], dc: '#E0C4AE' }) },
-        { z: 50, svg: locks([[112.6, 102, 111, 158, 6.4, -2.4, 1.6], [117, 104, 118.6, 140, 4.4, 1.4]], c, ln) + locks(mirLocks([[112.6, 102, 111, 158, 6.4, -2.4, 1.6], [117, 104, 118.6, 140, 4.4, 1.4]]), c, ln) +
+        { z: 2, svg: bunSVG(150, 44, 20, c, ln, true, -.3) + hairPiece(BACK_HEAD(150), c, { rim: false, deep: [BACK_HEAD(150)], dc: '#E0C4AE' }) },
+        { z: 50, svg: [false, true].map(m => { const X = x => (m ? 300 - x : x), b = m ? -1 : 1; return wisp(X(113), 100, X(110.4), 146, c, 5, -2.6 * b) + wisp(X(117.4), 103, X(119.4), 132, c, 3.4, 2 * b); }).join('') +
           capHair(c, ln, shine([[132, 72, -20], [168, 72, 20]], '#E2B690')) + locks(SHORT_BANGS, c, ln) + hairTie(150, 62, '#2A2528', 0) }
       ];
     }

@@ -43,8 +43,8 @@ HAIRS.push(
       const tend = [[113, 100, 107.6, 172, 6.4, 3.4, 2.2], [117.6, 104, 118.6, 150, 4.6, 2.4, 1.6]];
       const tp = (m) => tend.map(([a, b, cc, d, w, n, amp]) => { const p = ringlet(a, b, cc, d, w, n, amp), l = ringletLines(a, b, cc, d, w, n, amp); return hairPiece(m ? mir(p) : p, c, { rim: [1.6, 1.2], lines: strands([m ? mir(l) : l], ln, .6) }); }).join('');
       return [
-        { z: 2, svg: hairPiece(bun, c, { lines: strands(loops, ln, .7) }) + hairPiece(BACK_HEAD(142), c, { rim: false, deep: [BACK_HEAD(142)], dc: '#D6A48C' }) },
-        { z: 50, svg: tp(false) + tp(true) + capHair(c, ln, shine([[132, 72, -20], [168, 72, 18]], '#E0986A')) +
+        { z: 2, svg: bunSVG(150, 49, 22, c, ln, true, .1) + hairPiece(BACK_HEAD(142), c, { rim: false, deep: [BACK_HEAD(142)], dc: '#D6A48C' }) },
+        { z: 50, svg: [false, true].map(m => { const X = x => (m ? 300 - x : x), b = m ? -1 : 1; return wisp(X(113), 100, X(109.6), 146, c, 5, -3 * b) + wisp(X(117.6), 104, X(119.6), 132, c, 3.4, 2 * b); }).join('') + capHair(c, ln, shine([[132, 72, -20], [168, 72, 18]], '#E0986A')) +
           locks([[149, 83.4, 128, 108, 10, -5.4, 2.4], [151, 83.4, 172, 110, 10, 5.4, -2.4], [144, 84, 126, 118, 6, -3.6, 1.8]], c, ln) }
       ];
     }
