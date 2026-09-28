@@ -286,7 +286,7 @@ Object.assign(TPL.trackJacket, {
 /* ---------- 开襟外套的前片：下摆带弧、门襟往下微微外摆；两道从胸口垂到下摆的长褶 ---------- */
 function openPanel18(hem, gap = 11, e = 5, top = 140.8, o = {}) {
   const { swing = 2.2, flare = 2 } = o, xf = 150 - gap - swing, ys = Math.min(240, hem - 8);
-  const SX = typeof hangOut === 'function' ? hangOut(y => sideX(y) - e, 214, .08) : (y => sideX(y) - e);   // 侧边从腋下垂下来，不掐腰
+  const SX = typeof hangOut === 'function' ? hangOut(y => sideX(y) - e, 222, .08) : (y => sideX(y) - e);   // 侧边从腋下垂下来，不掐腰
   const side = [[SX(ys), ys]]; if (hem > 262) rng(ys + 14, hem - 8, Math.max(1, Math.round((hem - 8 - ys - 14) / 16))).forEach(y => side.push([SX(y) - 1 - flare * Math.pow((y - ys) / (hem - ys), 2), y]));
   const xs = SX(hem) - 1.2 - flare;
   const d = spline([[top - 1.2, 163.4], [133, 166.4], [125.2, 168.6], [117.6, 170.4], [112, 173.6], [108.4, 179.6], [106.6, 188], [109, 214], ...side,
