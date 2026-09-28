@@ -91,7 +91,7 @@ Object.assign(TPL, {
       for (let i = 0; i < N; i++) {
         const a = [lerp(wx(i), wx(i + 1), .5), 290], b = [wx(i + 1), 290], c = [hx(i + 1), hy(i + 1)], e = [lerp(hx(i), hx(i + 1), .5), (hy(i) + hy(i + 1)) / 2 + .8];
         shade.push(`M ${P2(a)} L ${P2(b)} L ${P2(c)} L ${P2(e)} Z`);
-        if (i > 0) lines.push({ d: `M ${f1(wx(i))} 291 L ${f1(hx(i))} ${f1(hy(i) - .2)}`, c: mix(baseOf(F.fill) || '#8A7A70', '#2E2024', .7), o: .8, w: .95 });
+        if (i > 0) lines.push({ d: `M ${f1(wx(i))} 291 L ${f1(hx(i))} ${f1(hy(i) - .2)}`, c: mix(baseOf(F.fill) || '#8A7A70', '#2E2024', .7), o: .8, w: .95, fade: 1 });
       }
       const wb = bandD(282, 7.4, 3.6, 2.6, 2.8);
       const pin = F.print === 'pin' ? `<path d="M 168 296 L 177 318" stroke="#B9C0CC" stroke-width="1.6" stroke-linecap="round"/><circle cx="167.5" cy="295" r="2" fill="none" stroke="#B9C0CC" stroke-width="1.2"/><path d="M 172 297 L 180 315" stroke="#B9C0CC" stroke-width="1"/>` : '';

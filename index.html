@@ -498,7 +498,7 @@ const line = (pts, t) => spline(pts, false, t);
    --------------------------------------------------------------------- */
 /* 统一画风（对齐 Y2K COLLECTION SPRITE SHEET）：和身体一样的深棕描边、偏暖的粉紫阴影（边缘略柔）、
    很淡的内侧高光；褶皱线画成两头尖的笔触（像手绘勾线），不再是一样粗的死线 */
-const STYLE = { line: '#3D3134', sw: .62, shade: '#E2C0CE', lit: false, litOp: .2, foldW: .52, foldOp: .42, foldShadeW: 4.4, foldShadeOp: .62, brush: true, volOp: .95 };
+const STYLE = { line: '#3D3134', sw: .62, shade: '#E2C0CE', lit: false, litOp: .2, foldW: .52, foldOp: .36, foldShadeW: 4.4, foldShadeOp: .62, brush: true, volOp: .95 };
 /* 布料的底色（给褶皱线配同色系的深色） */
 function baseOf(fill) {
   if (!fill || typeof fill !== 'string') return null;
@@ -547,43 +547,46 @@ function brushD(d, w, head = .55) { const S = pathPolys(d); if (!S) return null;
 
 /* 同色系彩色线稿：描边用布料本身的颜色压暗，浅色衣服的线不再是一圈死黑 */
 const lineOf = fill => { const b = baseOf(fill); return !b ? STYLE.line : hsl(b)[2] < .24 ? '#0C070A' : mix(b, '#2A1B24', .7); };   // 深色布料的线再压暗一档，边缘不会糊掉
-/* 阴影跟着布料颜色走：在布料色的基础上往冷紫偏一点（正片叠底），不再每件都是同一种粉紫 */
-const shadeOf = fill => { const b = baseOf(fill); return b ? mix(mix(b, '#FFFFFF', .42), '#8E78B4', .34) : STYLE.shade; };
-/* 自然的褶皱笔触：沿原来的褶线轻轻 S 弯、两头随机收短、粗细不一，偶尔在末端分一个小叉 */
+/* 褶皱笔触（参考完成度高的日系平涂插画）：褶子主要靠阴影表现，线只在褶子最深的下半截留一笔，
+   从下往上收尖、带一点自然弯；不再是一整条等粗的直线 */
 function foldBrush(d, w) {
   const S = pathPolys(d); if (!S) return null;
   let out = '';
   S.filter(p => p.length > 1).forEach(p => {
     const Q = resamp(p, 14), L = Q.reduce((s, q, i) => s + (i ? Math.hypot(q[0] - Q[i - 1][0], q[1] - Q[i - 1][1]) : 0), 0);
     const r = RNG(Math.round(Math.abs(Q[0][0] * 13 + Q[0][1] * 7 + Q[14][0] * 3 + Q[14][1])) + 1);
-    const a0 = r() * .14, a1 = 1 - r() * .16, amp = Math.min(2.2, L * (.03 + r() * .045)) * (r() < .5 ? -1 : 1), fq = .8 + r() * 1.1, ph = r() * Math.PI;
-    const at = t => { const k = t * 14, j = Math.min(13, Math.floor(k)), u = k - j; return [Q[j][0] + (Q[j + 1][0] - Q[j][0]) * u, Q[j][1] + (Q[j + 1][1] - Q[j][1]) * u]; };
+    const down = Q[14][1] >= Q[0][1], a0 = .3 + r() * .2, a1 = 1 - r() * .06, amp = Math.min(1.2, L * (.02 + r() * .025)) * (r() < .5 ? -1 : 1);
+    const at = t => { t = down ? t : 1 - t; const k = t * 14, j = Math.min(13, Math.floor(k)), u = k - j; return [Q[j][0] + (Q[j + 1][0] - Q[j][0]) * u, Q[j][1] + (Q[j + 1][1] - Q[j][1]) * u]; };
     const pts = [];
-    for (let k = 0; k <= 12; k++) {
-      const t = a0 + (a1 - a0) * k / 12, a = at(Math.max(0, t - .02)), b = at(Math.min(1, t + .02)), c = at(t), dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1;
-      const off = amp * Math.sin(Math.PI * (k / 12)) * Math.sin(Math.PI * fq * (k / 12) + ph);
+    for (let k = 0; k <= 10; k++) {
+      const t = a0 + (a1 - a0) * k / 10, a = at(Math.max(0, t - .02)), b = at(Math.min(1, t + .02)), c = at(t), dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, off = amp * Math.sin(Math.PI * k / 10);
       pts.push([c[0] - dy / l * off, c[1] + dx / l * off]);
     }
-    out += taperD(pts, w * (.7 + r() * .65), .3 + r() * .4) + ' ';
-    if (L > 14 && r() < .42) {                               // 小分叉：褶子在下摆附近分成两道
-      const t = .55 + r() * .2, c = at(t), n = at(Math.min(1, t + .08)), ang = Math.atan2(n[1] - c[1], n[0] - c[0]) + (r() < .5 ? -1 : 1) * (.35 + r() * .3), bl = L * (.22 + r() * .14);
-      out += taperD(Array.from({ length: 6 }, (_, k) => [c[0] + Math.cos(ang) * bl * k / 5, c[1] + Math.sin(ang) * bl * k / 5]), w * .7, .35) + ' ';
-    }
+    out += taperD(pts, w * (.8 + r() * .4), .72) + ' ';
   });
+  return out || null;
+}
+/* 墨线：衣服上的接缝 / 百褶线 / 袖口线这些原来是等粗的直线，改成带一点弧度、两头收尖的线 */
+function inkLine(d, w, fade = 0) {
+  const S = pathPolys(d); if (!S) return null;
+  const out = S.filter(p => p.length > 1).map(p => {
+    const Q = resamp(p, 10), L = Math.hypot(Q[10][0] - Q[0][0], Q[10][1] - Q[0][1]), r = RNG(Math.round(Math.abs(Q[0][0] * 11 + Q[0][1] * 5 + Q[10][0])) + 3);
+    const amp = Math.min(.9, L * .018) * (r() < .5 ? -1 : 1);
+    const P = Q.map((q, k) => { const a = Q[Math.max(0, k - 1)], b = Q[Math.min(10, k + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, off = amp * Math.sin(Math.PI * k / 10); return [q[0] - dy / l * off, q[1] + dx / l * off]; });
+    return taperD(fade ? P.slice(Math.round(10 * .3)) : P, w, fade ? .8 : .5);   // fade：百褶线从腰部渐隐，只在下摆留一笔
+  }).join(' ');
   return out || null;
 }
 function piece(d, fill, o = {}) {
   if (d && d.folds) { if (o.autoFolds !== false) o = { ...o, folds: (o.folds || []).concat(d.folds) }; d = String(d); }
   const id = uid('k');
-  const sc = o.sc || shadeOf(fill);
+  const sc = o.sc || STYLE.shade;
   if (!o.oc) o = { ...o, oc: lineOf(fill) };
   const fr = o.evenodd ? ' fill-rule="evenodd" clip-rule="evenodd"' : '';
   let inner = `<path d="${d}" fill="${fill}"${fr}/>` + (o.under || '');
   const rim = o.rim === false ? null : (o.rim || [4.5, 2.5]);
   /* 体积感阴影（对齐参考图）：不是一道硬边月牙，而是从布片右下边缘往里、柔和过渡的一层喷枪式阴影 */
   if (rim) inner += `<path d="${d}" fill="${sc}" filter="url(#${rim[0] > 3 ? 'vol' : 'vols'})" style="mix-blend-mode:multiply" opacity="${o.volOp ?? STYLE.volOp}"${fr}/>`;
-  /* 受光：左上方柔和亮一点、右下方稍暗（按每块布自己的范围铺渐变），颜色不再是一块平涂 */
-  if (o.fx !== false) inner += `<path d="${d}" fill="url(#fxLit)"${fr}/>`;
   const lit = o.lit === false ? null : (o.lit || (STYLE.lit ? [1.9, 1.7] : null));
   if (lit && o.litOp == null && !o.lit) o = { ...o, litOp: STYLE.litOp };
   if (lit) {
@@ -600,8 +603,8 @@ function piece(d, fill, o = {}) {
     inner += o.folds.map(p => { const b = STYLE.brush && o.brush !== false ? foldBrush(p, (o.fw || STYLE.foldW) * 1.9) : null;
       return b ? `<path d="${b}" fill="${fc}" opacity="${o.foldOp ?? STYLE.foldOp}"/>` : `<path d="${p}" fill="none" stroke="${fc}" stroke-width="${o.fw || STYLE.foldW}" stroke-linecap="round" opacity="${o.foldOp ?? STYLE.foldOp}"/>`; }).join('');
   }
-  (o.lines || []).forEach(l => { const b = l.taper && STYLE.brush ? brushD(l.d, (l.w || 1) * 1.9, l.head ?? .4) : null;
-    inner += b ? `<path d="${b}" fill="${l.c || INK}" opacity="${l.o ?? .8}"/>` : `<path d="${l.d}" fill="none" stroke="${l.c || STYLE.line}" stroke-width="${f1((l.w || 1) * .78)}" stroke-linecap="round" stroke-linejoin="round"${l.dash ? ` stroke-dasharray="${l.dash}"` : ''} opacity="${l.o ?? .8}"/>`; });
+  (o.lines || []).forEach(l => { const b = !STYLE.brush || l.dash ? null : l.taper ? brushD(l.d, (l.w || 1) * 1.9, l.head ?? .4) : inkLine(l.d, (l.w || 1) * 1.45, l.fade);
+    inner += b ? `<path d="${b}" fill="${l.c || (l.taper ? INK : o.oc)}" opacity="${l.o ?? .8}"/>` : `<path d="${l.d}" fill="none" stroke="${l.c || STYLE.line}" stroke-width="${f1((l.w || 1) * .78)}" stroke-linecap="round" stroke-linejoin="round"${l.dash ? ` stroke-dasharray="${l.dash}"` : ''} opacity="${l.o ?? .8}"/>`; });
   (o.gloss || []).forEach(p => inner += `<path d="${p}" fill="none" stroke="#fff" stroke-width="${o.glossW || 1.4}" stroke-linecap="round" opacity="${o.glossOp ?? .85}"/>`);
   inner += o.over || '';
   const side = armSide(d);
@@ -903,7 +906,6 @@ function irisDefsHTML() {
 const _hp = (x, y, r, c, extra = '') => `<path d="${heartD(x, y, r)}" fill="${c}"${extra}/>`;
 const _fl = (x, y, r, c) => { let s = ''; for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5 - Math.PI / 2; s += `<circle cx="${f1(x + Math.cos(a) * r * .62)}" cy="${f1(y + Math.sin(a) * r * .62)}" r="${f1(r * .48)}" fill="${c}"/>`; } return s; };
 let PATTERN_DEFS = `
-<linearGradient id="fxLit" x1="0" y1="0" x2=".75" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".26"/><stop offset=".42" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#3A2440" stop-opacity=".1"/></linearGradient>
 <pattern id="pat-refbody" patternUnits="userSpaceOnUse" width="30" height="30"><rect width="30" height="30" fill="#FCEFF1"/>${[[6, 6, '#E4B4C2'], [21, 13, '#D7B3BD'], [10, 23, '#E6BCC7'], [26, 28, '#DAC0C6']].map(([x, y, c]) => `<circle cx="${x}" cy="${y}" r="3.5" fill="${c}"/><circle cx="${x - .3}" cy="${y - .3}" r="1.9" fill="#F4DAE1" opacity=".9"/>`).join('')}</pattern>
 <pattern id="pat-refsleeve" patternUnits="userSpaceOnUse" width="30" height="30"><rect width="30" height="30" fill="#F4B3C8"/><defs><radialGradient id="rsd"><stop offset="0" stop-color="#FFF4F7"/><stop offset=".55" stop-color="#FFF4F7" stop-opacity=".9"/><stop offset="1" stop-color="#FFF4F7" stop-opacity="0"/></radialGradient></defs><circle cx="7" cy="8" r="5.4" fill="url(#rsd)"/><circle cx="22" cy="22" r="5" fill="url(#rsd)"/><circle cx="23.6" cy="5" r="2.2" fill="url(#rsd)" opacity=".75"/><circle cx="5" cy="24" r="1.9" fill="url(#rsd)" opacity=".7"/></pattern>
 <pattern id="pat-pinkdots" patternUnits="userSpaceOnUse" width="13" height="13"><rect width="13" height="13" fill="#FFEFF2"/><circle cx="3.2" cy="3.2" r="1.75" fill="#F5A3BE"/><circle cx="9.7" cy="9.7" r="1.75" fill="#F5A3BE"/>${_hp(9.7, 3.3, 1.3, '#F5A3BE')}<circle cx="3.2" cy="9.8" r=".7" fill="#F5A3BE" opacity=".6"/></pattern>
@@ -936,7 +938,8 @@ let PATTERN_DEFS = `
 <filter id="shsoft2" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.7"/></filter>
 <filter id="vol" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation="3.6" result="b"/><feOffset in="b" dx="-3.2" dy="-2.2" result="o"/><feComposite in="SourceGraphic" in2="o" operator="out"/></filter>
 <filter id="vols" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation="1.7" result="b"/><feOffset in="b" dx="-1.5" dy="-1.1" result="o"/><feComposite in="SourceGraphic" in2="o" operator="out"/></filter>
-<filter id="sticker" x="-10%" y="-6%" width="120%" height="112%" color-interpolation-filters="sRGB"><feMorphology in="SourceAlpha" operator="dilate" radius="3" result="g"/><feFlood flood-color="#fff"/><feComposite in2="g" operator="in" result="e"/><feDropShadow in="e" dx="0" dy="1.5" stdDeviation="1.5" flood-color="#6AAFB5" flood-opacity=".35" result="s"/><feMerge><feMergeNode in="s"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+<filter id="sticker" x="-10%" y="-6%" width="120%" height="112%" color-interpolation-filters="sRGB"><feMorphology in="SourceAlpha" operator="dilate" radius="3" result="g"/><feFlood flood-color="#fff"/><feComposite in2="g" operator="in" result="e"/><feDropShadow in="e" dx="0" dy="1.5" stdDeviation="1.5" flood-color="#6AAFB5" flood-opacity=".35" result="s"/><feMorphology in="SourceAlpha" operator="dilate" radius="1" result="k"/><feFlood flood-color="#2B2322"/><feComposite in2="k" operator="in" result="ink"/><feMerge><feMergeNode in="s"/><feMergeNode in="ink"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<filter id="dollInk" x="-10%" y="-6%" width="120%" height="112%" color-interpolation-filters="sRGB"><feMorphology in="SourceAlpha" operator="dilate" radius=".8" result="k"/><feFlood flood-color="#2B2322"/><feComposite in2="k" operator="in" result="ink"/><feMerge><feMergeNode in="ink"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
 const PAT_BASE = { refbody: '#FDEFF1', refsleeve: '#F4B3C8', heartpink: '#F6AAC6', roses: '#EBD2C4', brownplaid: '#B9A28E', beigeheart: '#C9B894', denim: '#6F92BC', heartdenim: '#3F77A8', heartplum: '#65497A', pinkdots: '#FCDDE6', bigdots: '#E9E0C4', tartan: '#B8454E', sweater: '#C47A3C', camo: '#9CC45A', dots: '#F2EEE8', creamdots: '#FBF3D4', mesh: '#2A2528', argyle: '#3F4A6B', hibiscus: '#4DB3B0', tweed: '#F1E6D6', navystripe: '#9097B0', darkdenim: '#34507C', lace: '#FFFBF4', pinkgingham: '#F9D2DE' };
 const GRAD_BASE = { chrome: '#C9CFDB', silver: '#C9CFDB', violetGloss: '#9A70E0' };
 
@@ -1097,7 +1100,7 @@ function offsetPts(pts, e) {
 const sideX = y => (y >= 220 && y <= 576 ? silO(y) : torsoL(y) ?? legO(y));
 const bumpF = t => Math.sin(Math.PI * Math.pow(Math.max(0, Math.min(1, t)), 1.4));
 const rng = (a, b, n) => Array.from({ length: n + 1 }, (_, i) => a + (b - a) * i / n);
-const ribLines = (x0, x1, y0, y1, gap = 3.2, slant = 0) => { let d = ''; for (let x = x0 + gap / 2; x < x1; x += gap) d += `M ${f1(x)} ${f1(y0 + .8)} L ${f1(x + slant)} ${f1(y1 - .8)} `; return d; };
+const ribLines = (x0, x1, y0, y1, gap = 3.2, slant = 0) => { let d = ''; const g = gap * 1.8; for (let x = x0 + g / 2; x < x1; x += g) d += `M ${f1(x)} ${f1(y0 + 1.6)} Q ${f1(x + slant / 2 + .5)} ${f1((y0 + y1) / 2)} ${f1(x + slant)} ${f1(y1 - 1.6)} `; return d; };   // 罗纹只画几道示意、带一点弧度
 const R = { mir: false };
 
 /* ---------- 长袖（左袖；右袖用 mir） ---------- */
@@ -1436,7 +1439,7 @@ Object.assign(TPL, {
       for (let i = 0; i < N; i++) {
         const a = [lerp(wx(i), wx(i + 1), .5), 290], b = [wx(i + 1), 290], c = [hx(i + 1), hy(i + 1)], e = [lerp(hx(i), hx(i + 1), .5), (hy(i) + hy(i + 1)) / 2 + .8];
         shade.push(`M ${P2(a)} L ${P2(b)} L ${P2(c)} L ${P2(e)} Z`);
-        if (i > 0) lines.push({ d: `M ${f1(wx(i))} 291 L ${f1(hx(i))} ${f1(hy(i) - .2)}`, c: mix(baseOf(F.fill) || '#8A7A70', '#2E2024', .7), o: .8, w: .95 });
+        if (i > 0) lines.push({ d: `M ${f1(wx(i))} 291 L ${f1(hx(i))} ${f1(hy(i) - .2)}`, c: mix(baseOf(F.fill) || '#8A7A70', '#2E2024', .7), o: .8, w: .95, fade: 1 });
       }
       const wb = bandD(282, 7.4, 3.6, 2.6, 2.8);
       const pin = F.print === 'pin' ? `<path d="M 168 296 L 177 318" stroke="#B9C0CC" stroke-width="1.6" stroke-linecap="round"/><circle cx="167.5" cy="295" r="2" fill="none" stroke="#B9C0CC" stroke-width="1.2"/><path d="M 172 297 L 180 315" stroke="#B9C0CC" stroke-width="1"/>` : '';
@@ -2042,7 +2045,7 @@ Object.assign(TPL, {
       const up = skirtD({ top: 282, dip: 3.6, e: 2.6, hem: 318, flare: 9, hipY: 300, curve: 2.6 });
       const low = symS([[150, 316], [outerX(300) - 2.6 - 9, 314.4, 'c'], [outerX(300) - 2.6 - 22, 344, 'c'], [150, 348.6]]);
       const wb = bandD(282, 7, 3.6, 2.6, 2.8);
-      const pl = (y0, y1, x0, x1, n) => Array.from({ length: n - 1 }, (_, i) => { const t = (i + 1) / n; return { d: `M ${f1(x0 + (300 - 2 * x0) * t)} ${y0} L ${f1(x1 + (300 - 2 * x1) * t)} ${y1}`, o: .7, w: .85 }; });
+      const pl = (y0, y1, x0, x1, n) => Array.from({ length: n - 1 }, (_, i) => { const t = (i + 1) / n; return { fade: 1, d: `M ${f1(x0 + (300 - 2 * x0) * t)} ${y0} L ${f1(x1 + (300 - 2 * x1) * t)} ${y1}`, o: .7, w: .85 }; });
       const sh = (y0, y1, x0, x1, n) => Array.from({ length: n }, (_, i) => { const a = i / n, b = (i + 1) / n, m = (a + b) / 2; return `M ${f1(x0 + (300 - 2 * x0) * m)} ${y0} L ${f1(x0 + (300 - 2 * x0) * b)} ${y0} L ${f1(x1 + (300 - 2 * x1) * b)} ${y1} L ${f1(x1 + (300 - 2 * x1) * m)} ${y1} Z`; });
       const x0 = outerX(290) - 2.6, x1 = outerX(300) - 11.6, x2 = outerX(300) - 24.6;
       return piece(low, F.fill, { lines: pl(316, 347, x1, x2, 14), shade: sh(316, 347, x1, x2, 14), rim: [3, 1.5] }) +
@@ -2095,7 +2098,7 @@ Object.assign(TPL, {
       const wb = bandD(282, 7.4, 3.6, 2.6, 2.8);
       const N = 14, lines = [], shade = [];
       const xT = i => outerX(289) - 2.8 + (150 - outerX(289) + 2.8) * 2 * i / N, xB = i => outerX(300) - 2.6 - flare + (150 - outerX(300) + 2.6 + flare) * 2 * i / N;
-      for (let i = 1; i < N; i++) lines.push({ d: `M ${f1(xT(i))} 290 L ${f1(xB(i))} ${hem + 2}`, o: .6, w: .85 });
+      for (let i = 1; i < N; i++) lines.push({ d: `M ${f1(xT(i))} 290 L ${f1(xB(i))} ${hem + 2}`, o: .6, w: .85, fade: 1 });
       for (let i = 0; i < N; i++) shade.push(`M ${f1(xT(i) + (xT(i + 1) - xT(i)) * .55)} 289 L ${f1(xT(i + 1))} 289 L ${f1(xB(i + 1))} ${hem + 8} L ${f1(xB(i) + (xB(i + 1) - xB(i)) * .5)} ${hem + 8} Z`);
       const x0 = outerX(300) - 2.6 - flare, frill = [];
       const nn = 18; for (let i = 0; i < nn; i++) { const xa = x0 + (300 - 2 * x0) * i / nn, xb = x0 + (300 - 2 * x0) * (i + 1) / nn, y = hem + 4 * (1 - Math.pow(((xa + xb) / 2 - 150) / (150 - x0), 2)); frill.push(`M ${f1(xa)} ${f1(y - 2)} Q ${f1((xa + xb) / 2)} ${f1(y + 6)} ${f1(xb)} ${f1(y - 2)}`); }
@@ -3187,7 +3190,7 @@ Object.assign(TPL, {
    ===================================================================== */
 /* 柔软画法：描边用发色压暗的深棕（不用纯黑）、线更细，内侧高光和月牙阴影都收轻，发丝线更细更淡 */
 const hairInk = c => (/^#[0-9a-f]{6}$/i.test(c) ? mix(c, INK, .7) : INK);
-const hairPiece = (d, c, o = {}) => piece(d, c, { rim: [1.7, 1.4], sw: .85, oc: hairInk(c), lit: false, fx: false, cls: 'ho', ...o, ...(o.gloss ? { glossOp: .3 } : {}), over: (o.over || '') + (o.auto === false ? '' : autoStrands(d, c)) });
+const hairPiece = (d, c, o = {}) => piece(d, c, { rim: [1.7, 1.4], sw: .85, oc: hairInk(c), lit: false, cls: 'ho', ...o, ...(o.gloss ? { glossOp: .3 } : {}), over: (o.over || '') + (o.auto === false ? '' : autoStrands(d, c)) });
 /* 自动发丝：沿这一片头发的走向，在左右边缘之间排几根两头尖的细发丝（参考图里每一片头发都有一层细密的发丝线） */
 function autoStrands(d, c) {
   if (!SOFT || !/^#[0-9a-f]{6}$/i.test(c)) return '';
@@ -3199,7 +3202,7 @@ function autoStrands(d, c) {
     xs.sort((p, q) => p - q); let best = null; for (let i = 0; i + 1 < xs.length; i += 2) if (!best || xs[i + 1] - xs[i] > best[1] - best[0]) best = [xs[i], xs[i + 1]]; return best; };
   const N = 18, rows = []; for (let k = 0; k <= N; k++) { const y = y0 + H * (.05 + .88 * k / N); rows.push([y, span(y)]); }
   const ok = rows.filter(r => r[1]), wAvg = ok.reduce((s, r) => s + r[1][1] - r[1][0], 0) / Math.max(1, ok.length);
-  const k = Math.max(1, Math.min(9, Math.round(wAvg / 5)));
+  const k = Math.max(1, Math.min(4, Math.round(wAvg / 9)));   // 发丝线少画一些，一片头发两三根就够
   const r = RNG(Math.round(Math.abs(poly[0][0] * 7 + poly[0][1] * 13 + H * 3)) + 1);
   let out = '';
   for (let i = 0; i < k; i++) {
@@ -3220,7 +3223,7 @@ function unifyHair(svg) {
   });
   return outs.join('') + svg;
 }
-const strands = (ds, c, o = .7) => ds.map(d => ({ d, c, o: o * .9, w: .66, taper: true }));
+const strands = (ds, c, o = .7) => ds.map(d => ({ d, c, o: o * .72, w: .6, taper: true }));
 /* 一缕发束：发根 (x0,y0) → 发梢 (x1,y1)，w 发根宽度，bend 向侧面弯（正 = 向画面右） */
 function lockD(x0, y0, x1, y1, w, bend = 0, tipCurl = 0) {
   const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
@@ -3243,7 +3246,7 @@ const CAP_PTS = [[150, 59], [139, 59.8], [129, 62.6], [121, 67.6], [114.6, 74.4]
 const CAP = symS([[150, 59], [139, 59.8], [129, 62.6], [121, 67.6], [114.6, 74.4], [110.4, 82.6], [108, 92], [107.2, 102], [107.6, 112], [109.4, 121, 'c'], [116, 104], [126, 92], [138, 86.4], [150, 85]]);
 /* 发顶：只描外轮廓，下缘（发际线）不描边，好让刘海发束从下面自然长出来 */
 function capPiece(d, outline, c, o = {}) {
-  return piece(d, c, { rim: false, sw: 0, lit: false, fx: false, ...o }).replace(/<path d="[^"]*" fill="none" stroke="[^"]*" stroke-width="0"[^>]*\/>$/, '') + `<path class="ho" d="${outline}" fill="none" stroke="${hairInk(c)}" stroke-width=".85" stroke-linecap="round" stroke-linejoin="round"/>`;
+  return piece(d, c, { rim: false, sw: 0, lit: false, ...o }).replace(/<path d="[^"]*" fill="none" stroke="[^"]*" stroke-width="0"[^>]*\/>$/, '') + `<path class="ho" d="${outline}" fill="none" stroke="${hairInk(c)}" stroke-width=".85" stroke-linecap="round" stroke-linejoin="round"/>`;
 }
 const CAP_LINE = line(CAP_PTS.slice().reverse().concat(CAP_PTS.slice(1).map(mx)));
 const capHair = (c, ln, extra = '') => capPiece(CAP, CAP_LINE, c, { lines: capLines(ln), shade: ['M 170 62 C 186 72 192 90 191 118 L 200 118 L 200 60 Z'], over: extra });
@@ -6500,7 +6503,7 @@ function shotInner(forExport) {
   const stickers = stickerMarkup(forExport);
   return `<defs><clipPath id="${c}"><rect x="${x}" y="${y}" width="${w}" height="${h}"/></clipPath>${Object.entries(FILTERS).filter(([, f]) => f.def).map(([k, f]) => `<filter id="stF-${k}" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">${f.def}</filter>`).join('')}` +
     `<filter id="stRough" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".05" numOctaves="2" seed="2" result="t"/><feDisplacementMap in="SourceGraphic" in2="t" scale="7"/></filter></defs>` +
-    `<g clip-path="url(#${c})"><g${fl}><svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid slice">${SCENES[studio.scene].draw()}</svg>${floor}<g transform="${dollPlace(studio.crop, R)}">${dollSVG(outfit, {}, studio.pose)}</g></g></g>` +
+    `<g clip-path="url(#${c})"><g${fl}><svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid slice">${SCENES[studio.scene].draw()}</svg>${floor}<g transform="${dollPlace(studio.crop, R)}"><g filter="url(#dollInk)">${dollSVG(outfit, {}, studio.pose)}</g></g></g></g>` +
     frameSVG(studio.frame) + `<g id="stLayer">${stickers}</g>`;
 }
 function stickerMarkup(forExport) {

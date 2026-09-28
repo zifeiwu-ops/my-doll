@@ -4,7 +4,7 @@
    ===================================================================== */
 /* 柔软画法：描边用发色压暗的深棕（不用纯黑）、线更细，内侧高光和月牙阴影都收轻，发丝线更细更淡 */
 const hairInk = c => (/^#[0-9a-f]{6}$/i.test(c) ? mix(c, INK, .7) : INK);
-const hairPiece = (d, c, o = {}) => piece(d, c, { rim: [1.7, 1.4], sw: .85, oc: hairInk(c), lit: false, fx: false, cls: 'ho', ...o, ...(o.gloss ? { glossOp: .3 } : {}), over: (o.over || '') + (o.auto === false ? '' : autoStrands(d, c)) });
+const hairPiece = (d, c, o = {}) => piece(d, c, { rim: [1.7, 1.4], sw: .85, oc: hairInk(c), lit: false, cls: 'ho', ...o, ...(o.gloss ? { glossOp: .3 } : {}), over: (o.over || '') + (o.auto === false ? '' : autoStrands(d, c)) });
 /* 自动发丝：沿这一片头发的走向，在左右边缘之间排几根两头尖的细发丝（参考图里每一片头发都有一层细密的发丝线） */
 function autoStrands(d, c) {
   if (!SOFT || !/^#[0-9a-f]{6}$/i.test(c)) return '';
@@ -16,7 +16,7 @@ function autoStrands(d, c) {
     xs.sort((p, q) => p - q); let best = null; for (let i = 0; i + 1 < xs.length; i += 2) if (!best || xs[i + 1] - xs[i] > best[1] - best[0]) best = [xs[i], xs[i + 1]]; return best; };
   const N = 18, rows = []; for (let k = 0; k <= N; k++) { const y = y0 + H * (.05 + .88 * k / N); rows.push([y, span(y)]); }
   const ok = rows.filter(r => r[1]), wAvg = ok.reduce((s, r) => s + r[1][1] - r[1][0], 0) / Math.max(1, ok.length);
-  const k = Math.max(1, Math.min(9, Math.round(wAvg / 5)));
+  const k = Math.max(1, Math.min(4, Math.round(wAvg / 9)));   // 发丝线少画一些，一片头发两三根就够
   const r = RNG(Math.round(Math.abs(poly[0][0] * 7 + poly[0][1] * 13 + H * 3)) + 1);
   let out = '';
   for (let i = 0; i < k; i++) {
@@ -37,7 +37,7 @@ function unifyHair(svg) {
   });
   return outs.join('') + svg;
 }
-const strands = (ds, c, o = .7) => ds.map(d => ({ d, c, o: o * .9, w: .66, taper: true }));
+const strands = (ds, c, o = .7) => ds.map(d => ({ d, c, o: o * .72, w: .6, taper: true }));
 /* 一缕发束：发根 (x0,y0) → 发梢 (x1,y1)，w 发根宽度，bend 向侧面弯（正 = 向画面右） */
 function lockD(x0, y0, x1, y1, w, bend = 0, tipCurl = 0) {
   const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
@@ -60,7 +60,7 @@ const CAP_PTS = [[150, 59], [139, 59.8], [129, 62.6], [121, 67.6], [114.6, 74.4]
 const CAP = symS([[150, 59], [139, 59.8], [129, 62.6], [121, 67.6], [114.6, 74.4], [110.4, 82.6], [108, 92], [107.2, 102], [107.6, 112], [109.4, 121, 'c'], [116, 104], [126, 92], [138, 86.4], [150, 85]]);
 /* 发顶：只描外轮廓，下缘（发际线）不描边，好让刘海发束从下面自然长出来 */
 function capPiece(d, outline, c, o = {}) {
-  return piece(d, c, { rim: false, sw: 0, lit: false, fx: false, ...o }).replace(/<path d="[^"]*" fill="none" stroke="[^"]*" stroke-width="0"[^>]*\/>$/, '') + `<path class="ho" d="${outline}" fill="none" stroke="${hairInk(c)}" stroke-width=".85" stroke-linecap="round" stroke-linejoin="round"/>`;
+  return piece(d, c, { rim: false, sw: 0, lit: false, ...o }).replace(/<path d="[^"]*" fill="none" stroke="[^"]*" stroke-width="0"[^>]*\/>$/, '') + `<path class="ho" d="${outline}" fill="none" stroke="${hairInk(c)}" stroke-width=".85" stroke-linecap="round" stroke-linejoin="round"/>`;
 }
 const CAP_LINE = line(CAP_PTS.slice().reverse().concat(CAP_PTS.slice(1).map(mx)));
 const capHair = (c, ln, extra = '') => capPiece(CAP, CAP_LINE, c, { lines: capLines(ln), shade: ['M 170 62 C 186 72 192 90 191 118 L 200 118 L 200 60 Z'], over: extra });

@@ -12,7 +12,7 @@ function offsetPts(pts, e) {
 const sideX = y => (y >= 220 && y <= 576 ? silO(y) : torsoL(y) ?? legO(y));
 const bumpF = t => Math.sin(Math.PI * Math.pow(Math.max(0, Math.min(1, t)), 1.4));
 const rng = (a, b, n) => Array.from({ length: n + 1 }, (_, i) => a + (b - a) * i / n);
-const ribLines = (x0, x1, y0, y1, gap = 3.2, slant = 0) => { let d = ''; for (let x = x0 + gap / 2; x < x1; x += gap) d += `M ${f1(x)} ${f1(y0 + .8)} L ${f1(x + slant)} ${f1(y1 - .8)} `; return d; };
+const ribLines = (x0, x1, y0, y1, gap = 3.2, slant = 0) => { let d = ''; const g = gap * 1.8; for (let x = x0 + g / 2; x < x1; x += g) d += `M ${f1(x)} ${f1(y0 + 1.6)} Q ${f1(x + slant / 2 + .5)} ${f1((y0 + y1) / 2)} ${f1(x + slant)} ${f1(y1 - 1.6)} `; return d; };   // 罗纹只画几道示意、带一点弧度
 const R = { mir: false };
 
 /* ---------- 长袖（左袖；右袖用 mir） ---------- */

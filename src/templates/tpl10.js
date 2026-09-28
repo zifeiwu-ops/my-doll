@@ -245,7 +245,7 @@ Object.assign(TPL, {
       const up = skirtD({ top: 282, dip: 3.6, e: 2.6, hem: 318, flare: 9, hipY: 300, curve: 2.6 });
       const low = symS([[150, 316], [outerX(300) - 2.6 - 9, 314.4, 'c'], [outerX(300) - 2.6 - 22, 344, 'c'], [150, 348.6]]);
       const wb = bandD(282, 7, 3.6, 2.6, 2.8);
-      const pl = (y0, y1, x0, x1, n) => Array.from({ length: n - 1 }, (_, i) => { const t = (i + 1) / n; return { d: `M ${f1(x0 + (300 - 2 * x0) * t)} ${y0} L ${f1(x1 + (300 - 2 * x1) * t)} ${y1}`, o: .7, w: .85 }; });
+      const pl = (y0, y1, x0, x1, n) => Array.from({ length: n - 1 }, (_, i) => { const t = (i + 1) / n; return { fade: 1, d: `M ${f1(x0 + (300 - 2 * x0) * t)} ${y0} L ${f1(x1 + (300 - 2 * x1) * t)} ${y1}`, o: .7, w: .85 }; });
       const sh = (y0, y1, x0, x1, n) => Array.from({ length: n }, (_, i) => { const a = i / n, b = (i + 1) / n, m = (a + b) / 2; return `M ${f1(x0 + (300 - 2 * x0) * m)} ${y0} L ${f1(x0 + (300 - 2 * x0) * b)} ${y0} L ${f1(x1 + (300 - 2 * x1) * b)} ${y1} L ${f1(x1 + (300 - 2 * x1) * m)} ${y1} Z`; });
       const x0 = outerX(290) - 2.6, x1 = outerX(300) - 11.6, x2 = outerX(300) - 24.6;
       return piece(low, F.fill, { lines: pl(316, 347, x1, x2, 14), shade: sh(316, 347, x1, x2, 14), rim: [3, 1.5] }) +
@@ -298,7 +298,7 @@ Object.assign(TPL, {
       const wb = bandD(282, 7.4, 3.6, 2.6, 2.8);
       const N = 14, lines = [], shade = [];
       const xT = i => outerX(289) - 2.8 + (150 - outerX(289) + 2.8) * 2 * i / N, xB = i => outerX(300) - 2.6 - flare + (150 - outerX(300) + 2.6 + flare) * 2 * i / N;
-      for (let i = 1; i < N; i++) lines.push({ d: `M ${f1(xT(i))} 290 L ${f1(xB(i))} ${hem + 2}`, o: .6, w: .85 });
+      for (let i = 1; i < N; i++) lines.push({ d: `M ${f1(xT(i))} 290 L ${f1(xB(i))} ${hem + 2}`, o: .6, w: .85, fade: 1 });
       for (let i = 0; i < N; i++) shade.push(`M ${f1(xT(i) + (xT(i + 1) - xT(i)) * .55)} 289 L ${f1(xT(i + 1))} 289 L ${f1(xB(i + 1))} ${hem + 8} L ${f1(xB(i) + (xB(i + 1) - xB(i)) * .5)} ${hem + 8} Z`);
       const x0 = outerX(300) - 2.6 - flare, frill = [];
       const nn = 18; for (let i = 0; i < nn; i++) { const xa = x0 + (300 - 2 * x0) * i / nn, xb = x0 + (300 - 2 * x0) * (i + 1) / nn, y = hem + 4 * (1 - Math.pow(((xa + xb) / 2 - 150) / (150 - x0), 2)); frill.push(`M ${f1(xa)} ${f1(y - 2)} Q ${f1((xa + xb) / 2)} ${f1(y + 6)} ${f1(xb)} ${f1(y - 2)}`); }

@@ -146,7 +146,7 @@ function shotInner(forExport) {
   const stickers = stickerMarkup(forExport);
   return `<defs><clipPath id="${c}"><rect x="${x}" y="${y}" width="${w}" height="${h}"/></clipPath>${Object.entries(FILTERS).filter(([, f]) => f.def).map(([k, f]) => `<filter id="stF-${k}" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">${f.def}</filter>`).join('')}` +
     `<filter id="stRough" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".05" numOctaves="2" seed="2" result="t"/><feDisplacementMap in="SourceGraphic" in2="t" scale="7"/></filter></defs>` +
-    `<g clip-path="url(#${c})"><g${fl}><svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid slice">${SCENES[studio.scene].draw()}</svg>${floor}<g transform="${dollPlace(studio.crop, R)}">${dollSVG(outfit, {}, studio.pose)}</g></g></g>` +
+    `<g clip-path="url(#${c})"><g${fl}><svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid slice">${SCENES[studio.scene].draw()}</svg>${floor}<g transform="${dollPlace(studio.crop, R)}"><g filter="url(#dollInk)">${dollSVG(outfit, {}, studio.pose)}</g></g></g></g>` +
     frameSVG(studio.frame) + `<g id="stLayer">${stickers}</g>`;
 }
 function stickerMarkup(forExport) {
