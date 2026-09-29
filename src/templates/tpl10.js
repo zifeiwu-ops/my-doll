@@ -122,11 +122,17 @@ Object.assign(TPL, {
       const slR = mir(sleeveD({ y1: 316, puff: 4, eo: 3, ei: 2.6, se: 3.2 })), cfR = mir(cuffD(316, 7, 3.2, 2.6));
       const slL = offSleeveD({ y0: 208, y1: 316, eo: 3, ei: 2.6, puff: 4 }), cfL = cuffD(316, 7, 3.2, 2.6);
       const print = F.print === 'windmill' ? `<circle cx="146" cy="238" r="19" fill="#E0413C" stroke="${INK}" stroke-width="1"/>` + [0, 90, 180, 270].map(a => `<path d="M 146 238 L ${f1(146 + Math.cos((a - 20) * Math.PI / 180) * 17)} ${f1(238 + Math.sin((a - 20) * Math.PI / 180) * 17)} L ${f1(146 + Math.cos((a + 8) * Math.PI / 180) * 10)} ${f1(238 + Math.sin((a + 8) * Math.PI / 180) * 10)} Z" fill="#2E5E3A" stroke="${INK}" stroke-width=".6" stroke-linejoin="round"/>`).join('') + `<circle cx="146" cy="238" r="2" fill="#F4E9D8" stroke="${INK}" stroke-width=".6"/>` : '';
-      return strap('M 129.2 170.8 L 128.2 214', 'url(#pat-pinkstripe)', 2.2) + piece(body, F.fill, {
-        under: print, folds: ['M 124 252 Q 128 268 125 286', 'M 170 274 Q 164 280 158 294', 'M 176 262 Q 174 274 172 284', 'M 128 216 Q 140 226 152 228', 'M 136 290 Q 140 294 138 300']
-      }) + `<path d="${trim}" fill="none" stroke="${F.detail}" stroke-width="2.4" stroke-linecap="round" opacity=".55"/>` + btn(175.6, 283, '#F07FA8', 2.8) +
+      /* rock：黑色大字 + 人像剪影的印花；肩膀上一排铆钉，没有露出来的内衣肩带和粉扣 */
+      const rock = F.print === 'rock';
+      const rockPrint = rock ? `<g opacity=".92"><text x="148" y="214" text-anchor="middle" font-size="7" font-weight="700" letter-spacing=".5" fill="#2A2528" style="font-family:Arial,Helvetica,sans-serif">ALWAYS BE</text>` +
+        `<path d="M 138 219 C 134 226 134 238 138 248 L 158 248 C 162 238 162 226 158 219 Z" fill="#8A868C" opacity=".75"/><text x="148" y="243" text-anchor="middle" font-size="22" font-weight="900" fill="#2A2528" style="font-family:Impact,'Arial Black',sans-serif" letter-spacing="-.5">ROCK</text>` +
+        `<text x="148" y="254" text-anchor="middle" font-size="5.2" font-weight="700" fill="#2A2528" style="font-family:Arial,Helvetica,sans-serif">DON'T JUST EXIST</text><text x="148" y="260" text-anchor="middle" font-size="4" fill="#2A2528" style="font-family:Arial,Helvetica,sans-serif">ACT THE WORLD RADICALLY</text></g>` : '';
+      const studs = rock ? [[172, 172], [178, 175], [184, 179], [188.4, 185], [182, 186], [176, 181]].map(([x, y]) => `<path d="M ${x} ${y - 1.8} L ${x + 1.8} ${y} L ${x} ${y + 1.8} L ${x - 1.8} ${y} Z" fill="#2A2528"/><circle cx="${x - .4}" cy="${y - .5}" r=".45" fill="#C8C6CE"/>`).join('') : '';
+      return (rock ? '' : strap('M 129.2 170.8 L 128.2 214', 'url(#pat-pinkstripe)', 2.2)) + piece(body, F.fill, {
+        under: print + rockPrint, folds: ['M 124 252 Q 128 268 125 286', 'M 170 274 Q 164 280 158 294', 'M 176 262 Q 174 274 172 284', 'M 128 216 Q 140 226 152 228', 'M 136 290 Q 140 294 138 300']
+      }) + `<path d="${trim}" fill="none" stroke="${F.detail || '#E6E0D6'}" stroke-width="2.4" stroke-linecap="round" opacity=".55"/>` + (rock ? '' : btn(175.6, 283, '#F07FA8', 2.8)) +
         piece(slR, F.fill, { folds: [mir('M 99 262 Q 103 270 101 280'), mir('M 94 292 Q 97 298 96 306')] }) + piece(cfR, F.fill, { deep: [cfR] }) +
-        piece(slL, F.fill, { folds: ['M 99 262 Q 103 270 101 280', 'M 94 292 Q 97 298 96 306'] }) + piece(cfL, F.fill, { deep: [cfL] });
+        piece(slL, F.fill, { folds: ['M 99 262 Q 103 270 101 280', 'M 94 292 Q 97 298 96 306'] }) + piece(cfL, F.fill, { deep: [cfL] }) + studs;
     }
   },
   tuckBlouse: {
