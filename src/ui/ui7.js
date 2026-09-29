@@ -498,3 +498,22 @@ if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.c
   el.addEventListener('input', () => { fit(); try { localStorage.setItem(K, el.value.trim()); } catch (e) { } });
   el.addEventListener('keydown', e => { if (e.key === 'Enter') el.blur(); });
 })();
+
+/* ---------------- 本期上新（滚动公告条）：改这里的清单就行；go = 点了跳到哪个分区，或者 shot 拍照 / adj 调位置 ---------------- */
+const NEWS = [
+  ['偶像私服系列上新：8 套整套造型', 'set'], ['新增「套装」分区，点一下换上整套', 'set'], ['发型可以换 13 种发色', 'hair'],
+  ['小物可以拖动位置、调上下层级（舞台右下角 ✥）', 'adj'], ['拍照小屋升级：照片一直在眼前，设置一次一项', 'shot'],
+  ['初始居家服：奶油小背心 + 抽绳短裤 + 毛绒拖鞋', 'bottom'], ['衣橱可以按 系列 / 颜色 / 风格 筛选', 'top'], ['给娃娃取个名字吧（标题旁边的丝带）', 'name']
+];
+(() => {
+  const tr = $('#tkTrack'); if (!tr) return;
+  const one = NEWS.map(([t, go]) => `<button type="button" class="tk-item" data-go="${go}">${t}</button>`).join('');
+  tr.innerHTML = one + `<span aria-hidden="true" style="display:contents">${one.replace(/<button /g, '<button tabindex="-1" ')}</span>`;   // 复制一份，首尾接上无缝滚动
+  tr.addEventListener('click', e => {
+    const b = e.target.closest('[data-go]'); if (!b) return; const g = b.dataset.go;
+    if (g === 'shot') return $('#btnShot').click();
+    if (g === 'adj') return $('#adjBtn').click();
+    if (g === 'name') return $('#dollName').focus();
+    state.tab = g; renderTabs(); renderGrid(); const c = document.querySelector('.closet'); if (c && c.scrollIntoView) c.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+})();

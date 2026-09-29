@@ -388,6 +388,23 @@ input.ribbon{font:inherit;font-family:var(--f-round);font-size:15px;letter-spaci
 input.ribbon::placeholder{color:#E9A9C0;opacity:1}
 input.ribbon:focus{box-shadow:0 0 0 3px #fff,0 0 0 5px var(--pink)}
 @media (max-width:879px){input.ribbon{font-size:11.5px;max-width:45vw}}
+
+/* 本期上新：一条自动滚动的公告条（鼠标放上去 / 手指按住就停），点一条直接跳到对应的地方 */
+.ticker{position:relative;flex:1 1 320px;min-width:0;max-width:720px;display:flex;align-items:center;gap:0;height:36px;background:#FFFDE9;border:2px solid var(--ink);border-radius:999px;overflow:hidden;box-shadow:3px 4px 0 rgba(74,52,48,.15)}
+.tk-tag{flex:0 0 auto;align-self:stretch;display:flex;align-items:center;padding:0 12px 0 14px;background:var(--pink);color:#fff;font-family:var(--f-display);font-size:14px;border-right:2px solid var(--ink);z-index:1}
+.tk-view{flex:1 1 auto;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent);mask-image:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent)}
+.tk-track{display:flex;width:max-content;animation:tk 38s linear infinite}
+.ticker:hover .tk-track,.ticker:active .tk-track,.ticker:focus-within .tk-track{animation-play-state:paused}
+@keyframes tk{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.tk-item{flex:0 0 auto;border:0;background:none;padding:0 18px;font:inherit;font-size:13.5px;color:var(--ink);cursor:pointer;white-space:nowrap}
+.tk-item::before{content:"✦";color:var(--pink);margin-right:7px}
+.tk-item:hover{color:var(--pink-deep);text-decoration:underline}
+@media (prefers-reduced-motion:reduce){.tk-track{animation:none}.tk-view{overflow-x:auto}}
+@media (max-width:879px){
+  .masthead{flex-wrap:wrap !important}
+  .masthead .ticker{display:flex;flex:1 1 100%;max-width:none;height:26px;box-shadow:none;border-width:1.5px}
+  .tk-tag{font-size:11.5px;padding:0 8px}.tk-item{font-size:11.5px;padding:0 12px}
+}
 </style>
 </head>
 <body>
@@ -406,8 +423,7 @@ input.ribbon:focus{box-shadow:0 0 0 3px #fff,0 0 0 5px var(--pink)}
 <div class="app">
   <header class="masthead">
     <h1 class="logo"><span class="logo-cn"><span>M</span><span class="c2">y</span> <span class="c3">d</span><span class="c4">o</span><span>l</span><span class="c2">l</span></span><input class="ribbon" id="dollName" maxlength="14" placeholder="给娃娃取个名字" aria-label="娃娃的名字" autocomplete="off" spellcheck="false"></h1>
-    <div class="memo"><svg class="clip" aria-hidden="true" viewBox="0 0 100 100"><use href="#st-clip" x="0" y="0" width="100" height="100"/></svg><b>本期上新 · 糖果装饰风 + 甜酷街头 173 件</b>
-      <p>彩虹抹胸 · 毛绒腿套 · 双丸子头 · 水手领条纹T · 蓬蓬荷叶短裙 · 条纹过膝袜 · 毛领大衣 · 西部靴<br>新姿势「双手叉腰 / 双手捧心」，拍照小屋新增涂鸦贴纸墙、糖果店、放学路口</p></div>
+    <div class="ticker" id="ticker" role="region" aria-label="本期上新"><span class="tk-tag">本期上新</span><div class="tk-view"><div class="tk-track" id="tkTrack"></div></div></div>
     <svg class="stk" style="top:-6px;right:4%;width:34px;height:34px;color:#FFE27A" aria-hidden="true" viewBox="0 0 100 100"><use href="#st-star" x="0" y="0" width="100" height="100"/></svg>
     <svg class="stk" style="bottom:-10px;right:14%;width:30px;height:32px" aria-hidden="true" viewBox="0 0 100 100"><use href="#st-clover" x="0" y="0" width="100" height="100"/></svg>
   </header>
@@ -8415,6 +8431,25 @@ if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.c
   fit();
   el.addEventListener('input', () => { fit(); try { localStorage.setItem(K, el.value.trim()); } catch (e) { } });
   el.addEventListener('keydown', e => { if (e.key === 'Enter') el.blur(); });
+})();
+
+/* ---------------- 本期上新（滚动公告条）：改这里的清单就行；go = 点了跳到哪个分区，或者 shot 拍照 / adj 调位置 ---------------- */
+const NEWS = [
+  ['偶像私服系列上新：8 套整套造型', 'set'], ['新增「套装」分区，点一下换上整套', 'set'], ['发型可以换 13 种发色', 'hair'],
+  ['小物可以拖动位置、调上下层级（舞台右下角 ✥）', 'adj'], ['拍照小屋升级：照片一直在眼前，设置一次一项', 'shot'],
+  ['初始居家服：奶油小背心 + 抽绳短裤 + 毛绒拖鞋', 'bottom'], ['衣橱可以按 系列 / 颜色 / 风格 筛选', 'top'], ['给娃娃取个名字吧（标题旁边的丝带）', 'name']
+];
+(() => {
+  const tr = $('#tkTrack'); if (!tr) return;
+  const one = NEWS.map(([t, go]) => `<button type="button" class="tk-item" data-go="${go}">${t}</button>`).join('');
+  tr.innerHTML = one + `<span aria-hidden="true" style="display:contents">${one.replace(/<button /g, '<button tabindex="-1" ')}</span>`;   // 复制一份，首尾接上无缝滚动
+  tr.addEventListener('click', e => {
+    const b = e.target.closest('[data-go]'); if (!b) return; const g = b.dataset.go;
+    if (g === 'shot') return $('#btnShot').click();
+    if (g === 'adj') return $('#adjBtn').click();
+    if (g === 'name') return $('#dollName').focus();
+    state.tab = g; renderTabs(); renderGrid(); const c = document.querySelector('.closet'); if (c && c.scrollIntoView) c.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
 })();
 </script>
 
