@@ -206,3 +206,17 @@ function tintHair(L, target) {
   };
   return L.map(l => ({ ...l, svg: l.svg.replace(/#[0-9a-fA-F]{6}\b/g, map) }));
 }
+
+/* ---------- 中分无刘海长直发（头发拨到肩后）：前面只留两缕贴着脸颊垂到下巴，其余都在身后 ---------- */
+HAIRS.push({
+  id: 'h40', cat: 'hair', name: '中分无刘海长直发', thumb: '74 46 152 200', isNew: true,
+  parts() {
+    const c = '#2E2528', ln = '#0E0A0B';
+    const back = symS([[150, 60], [134, 61.6], [118, 69], [107, 84], [101.6, 106], [99.6, 134], [98.6, 170], [98, 210], [98.4, 250], [99.6, 282], [104, 292, 'c'], [114, 288], [124, 292, 'c'], [132, 272], [150, 268]]);
+    const cheek = [[113.6, 96, 111.4, 150, 7.4, -1.6, .8], [118.4, 100, 119.6, 136, 5, 1.2]];   // 贴着脸颊的两缕，只到下巴
+    return [
+      { z: 2, svg: hairPiece(back, c, { lines: strands(['M 102 160 C 101 200 101 240 102 280', mir('M 102 160 C 101 200 101 240 102 280')], ln) }) },
+      { z: 50, svg: capHair(c, ln, shine([[130, 73, -20], [170, 73, 20]], '#6E6268')) + locks(cheek, c, ln) + locks(mirLocks(cheek), c, ln) + locks(PART_LOCKS, c, ln) }
+    ];
+  }
+});

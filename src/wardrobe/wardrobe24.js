@@ -5,4 +5,4 @@ const ROCK24 = [
   { id: 'b83', cat: 'bottom', tpl: 'pleatedMini', name: '深灰格纹百褶裙', fill: { p: 'darkplaid' }, ip: 'rock', isNew: true }
 ];
 WARDROBE.unshift(...ROCK24);
-LOOKS.unshift({ name: '斜肩摇滚卫衣 · 灰格百褶', ip: 'rock', o: { hair: 'h16', hairColor: '#2A2226', top: 't93', bottom: 'b83', dress: null, outer: null, legs: null, warmer: null, shoes: 's2', acc: [] } });
+LOOKS.unshift({ name: '斜肩摇滚卫衣 · 灰格百褶', ip: 'rock', o: { hair: 'h40', hairColor: null, top: 't93', bottom: 'b83', dress: null, outer: null, legs: null, warmer: null, shoes: 's2', acc: [] } });
