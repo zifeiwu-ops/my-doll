@@ -15,12 +15,18 @@ function hatGeo(it, L) {   // 帽子的上沿、帽口（前面正中那一段�
   L.forEach(l => (l.svg.match(/\sd="[^"]*"/g) || []).forEach(d => { const n = d.match(/-?\d*\.?\d+/g) || []; for (let i = 0; i + 1 < n.length; i += 2) { const x = +n[i], y = +n[i + 1]; if (x < 60 || x > 240 || y < 0 || y > 170) continue; yt = Math.min(yt, y); x0 = Math.min(x0, x); x1 = Math.max(x1, x); if (Math.abs(x - 150) < 22 && y < 132) yb = Math.max(yb, y); } }));
   return (_hatGeo[it.id] = yb > yt ? { yt, yb, x0, x1 } : null);
 }
+/* 帽顶统一落在「头发顶 + 一层蓬松的头发」上：头发顶在 y≈59，帽顶目标 y≈45（软帽 / 鸭舌帽 / 报童帽），头巾贴一点 y≈50；
+   贝雷帽本来就斜搭在头顶，遮阳帽没有帽顶、猫耳兜帽是整个包住，不改高度 */
+const HAT_TOP = { a5: 50, a24: 50, a43: 50, a56: 50 }, HAT_KEEP = new Set(['a46', 'a95', 'a35', 'a76']);
 function fitHat(it, L) {
   const g = hatGeo(it, L); if (!g) return L;
-  const { yt, yb } = g, H = Math.max(10, yb - yt), A = Math.min(5.2, H * .12);
-  const fn = (x, y) => { const s = Math.max(0, Math.min(1, (y - yt) / H)), u = Math.min(1, Math.abs(x - 150) / 50), fr = 1 - u * u;
-    // 帽口往外撑到和头发一样宽（帽子罩住头发，不是顶在头发上面）；帽顶压低一点、往里收成圆顶
-    return [(x - 150) * (.075 * s - .06 * Math.pow(1 - s, 1.4)), A * fr * s * s + (1 - s) * H * (H > 44 ? .16 : .08)]; };
+  const { yt, yb } = g, T = HAT_KEEP.has(it.id) ? yt : (HAT_TOP[it.id] ?? 45), k = Math.max(.35, Math.min(1.6, (yb - T) / Math.max(8, yb - yt)));
+  const H = yb - T, A = Math.min(5.2, H * .12);
+  const fn = (x, y) => {
+    const ny = y < yb ? yb - (yb - y) * k : y, s = Math.max(0, Math.min(1, (ny - T) / H)), u = Math.min(1, Math.abs(x - 150) / 50), fr = 1 - u * u;
+    // 帽身中段往外鼓一点（里面有头发撑着），帽口撑到头发宽，帽顶收圆
+    const puff = Math.sin(Math.PI * Math.min(1, s * 1.15)) * .06;
+    return [(x - 150) * (.075 * s + puff - .06 * Math.pow(1 - s, 1.4)), ny - y + A * fr * s * s]; };
   const out = L.map(l => ({ ...l, svg: warpSVG(l.svg, {}, { fn }) }));
   // 帽口投在头发 / 额头上的阴影：沿着弯下来的帽口，一条上宽下窄的月牙；只落在头的范围里
   const c = uid('hs'), P = [], Q = [];
