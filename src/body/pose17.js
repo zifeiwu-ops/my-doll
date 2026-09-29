@@ -117,7 +117,7 @@ function warpSVG(svg, W, o = {}) {
     const det = M[0] * M[3] - M[1] * M[2] || 1, i0 = M[3] / det, i1 = -M[1] / det, i2 = -M[2] / det, i3 = M[0] / det;
     return (x, y) => {
       const X = id ? x + M[4] : M[0] * x + M[2] * y + M[4], Y = id ? y + M[5] : M[1] * x + M[3] * y + M[5];
-      const u = warpAt(W, X, Y, opt);
+      const u = o.fn ? o.fn(X, Y) : warpAt(W, X, Y, opt);   // o.fn：自定义位移（戴帽子贴合头型用）
       return id ? [x + u[0], y + u[1]] : [x + i0 * u[0] + i2 * u[1], y + i1 * u[0] + i3 * u[1]];
     };
   };

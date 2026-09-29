@@ -72,12 +72,15 @@ function dollSVG(outfit, over = {}, pose = null) {
   });
   const accL = [], P = pose ? POSES[pose] || POSES.stand : null;   // 没传姿势（DIY 画布）时保持原始比例，画的形状才对得上
   // 玩家拖动过的小物：整件先平移（在姿势变形之前，所以摆什么姿势都跟着）；每层包一个 data-acc，舞台上点它就能选中
-  const OFF = outfit.offsets || {}, LAY = outfit.layers || {}, shift = (id, Q) => { const o = OFF[id], zt = LAY[id], top = Math.max(...Q.map(l => l.z)); return Q.map(l => ({ ...l, z: zt != null ? f1(l.z - top + zt) : l.z, svg: `<g data-acc="${id}"${o && (o[0] || o[1]) ? ` transform="translate(${f1(o[0])} ${f1(o[1])})"` : ''}>${l.svg}</g>` })); };
-  (outfit.acc || []).forEach(id => { const it = byId(id); if (it) { const Q = shift(id, partsOf(it)); if (isHead(it)) H.push(...Q); else if (P && (BAGS.has(id) || HELD[id] || it.sub === 'bag' || it.sub === 'waist')) accL.push(...Q.map(l => ({ ...l, bag: id }))); else L.push(...Q.map(l => ({ ...l, cat: 'acc', id }))); } });
+  const OFF = outfit.offsets || {}, LAY = outfit.layers || {}, SC = outfit.scales || {}, shift = (id, Q) => { const o = OFF[id] || [0, 0], zt = LAY[id], k = SC[id] || 1, top = Math.max(...Q.map(l => l.z));
+    const [bx, by, bw, bh] = thumbOf(byId(id)).split(' ').map(Number), cx = bx + bw / 2, cy = by + bh / 2;   // 以这件小物自己的中心缩放
+    const tf = [o[0] || o[1] ? `translate(${f1(o[0])} ${f1(o[1])})` : '', k !== 1 ? `translate(${f1(cx)} ${f1(cy)}) scale(${f2(k)}) translate(${f1(-cx)} ${f1(-cy)})` : ''].join(' ').trim();
+    return Q.map(l => ({ ...l, z: zt != null ? f1(l.z - top + zt) : l.z, svg: `<g data-acc="${id}"${tf ? ` transform="${tf}"` : ''}>${l.svg}</g>` })); };
+  (outfit.acc || []).forEach(id => { const it = byId(id); if (it) { const Q = shift(id, isCapHat(it) ? fitHat(it, partsOf(it)) : partsOf(it)); if (isHead(it)) H.push(...Q); else if (P && (BAGS.has(id) || HELD[id] || it.sub === 'bag' || it.sub === 'waist')) accL.push(...Q.map(l => ({ ...l, bag: id }))); else L.push(...Q.map(l => ({ ...l, cat: 'acc', id }))); } });
   // 戴帽子时，帽顶以上的头发（丸子、高马尾、呆毛）收进帽子里，不会从帽子上穿出来；遮阳帽没有帽顶，不收
   const hatId = (outfit.acc || []).find(id => { const it = byId(id); return it && it.sub === 'hat' && !OPEN_HATS.has(id); });
   if (hatId) {
-    const hy = (OFF[hatId] || [0, 0])[1];   // 帽子被拖高 / 拖低了，收头发的那条线也跟着挪
+    const hy = (OFF[hatId] || [0, 0])[1] - (((SC[hatId] || 1) - 1) * 30);   // 帽子放大后帽顶更高、帽口更低，收头发的线往上一点   // 帽子被拖高 / 拖低了，收头发的那条线也跟着挪
     const hide = (l, y) => { const c = uid('hc'); return { ...l, svg: `<clipPath id="${c}"><rect x="-40" y="${y}" width="380" height="700"/></clipPath><g clip-path="url(#${c})">${l.svg}</g>` }; };
     H.forEach((l, i) => { if (l.cat === 'hair') { const y = (l.z < 10 ? 78 : 60) + hy; H[i] = hide(l, P ? f1(y + propOffset(150, y)[1]) : y); } });   // 有姿势时身体按时装比例变形过，裁切线跟着挪
   }

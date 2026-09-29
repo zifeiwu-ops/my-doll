@@ -6663,12 +6663,15 @@ function dollSVG(outfit, over = {}, pose = null) {
   });
   const accL = [], P = pose ? POSES[pose] || POSES.stand : null;   // 没传姿势（DIY 画布）时保持原始比例，画的形状才对得上
   // 玩家拖动过的小物：整件先平移（在姿势变形之前，所以摆什么姿势都跟着）；每层包一个 data-acc，舞台上点它就能选中
-  const OFF = outfit.offsets || {}, LAY = outfit.layers || {}, shift = (id, Q) => { const o = OFF[id], zt = LAY[id], top = Math.max(...Q.map(l => l.z)); return Q.map(l => ({ ...l, z: zt != null ? f1(l.z - top + zt) : l.z, svg: `<g data-acc="${id}"${o && (o[0] || o[1]) ? ` transform="translate(${f1(o[0])} ${f1(o[1])})"` : ''}>${l.svg}</g>` })); };
-  (outfit.acc || []).forEach(id => { const it = byId(id); if (it) { const Q = shift(id, partsOf(it)); if (isHead(it)) H.push(...Q); else if (P && (BAGS.has(id) || HELD[id] || it.sub === 'bag' || it.sub === 'waist')) accL.push(...Q.map(l => ({ ...l, bag: id }))); else L.push(...Q.map(l => ({ ...l, cat: 'acc', id }))); } });
+  const OFF = outfit.offsets || {}, LAY = outfit.layers || {}, SC = outfit.scales || {}, shift = (id, Q) => { const o = OFF[id] || [0, 0], zt = LAY[id], k = SC[id] || 1, top = Math.max(...Q.map(l => l.z));
+    const [bx, by, bw, bh] = thumbOf(byId(id)).split(' ').map(Number), cx = bx + bw / 2, cy = by + bh / 2;   // 以这件小物自己的中心缩放
+    const tf = [o[0] || o[1] ? `translate(${f1(o[0])} ${f1(o[1])})` : '', k !== 1 ? `translate(${f1(cx)} ${f1(cy)}) scale(${f2(k)}) translate(${f1(-cx)} ${f1(-cy)})` : ''].join(' ').trim();
+    return Q.map(l => ({ ...l, z: zt != null ? f1(l.z - top + zt) : l.z, svg: `<g data-acc="${id}"${tf ? ` transform="${tf}"` : ''}>${l.svg}</g>` })); };
+  (outfit.acc || []).forEach(id => { const it = byId(id); if (it) { const Q = shift(id, isCapHat(it) ? fitHat(it, partsOf(it)) : partsOf(it)); if (isHead(it)) H.push(...Q); else if (P && (BAGS.has(id) || HELD[id] || it.sub === 'bag' || it.sub === 'waist')) accL.push(...Q.map(l => ({ ...l, bag: id }))); else L.push(...Q.map(l => ({ ...l, cat: 'acc', id }))); } });
   // 戴帽子时，帽顶以上的头发（丸子、高马尾、呆毛）收进帽子里，不会从帽子上穿出来；遮阳帽没有帽顶，不收
   const hatId = (outfit.acc || []).find(id => { const it = byId(id); return it && it.sub === 'hat' && !OPEN_HATS.has(id); });
   if (hatId) {
-    const hy = (OFF[hatId] || [0, 0])[1];   // 帽子被拖高 / 拖低了，收头发的那条线也跟着挪
+    const hy = (OFF[hatId] || [0, 0])[1] - (((SC[hatId] || 1) - 1) * 30);   // 帽子放大后帽顶更高、帽口更低，收头发的线往上一点   // 帽子被拖高 / 拖低了，收头发的那条线也跟着挪
     const hide = (l, y) => { const c = uid('hc'); return { ...l, svg: `<clipPath id="${c}"><rect x="-40" y="${y}" width="380" height="700"/></clipPath><g clip-path="url(#${c})">${l.svg}</g>` }; };
     H.forEach((l, i) => { if (l.cat === 'hair') { const y = (l.z < 10 ? 78 : 60) + hy; H[i] = hide(l, P ? f1(y + propOffset(150, y)[1]) : y); } });   // 有姿势时身体按时装比例变形过，裁切线跟着挪
   }
@@ -6926,7 +6929,7 @@ function warpSVG(svg, W, o = {}) {
     const det = M[0] * M[3] - M[1] * M[2] || 1, i0 = M[3] / det, i1 = -M[1] / det, i2 = -M[2] / det, i3 = M[0] / det;
     return (x, y) => {
       const X = id ? x + M[4] : M[0] * x + M[2] * y + M[4], Y = id ? y + M[5] : M[1] * x + M[3] * y + M[5];
-      const u = warpAt(W, X, Y, opt);
+      const u = o.fn ? o.fn(X, Y) : warpAt(W, X, Y, opt);   // o.fn：自定义位移（戴帽子贴合头型用）
       return id ? [x + u[0], y + u[1]] : [x + i0 * u[0] + i2 * u[1], y + i1 * u[0] + i3 * u[1]];
     };
   };
@@ -7024,6 +7027,37 @@ function warpPath(d, P) {
     i++;
   }
   return out.join(' ');
+}
+
+/* =====================================================================
+   帽子贴合头型：原来的帽子都是平视画的——帽口是一条水平直线、两边竖直，像一个硬壳扣在头上
+   这里统一给所有「罩住头顶」的帽子做一次贴合：
+   · 帽口弯成往下的弧（从略高处看，一圈戴在头上的帽口前面最低、两边往上收），帽檐同样弯下来
+   · 越往帽顶越往里收一点，轮廓顺着头顶的圆
+   · 帽口下面投一道硬边阴影在刘海 / 额头上，看得出帽子是压在头发上的
+   发箍、发带不动（它们本来就是细细一圈）
+   ===================================================================== */
+const BAND_ACC = new Set(['a1', 'a12', 'a13', 'a14', 'a38', 'a51', 'a55']);
+const isCapHat = it => !!it && !BAND_ACC.has(it.id) && (it.sub === 'hat' || HATS.includes(it.id));
+const _hatGeo = {};
+function hatGeo(it, L) {   // 帽子的上沿、帽口（前面正中那一段的最低点）
+  if (_hatGeo[it.id]) return _hatGeo[it.id];
+  let yt = 1e9, yb = -1e9, x0 = 1e9, x1 = -1e9;
+  L.forEach(l => (l.svg.match(/\sd="[^"]*"/g) || []).forEach(d => { const n = d.match(/-?\d*\.?\d+/g) || []; for (let i = 0; i + 1 < n.length; i += 2) { const x = +n[i], y = +n[i + 1]; if (x < 60 || x > 240 || y < 0 || y > 170) continue; yt = Math.min(yt, y); x0 = Math.min(x0, x); x1 = Math.max(x1, x); if (Math.abs(x - 150) < 22 && y < 132) yb = Math.max(yb, y); } }));
+  return (_hatGeo[it.id] = yb > yt ? { yt, yb, x0, x1 } : null);
+}
+function fitHat(it, L) {
+  const g = hatGeo(it, L); if (!g) return L;
+  const { yt, yb } = g, H = Math.max(10, yb - yt), A = Math.min(5.2, H * .12);
+  const fn = (x, y) => { const s = Math.max(0, Math.min(1, (y - yt) / H)), u = Math.min(1, Math.abs(x - 150) / 50), fr = 1 - u * u;
+    // 帽口往外撑到和头发一样宽（帽子罩住头发，不是顶在头发上面）；帽顶压低一点、往里收成圆顶
+    return [(x - 150) * (.075 * s - .06 * Math.pow(1 - s, 1.4)), A * fr * s * s + (1 - s) * H * (H > 44 ? .16 : .08)]; };
+  const out = L.map(l => ({ ...l, svg: warpSVG(l.svg, {}, { fn }) }));
+  // 帽口投在头发 / 额头上的阴影：沿着弯下来的帽口，一条上宽下窄的月牙；只落在头的范围里
+  const c = uid('hs'), P = [], Q = [];
+  for (let k = 0; k <= 16; k++) { const x = 104 + 92 * k / 16, u = Math.min(1, Math.abs(x - 150) / 50), y = yb + A * (1 - u * u) - .6; P.push([x, y]); Q.unshift([x, y + 3.2 + 2.6 * (1 - u * u)]); }
+  const sh = `<clipPath id="${c}"><ellipse cx="150" cy="104" rx="45" ry="52"/></clipPath><path clip-path="url(#${c})" d="M ${P.concat(Q).map(P2).join(' L ')} Z" fill="#5A3A4A" opacity=".24" style="mix-blend-mode:multiply"/>`;
+  return out.concat([{ z: 50.6, svg: sh }]);
 }
 
 /* =====================================================================
@@ -7991,6 +8025,7 @@ function cleanOutfit(o) {
   if (out.dress) { out.top = null; out.bottom = null; }
   if (Array.isArray(o.acc)) out.acc = oneEach(o.acc.filter(id => byId(id)));
   out.hairColor = /^#[0-9a-f]{6}$/i.test(o.hairColor || '') ? o.hairColor : null;
+  out.scales = {}; if (o.scales) out.acc.forEach(id => { const v = +o.scales[id]; if (v >= .5 && v <= 1.8) out.scales[id] = v; });
   out.layers = {}; if (o.layers) out.acc.forEach(id => { if (ACC_LEVELS.some(([z]) => z === o.layers[id])) out.layers[id] = o.layers[id]; });
   out.offsets = {}; if (o.offsets) out.acc.forEach(id => { const v = o.offsets[id]; if (Array.isArray(v) && v.every(Number.isFinite)) out.offsets[id] = v.map(n => Math.max(-80, Math.min(80, n))); });   // 小物拖动过的位置   // 色块里的颜色，或者整套造型自带的发色
   return out;
@@ -8400,10 +8435,12 @@ if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.c
   // 当前层级：玩家设过就用设的；没设过就按这件小物本来的 z 找最近的一档
   const levelIdx = () => { const L = state.outfit.layers || {}, z = L[A.sel] != null ? L[A.sel] : Math.max(...partsOf(byId(A.sel)).map(l => l.z)); let k = 0; ACC_LEVELS.forEach(([v], i) => { if (Math.abs(v - z) < Math.abs(ACC_LEVELS[k][0] - z)) k = i; }); return k; };
   const curLevel = () => ACC_LEVELS[levelIdx()][1];
+  const scaleBy = f => { const S = (state.outfit.scales = state.outfit.scales || {}); S[A.sel] = Math.max(.5, Math.min(1.8, +((S[A.sel] || 1) * f).toFixed(3))); if (Math.abs(S[A.sel] - 1) < .01) delete S[A.sel]; save(); renderStage(false); paint(); };
   const paint = () => {
     const L = worn(); if (A.sel && !L.includes(A.sel)) A.sel = null; if (!A.sel) A.sel = L[L.length - 1] || null;
     bar.innerHTML = L.length ? `<b>拖动调整</b>` + L.map(id => `<button type="button" class="opt" data-adj="${id}" aria-pressed="${A.sel === id}">${byId(id).name}</button>`).join('') +
       (A.sel ? `<span class="adj-lv"><button type="button" class="opt" data-adjz="-1" aria-label="往后一层">↓ 往后</button><span class="adj-lvn">${curLevel()}</span><button type="button" class="opt" data-adjz="1" aria-label="往前一层">往前 ↑</button></span>` : '') +
+      (A.sel ? `<span class="adj-lv"><button type="button" class="opt" data-adjs="-1" aria-label="缩小">－</button><span class="adj-lvn">大小 ${Math.round(((state.outfit.scales || {})[A.sel] || 1) * 100)}%</span><button type="button" class="opt" data-adjs="1" aria-label="放大">＋</button></span>` : '') +
       `<button type="button" class="opt" data-adjreset>还原</button><button type="button" class="opt adj-done" data-adjdone>完成</button>`
       : `<b>还没有戴小物</b>先去「小物」里选一件，再回来拖动<button type="button" class="opt adj-done" data-adjdone>完成</button>`;
   };
@@ -8411,14 +8448,20 @@ if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.c
   btn.addEventListener('click', () => set(!A.on));
   bar.addEventListener('click', e => {
     const b = e.target.closest('[data-adj]'); if (b) { A.sel = b.dataset.adj; paint(); return; }
-    if (e.target.closest('[data-adjreset]') && A.sel) { delete state.outfit.offsets[A.sel]; delete (state.outfit.layers || {})[A.sel]; save(); renderStage(false); paint(); return; }
+    if (e.target.closest('[data-adjreset]') && A.sel) { delete state.outfit.offsets[A.sel]; delete (state.outfit.layers || {})[A.sel]; delete (state.outfit.scales || {})[A.sel]; save(); renderStage(false); paint(); return; }
+    const sb2 = e.target.closest('[data-adjs]'); if (sb2 && A.sel) { scaleBy(+sb2.dataset.adjs > 0 ? 1.08 : 1 / 1.08); return; }
     const zb = e.target.closest('[data-adjz]');
     if (zb && A.sel) { const i = levelIdx(), j = Math.max(0, Math.min(ACC_LEVELS.length - 1, i + +zb.dataset.adjz)); (state.outfit.layers = state.outfit.layers || {})[A.sel] = ACC_LEVELS[j][0]; save(); renderStage(false); paint(); return; }
     if (e.target.closest('[data-adjdone]')) set(false);
   });
   let raf = 0;
+  const T = new Map(); let pinch0 = null;
+  stage.addEventListener('pointerdown', e => { if (A.on) { T.set(e.pointerId, [e.clientX, e.clientY]); if (T.size === 2 && A.sel) { const [a, b] = [...T.values()]; pinch0 = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, k: (state.outfit.scales || {})[A.sel] || 1 }; A.drag = null; } } }, true);
+  stage.addEventListener('pointermove', e => { if (!A.on || !T.has(e.pointerId)) return; T.set(e.pointerId, [e.clientX, e.clientY]); if (pinch0 && T.size === 2) { e.stopImmediatePropagation(); const [a, b] = [...T.values()], S = (state.outfit.scales = state.outfit.scales || {}); S[A.sel] = Math.max(.5, Math.min(1.8, pinch0.k * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch0.d)); if (!raf) raf = requestAnimationFrame(() => { raf = 0; renderStage(false); }); } }, true);
+  const tEnd = e => { T.delete(e.pointerId); if (pinch0 && T.size < 2) { pinch0 = null; save(); paint(); } };
+  stage.addEventListener('pointerup', tEnd, true); stage.addEventListener('pointercancel', tEnd, true);
   stage.addEventListener('pointerdown', e => {
-    if (!A.on || e.target.closest('button, .adj-bar')) return;
+    if (!A.on || e.target.closest('button, .adj-bar') || T.size > 1) return;
     const g = e.target.closest('[data-acc]'); if (g) { A.sel = g.dataset.acc; paint(); }
     if (!A.sel) return;
     const m = $('#doll').getScreenCTM(); if (!m) return;
@@ -8428,14 +8471,14 @@ if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.c
     e.preventDefault(); e.stopImmediatePropagation();
   }, true);
   stage.addEventListener('pointermove', e => {
-    if (!A.on || !A.drag) return; e.stopImmediatePropagation();
+    if (!A.on || !A.drag || pinch0) return; e.stopImmediatePropagation();
     const d = A.drag, v = [d.o[0] + (e.clientX - d.x) / d.k, d.o[1] + (e.clientY - d.y) / d.k].map(n => Math.max(-80, Math.min(80, n)));
     state.outfit.offsets[A.sel] = v;
     if (!raf) raf = requestAnimationFrame(() => { raf = 0; renderStage(false); });
   }, true);
   const end = e => { if (!A.drag) return; A.drag = null; save(); e.stopImmediatePropagation(); };
   stage.addEventListener('pointerup', end, true); stage.addEventListener('pointercancel', end, true);
-  stage.addEventListener('wheel', e => { if (A.on) e.stopImmediatePropagation(); }, true);
+  stage.addEventListener('wheel', e => { if (!A.on) return; e.stopImmediatePropagation(); e.preventDefault(); if (A.sel) scaleBy(Math.exp(-e.deltaY * .0015)); }, { capture: true, passive: false });   // 调整模式里滚轮 = 缩放选中的小物
   const rg = renderGrid; renderGrid = function () { rg.apply(this, arguments); if (A.on) paint(); };   // 换了小物，名字列表跟着更新
 })();
 

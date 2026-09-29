@@ -28,6 +28,7 @@ function cleanOutfit(o) {
   if (out.dress) { out.top = null; out.bottom = null; }
   if (Array.isArray(o.acc)) out.acc = oneEach(o.acc.filter(id => byId(id)));
   out.hairColor = /^#[0-9a-f]{6}$/i.test(o.hairColor || '') ? o.hairColor : null;
+  out.scales = {}; if (o.scales) out.acc.forEach(id => { const v = +o.scales[id]; if (v >= .5 && v <= 1.8) out.scales[id] = v; });
   out.layers = {}; if (o.layers) out.acc.forEach(id => { if (ACC_LEVELS.some(([z]) => z === o.layers[id])) out.layers[id] = o.layers[id]; });
   out.offsets = {}; if (o.offsets) out.acc.forEach(id => { const v = o.offsets[id]; if (Array.isArray(v) && v.every(Number.isFinite)) out.offsets[id] = v.map(n => Math.max(-80, Math.min(80, n))); });   // 小物拖动过的位置   // 色块里的颜色，或者整套造型自带的发色
   return out;
@@ -437,10 +438,12 @@ if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.c
   // 当前层级：玩家设过就用设的；没设过就按这件小物本来的 z 找最近的一档
   const levelIdx = () => { const L = state.outfit.layers || {}, z = L[A.sel] != null ? L[A.sel] : Math.max(...partsOf(byId(A.sel)).map(l => l.z)); let k = 0; ACC_LEVELS.forEach(([v], i) => { if (Math.abs(v - z) < Math.abs(ACC_LEVELS[k][0] - z)) k = i; }); return k; };
   const curLevel = () => ACC_LEVELS[levelIdx()][1];
+  const scaleBy = f => { const S = (state.outfit.scales = state.outfit.scales || {}); S[A.sel] = Math.max(.5, Math.min(1.8, +((S[A.sel] || 1) * f).toFixed(3))); if (Math.abs(S[A.sel] - 1) < .01) delete S[A.sel]; save(); renderStage(false); paint(); };
   const paint = () => {
     const L = worn(); if (A.sel && !L.includes(A.sel)) A.sel = null; if (!A.sel) A.sel = L[L.length - 1] || null;
     bar.innerHTML = L.length ? `<b>拖动调整</b>` + L.map(id => `<button type="button" class="opt" data-adj="${id}" aria-pressed="${A.sel === id}">${byId(id).name}</button>`).join('') +
       (A.sel ? `<span class="adj-lv"><button type="button" class="opt" data-adjz="-1" aria-label="往后一层">↓ 往后</button><span class="adj-lvn">${curLevel()}</span><button type="button" class="opt" data-adjz="1" aria-label="往前一层">往前 ↑</button></span>` : '') +
+      (A.sel ? `<span class="adj-lv"><button type="button" class="opt" data-adjs="-1" aria-label="缩小">－</button><span class="adj-lvn">大小 ${Math.round(((state.outfit.scales || {})[A.sel] || 1) * 100)}%</span><button type="button" class="opt" data-adjs="1" aria-label="放大">＋</button></span>` : '') +
       `<button type="button" class="opt" data-adjreset>还原</button><button type="button" class="opt adj-done" data-adjdone>完成</button>`
       : `<b>还没有戴小物</b>先去「小物」里选一件，再回来拖动<button type="button" class="opt adj-done" data-adjdone>完成</button>`;
   };
@@ -448,14 +451,20 @@ if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.c
   btn.addEventListener('click', () => set(!A.on));
   bar.addEventListener('click', e => {
     const b = e.target.closest('[data-adj]'); if (b) { A.sel = b.dataset.adj; paint(); return; }
-    if (e.target.closest('[data-adjreset]') && A.sel) { delete state.outfit.offsets[A.sel]; delete (state.outfit.layers || {})[A.sel]; save(); renderStage(false); paint(); return; }
+    if (e.target.closest('[data-adjreset]') && A.sel) { delete state.outfit.offsets[A.sel]; delete (state.outfit.layers || {})[A.sel]; delete (state.outfit.scales || {})[A.sel]; save(); renderStage(false); paint(); return; }
+    const sb2 = e.target.closest('[data-adjs]'); if (sb2 && A.sel) { scaleBy(+sb2.dataset.adjs > 0 ? 1.08 : 1 / 1.08); return; }
     const zb = e.target.closest('[data-adjz]');
     if (zb && A.sel) { const i = levelIdx(), j = Math.max(0, Math.min(ACC_LEVELS.length - 1, i + +zb.dataset.adjz)); (state.outfit.layers = state.outfit.layers || {})[A.sel] = ACC_LEVELS[j][0]; save(); renderStage(false); paint(); return; }
     if (e.target.closest('[data-adjdone]')) set(false);
   });
   let raf = 0;
+  const T = new Map(); let pinch0 = null;
+  stage.addEventListener('pointerdown', e => { if (A.on) { T.set(e.pointerId, [e.clientX, e.clientY]); if (T.size === 2 && A.sel) { const [a, b] = [...T.values()]; pinch0 = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, k: (state.outfit.scales || {})[A.sel] || 1 }; A.drag = null; } } }, true);
+  stage.addEventListener('pointermove', e => { if (!A.on || !T.has(e.pointerId)) return; T.set(e.pointerId, [e.clientX, e.clientY]); if (pinch0 && T.size === 2) { e.stopImmediatePropagation(); const [a, b] = [...T.values()], S = (state.outfit.scales = state.outfit.scales || {}); S[A.sel] = Math.max(.5, Math.min(1.8, pinch0.k * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch0.d)); if (!raf) raf = requestAnimationFrame(() => { raf = 0; renderStage(false); }); } }, true);
+  const tEnd = e => { T.delete(e.pointerId); if (pinch0 && T.size < 2) { pinch0 = null; save(); paint(); } };
+  stage.addEventListener('pointerup', tEnd, true); stage.addEventListener('pointercancel', tEnd, true);
   stage.addEventListener('pointerdown', e => {
-    if (!A.on || e.target.closest('button, .adj-bar')) return;
+    if (!A.on || e.target.closest('button, .adj-bar') || T.size > 1) return;
     const g = e.target.closest('[data-acc]'); if (g) { A.sel = g.dataset.acc; paint(); }
     if (!A.sel) return;
     const m = $('#doll').getScreenCTM(); if (!m) return;
@@ -465,14 +474,14 @@ if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.c
     e.preventDefault(); e.stopImmediatePropagation();
   }, true);
   stage.addEventListener('pointermove', e => {
-    if (!A.on || !A.drag) return; e.stopImmediatePropagation();
+    if (!A.on || !A.drag || pinch0) return; e.stopImmediatePropagation();
     const d = A.drag, v = [d.o[0] + (e.clientX - d.x) / d.k, d.o[1] + (e.clientY - d.y) / d.k].map(n => Math.max(-80, Math.min(80, n)));
     state.outfit.offsets[A.sel] = v;
     if (!raf) raf = requestAnimationFrame(() => { raf = 0; renderStage(false); });
   }, true);
   const end = e => { if (!A.drag) return; A.drag = null; save(); e.stopImmediatePropagation(); };
   stage.addEventListener('pointerup', end, true); stage.addEventListener('pointercancel', end, true);
-  stage.addEventListener('wheel', e => { if (A.on) e.stopImmediatePropagation(); }, true);
+  stage.addEventListener('wheel', e => { if (!A.on) return; e.stopImmediatePropagation(); e.preventDefault(); if (A.sel) scaleBy(Math.exp(-e.deltaY * .0015)); }, { capture: true, passive: false });   // 调整模式里滚轮 = 缩放选中的小物
   const rg = renderGrid; renderGrid = function () { rg.apply(this, arguments); if (A.on) paint(); };   // 换了小物，名字列表跟着更新
 })();
 
