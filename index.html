@@ -110,9 +110,10 @@ button{font:inherit;color:inherit}
 .card-btn[aria-pressed="true"]{background:var(--pink-soft);border-color:var(--pink-deep)}
 .card-btn[aria-pressed="true"]::after{content:"";position:absolute;top:8px;right:8px;width:22px;height:22px;background:var(--pink);
   clip-path:path("M11 20 C3 14 1 9 3.5 5.5 C5.5 3 9.5 3 11 6.5 C12.5 3 16.5 3 18.5 5.5 C21 9 19 14 11 20 Z")}
-.thumb{position:relative;overflow:hidden;display:block;aspect-ratio:1/1;border-radius:10px;border:1.5px dashed #BFE7E3;
+.thumb{position:relative;overflow:hidden;display:block;height:auto;border-radius:10px;border:1.5px dashed #BFE7E3;
   background-color:var(--mint-soft);background-image:radial-gradient(circle,#fff 0 2.5px,transparent 3px);background-size:14px 14px}
-.thumb svg{position:absolute;inset:0;display:block;width:100%;height:100%}
+.thumb::before{content:"";display:block;padding-top:100%}   /* 用 padding 撑出正方形：老一点的手机浏览器不认 aspect-ratio，缩略图会塌成 0 高 */
+.thumb svg{position:absolute;left:0;top:0;right:0;bottom:0;display:block;width:100%;height:100%}
 .nm{display:flex;align-items:center;justify-content:center;min-height:2.6em;font-size:12.5px;line-height:1.3}
 .badge{position:absolute;top:-10px;left:-8px;z-index:2;font-family:var(--f-round);font-size:12px;line-height:1;padding:5px 8px 4px;color:#fff;background:var(--pink);border:2px solid #fff;border-radius:999px;transform:rotate(-10deg);box-shadow:0 2px 0 rgba(74,52,48,.2);pointer-events:none}
 .badge.diy{background:#6FC7BE}
@@ -264,7 +265,7 @@ select.name-in{flex:1 1 140px}
   .logo-cn{font-size:26px;-webkit-text-stroke:5px #fff}.logo-cn span{-webkit-text-stroke:5px #fff}
   .ribbon{font-size:11px;padding:1px 10px}
   .memo,.masthead .stk{display:none}
-  .layout{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 43%;gap:8px}
+  .layout{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 34%;gap:7px}
   .tape{display:none}
   .sheet{border-radius:14px;box-shadow:0 0 0 2px #fff,0 0 0 4px var(--aqua-deep),2px 3px 0 2px rgba(74,52,48,.12)}
   .layout>.sheet:first-child{display:flex;flex-direction:column;min-height:0}
@@ -282,12 +283,12 @@ select.name-in{flex:1 1 140px}
   #btnShot{top:10px}#btnRandom{top:62px}#btnReset{top:114px}
   .shot-btn svg{width:16px;height:16px}
   .closet{min-height:0;display:flex;flex-direction:row-reverse;padding:0;overflow:hidden}
-  .tabs{flex:0 0 46px;flex-direction:column;flex-wrap:nowrap;overflow-y:auto;scrollbar-width:none;gap:5px;padding:8px 4px;border-left:2px dashed #F6C3D4}
+  .tabs{flex:0 0 42px;flex-direction:column;flex-wrap:nowrap;overflow-y:auto;scrollbar-width:none;gap:5px;padding:8px 4px;border-left:2px dashed #F6C3D4}
   .tabs::-webkit-scrollbar{display:none}
   .tab{flex:0 0 auto;font-size:12.5px;line-height:1.15;padding:6px 2px 5px;transform:none;writing-mode:horizontal-tb;text-align:center;border-radius:8px;border-left:0;border-right:0}
   .tab .n{display:none}
   .hint-line{display:none}
-  .grid{flex:1 1 auto;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:10px 7px;padding:10px 7px 14px}
+  .grid{flex:1 1 auto;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;grid-template-columns:minmax(0,1fr);align-content:start;gap:10px;padding:10px 7px 14px}   /* 单列：一格一件，图标大 */
   .card-btn{padding:4px 4px 5px;gap:3px;border-radius:12px}
   .nm{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:10.5px;min-height:2.45em;line-height:1.22;word-break:break-all}
   .badge{font-size:9.5px;padding:3px 5px 2px;top:-6px;left:-4px}
@@ -335,9 +336,19 @@ select.name-in{flex:1 1 140px}
 }
 
 /* 套装卡片：竖长的全身图 */
-.look-card .thumb{aspect-ratio:1/2.6}
+.look-card .thumb::before{padding-top:260%}
 .look-ip{font-size:10.5px;color:var(--pink-deep);font-family:var(--f-round);white-space:nowrap}
 @media (max-width:879px){.look-ip{font-size:9px}}
+
+/* 拖动调整小物位置 */
+.adj-bar{position:absolute;left:8px;right:52px;bottom:8px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:6px 8px;background:rgba(255,255,255,.94);border:2px solid var(--ink);border-radius:12px;font-size:12px}
+.adj-bar b{font-family:var(--f-display);font-weight:400;color:var(--pink-deep)}
+.adj-bar .opt{font-size:12px;padding:1px 8px}
+.adj-bar .adj-done{margin-left:auto}
+.stage.adjusting{cursor:move;outline:3px dashed var(--pink);outline-offset:-6px}
+.stage.adjusting [data-acc]{cursor:grab}
+#adjBtn[aria-pressed="true"]{background:var(--pink);color:#fff}
+@media (max-width:879px){.adj-bar{bottom:6px;left:6px;right:50px;font-size:11px}.adj-bar .opt{font-size:11px}}
 </style>
 </head>
 <body>
@@ -375,7 +386,8 @@ select.name-in{flex:1 1 140px}
         <div class="floor" aria-hidden="true"></div>
         <div class="doll-live" id="dollLive"><svg class="doll" id="doll" viewBox="40 36 220 566" preserveAspectRatio="xMidYMax meet" role="img" aria-label="当前穿搭"></svg></div>
         <div class="sparkles" id="sparkles" aria-hidden="true"></div>
-        <div class="zoom-ctl" aria-label="缩放"><button type="button" id="zIn" aria-label="放大">+</button><button type="button" id="zOut" aria-label="缩小">−</button><button type="button" id="zFit" aria-label="还原大小" style="font-size:12px">1:1</button></div>
+        <div class="zoom-ctl" aria-label="缩放"><button type="button" id="zIn" aria-label="放大">+</button><button type="button" id="zOut" aria-label="缩小">−</button><button type="button" id="zFit" aria-label="还原大小" style="font-size:12px">1:1</button><button type="button" id="adjBtn" aria-label="拖动调整小物位置" aria-pressed="false" style="font-size:15px">✥</button></div>
+        <div class="adj-bar" id="adjBar" hidden></div>
       </div>
       <div class="stage-bar">
         <p class="ootd" id="ootd"></p>
@@ -6443,6 +6455,38 @@ IP_LABEL.shugo = '守护甜心';
   't67', 'b60', 't68', 'b61', 't69', 'b62', 't70', 'b63', 'l30', 'l31', 'l24', 'l25', 'l23', 'l28', 's25', 'a95', 'a96'
 ].forEach(id => { const it = WARDROBE.find(i => i.id === id); if (it) it.ip = 'shugo'; });
 
+/* =====================================================================
+   初始居家服（参考同类换装游戏：刚进游戏穿的是一套软软的家居服）
+   奶油罗纹小背心 + 抽绳荷叶边居家短裤 + 毛绒拖鞋
+   ===================================================================== */
+Object.assign(TPL, {
+  loungeShorts: {
+    cat: 'bottom', name: '抽绳居家短裤', thumb: '90 270 120 80',
+    render(F) {   // 松紧腰（一圈碎褶）+ 系蝴蝶结的抽绳，裤脚一圈小荷叶边
+      const d = pantsD({ top: 284, hem: 322, ease: y => 3.4 + (y - 284) * .07, inE: () => 2.6 });
+      const band = bandD(284, 7, 3.6, 3.4, 3.6), xh = outerX(322) - 6.1;
+      const hemL = `M ${f1(outerX(322) - 5.2)} 321.4 Q 130 326 ${f1(Math.min(149.3, legID(322) + 2.6))} 324.6`;   // 裤脚一圈白色小花边（扇贝）
+      const lace = { d: hemL, c: '#FFFFFF', w: 3.4, dash: '.1 3.4', o: 1 };
+      const bow = ribbonBow(150, 291, .42, F.rib || '#F48FB1', 1);
+      return pc(d, F.fill, { autoFolds: false, folds: fm('M 124 300 Q 126 310 125 318', 'M 140 306 Q 142 314 141 320'), cel: fm('M 124 300 Q 126 310 125 318', 'M 140 306 Q 142 314 141 320').map(q => foldCel(q, 2.4)), lines: [lace, { ...lace, d: mir(hemL) }] }) +
+        pc(band, F.fill, { lines: [{ d: gatherD(112, 188, 287, 26, 3, 3.6), o: .4, w: .5 }] }) + bow;
+    }
+  }
+});
+const HOME22 = [
+  { id: 't92', cat: 'top', tpl: 'cami', name: '奶油居家小背心', fill: { c: '#FFF6EC' } },
+  { id: 'b82', cat: 'bottom', tpl: 'loungeShorts', name: '粉色抽绳居家短裤', fill: { p: 'pinkgingham' }, alt: '#FFF4F7', rib: '#F48FB1' },
+  {
+    id: 's37', cat: 'shoes', name: '粉色毛绒拖鞋', thumb: '100 530 100 74',
+    parts() {   // 只包住脚背的一团毛绒 + 平底鞋底
+      const one = m => { const M = M_(m), X = X_(m);
+        return piece(M(soleD(580, 4, 2.6)), '#F2A6BE', { rim: false }) + piece(M(shoeUpperD(562, 3.4, 5)), 'url(#pat-fuzzpink)', { rim: [2, 1.2], over: `<circle cx="${f1(X(132))}" cy="566" r="3.2" fill="#FFFFFF" stroke="${STYLE.line}" stroke-width=".7"/>` }); };
+      return [{ z: 40, svg: both(one) }];
+    }
+  }
+];
+WARDROBE.unshift(...HOME22);
+
 /* ---------- 小物分区：帽子 / 发饰 / 耳饰 / 眼镜 / 颈饰 / 包包 / 手饰 / 腰饰 ---------- */
 const ACC_GROUPS = [['hat', '帽子头巾'], ['hairacc', '发饰'], ['ear', '耳饰'], ['glasses', '眼镜'], ['neck', '项链颈饰'], ['bag', '包包'], ['hand', '手饰'], ['waist', '腰饰胸针'], ['deco', '贴纸创可贴']];
 const ACC_SUB = {
@@ -6504,7 +6548,8 @@ const headWrap = L => L;
 
 const state = { outfit: null, tab: 'top', custom: [], pose: 'stand' };
 const SLOTS = ['hair', 'top', 'outer', 'bottom', 'dress', 'legs', 'warmer', 'shoes'];
-const DEFAULT_OUTFIT = { hair: 'h4', top: 't5', outer: null, bottom: 'b4', dress: null, legs: null, warmer: 'l3', shoes: 's6', acc: ['a9'], face: { ...DEFAULT_FACE } };
+const DEFAULT_OUTFIT = { hair: 'h4', top: 't92', outer: null, bottom: 'b82', dress: null, legs: null, warmer: null, shoes: 's37', acc: [],   // 初始居家服
+  face: { ...DEFAULT_FACE } };
 const allItems = () => WARDROBE.concat(state.custom);
 const byId = id => (id ? allItems().find(i => i.id === id) : null);
 
@@ -6530,11 +6575,15 @@ function dollSVG(outfit, over = {}, pose = null) {
     L[i] = { ...l, z: 39, svg: `<clipPath id="${c}">${leg(90, 148)}${leg(152, 210)}</clipPath><g clip-path="url(#${c})">${l.svg}</g>` };
   });
   const accL = [], P = pose ? POSES[pose] || POSES.stand : null;   // 没传姿势（DIY 画布）时保持原始比例，画的形状才对得上
-  (outfit.acc || []).forEach(id => { const it = byId(id); if (it) { const Q = partsOf(it); if (isHead(it)) H.push(...Q); else if (P && (BAGS.has(id) || HELD[id] || it.sub === 'bag' || it.sub === 'waist')) accL.push(...Q.map(l => ({ ...l, bag: id }))); else L.push(...Q.map(l => ({ ...l, cat: 'acc', id }))); } });
+  // 玩家拖动过的小物：整件先平移（在姿势变形之前，所以摆什么姿势都跟着）；每层包一个 data-acc，舞台上点它就能选中
+  const OFF = outfit.offsets || {}, shift = (id, Q) => { const o = OFF[id]; return Q.map(l => ({ ...l, svg: `<g data-acc="${id}"${o && (o[0] || o[1]) ? ` transform="translate(${f1(o[0])} ${f1(o[1])})"` : ''}>${l.svg}</g>` })); };
+  (outfit.acc || []).forEach(id => { const it = byId(id); if (it) { const Q = shift(id, partsOf(it)); if (isHead(it)) H.push(...Q); else if (P && (BAGS.has(id) || HELD[id] || it.sub === 'bag' || it.sub === 'waist')) accL.push(...Q.map(l => ({ ...l, bag: id }))); else L.push(...Q.map(l => ({ ...l, cat: 'acc', id }))); } });
   // 戴帽子时，帽顶以上的头发（丸子、高马尾、呆毛）收进帽子里，不会从帽子上穿出来；遮阳帽没有帽顶，不收
-  if ((outfit.acc || []).some(id => { const it = byId(id); return it && it.sub === 'hat' && !OPEN_HATS.has(id); })) {
+  const hatId = (outfit.acc || []).find(id => { const it = byId(id); return it && it.sub === 'hat' && !OPEN_HATS.has(id); });
+  if (hatId) {
+    const hy = (OFF[hatId] || [0, 0])[1];   // 帽子被拖高 / 拖低了，收头发的那条线也跟着挪
     const hide = (l, y) => { const c = uid('hc'); return { ...l, svg: `<clipPath id="${c}"><rect x="-40" y="${y}" width="380" height="700"/></clipPath><g clip-path="url(#${c})">${l.svg}</g>` }; };
-    H.forEach((l, i) => { if (l.cat === 'hair') { const y = l.z < 10 ? 78 : 60; H[i] = hide(l, P ? f1(y + propOffset(150, y)[1]) : y); } });   // 有姿势时身体按时装比例变形过，裁切线跟着挪
+    H.forEach((l, i) => { if (l.cat === 'hair') { const y = (l.z < 10 ? 78 : 60) + hy; H[i] = hide(l, P ? f1(y + propOffset(150, y)[1]) : y); } });   // 有姿势时身体按时装比例变形过，裁切线跟着挪
   }
   L.push(...hangOverShoes(L, bottom, slot('shoes'), P ? y => y + propOffset(150, y)[1] : y => y));   // 有姿势时裁切线跟着时装比例挪
   HAIR_TINT = null;
@@ -6651,6 +6700,8 @@ function hangOverShoes(L, bottom, shoes, ym) {
   return L.filter(l => zs[l.cat] && !(l.cat === 'bottom' && skipBottom) && l.z >= 15 && l.z < 40).map(l => { const id = uid('an'); return { z: zs[l.cat] + l.z / 1000, svg: `<clipPath id="${id}"><rect x="-60" y="${y}" width="420" height="${f1(700 - y)}"/></clipPath><g clip-path="url(#${id})">${l.svg}</g>` }; });
 }
 function thumbSVG(it) {
+  // 帽子 / 发饰这些戴在头上的：预览里配一个演示用的短发（按真实穿戴规则画，帽子照样会把头顶的头发收进去）
+  if (it.cat === 'acc' && isHead(it)) return `<svg viewBox="${thumbOf(it)}" aria-hidden="true">${dollSVG({ ...DEFAULT_OUTFIT, hair: 'h17', hairColor: null, acc: [it.id], face: state.outfit.face, offsets: {} }, {}, null)}</svg>`;
   HAIR_TINT = it.cat === 'hair' ? state.outfit.hairColor || null : null;
   const L = partsOf(it).slice(); HAIR_TINT = null;
   if (isHead(it)) L.push({ z: 10.5, svg: headSVG() }, ...faceLayers(state.outfit.face));
@@ -7850,7 +7901,8 @@ function cleanOutfit(o) {
   if (!byId(out.hair)) out.hair = 'h4';
   if (out.dress) { out.top = null; out.bottom = null; }
   if (Array.isArray(o.acc)) out.acc = oneEach(o.acc.filter(id => byId(id)));
-  out.hairColor = /^#[0-9a-f]{6}$/i.test(o.hairColor || '') ? o.hairColor : null;   // 色块里的颜色，或者整套造型自带的发色
+  out.hairColor = /^#[0-9a-f]{6}$/i.test(o.hairColor || '') ? o.hairColor : null;
+  out.offsets = {}; if (o.offsets) out.acc.forEach(id => { const v = o.offsets[id]; if (Array.isArray(v) && v.every(Number.isFinite)) out.offsets[id] = v.map(n => Math.max(-80, Math.min(80, n))); });   // 小物拖动过的位置   // 色块里的颜色，或者整套造型自带的发色
   return out;
 }
 
@@ -8248,6 +8300,47 @@ if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.c
   const up = e => { P.delete(e.pointerId); if (P.size < 2) pinch = null; };
   stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
   addEventListener('resize', apply);
+})();
+
+/* ---------------- 拖动调整小物位置：点 ✥ 进入，点舞台上的小物（或上面的名字）选中，拖着挪；每件单独记住位置 ---------------- */
+(() => {
+  const stage = document.querySelector('.stage'), bar = $('#adjBar'), btn = $('#adjBtn'); if (!stage || !bar || !btn) return;
+  const A = { on: false, sel: null, drag: null };
+  const worn = () => state.outfit.acc.filter(id => byId(id));
+  const paint = () => {
+    const L = worn(); if (A.sel && !L.includes(A.sel)) A.sel = null; if (!A.sel) A.sel = L[L.length - 1] || null;
+    bar.innerHTML = L.length ? `<b>拖动调整</b>` + L.map(id => `<button type="button" class="opt" data-adj="${id}" aria-pressed="${A.sel === id}">${byId(id).name}</button>`).join('') +
+      `<button type="button" class="opt" data-adjreset>还原位置</button><button type="button" class="opt adj-done" data-adjdone>完成</button>`
+      : `<b>还没有戴小物</b>先去「小物」里选一件，再回来拖动<button type="button" class="opt adj-done" data-adjdone>完成</button>`;
+  };
+  const set = on => { A.on = on; bar.hidden = !on; btn.setAttribute('aria-pressed', on); stage.classList.toggle('adjusting', on); if (on) paint(); };
+  btn.addEventListener('click', () => set(!A.on));
+  bar.addEventListener('click', e => {
+    const b = e.target.closest('[data-adj]'); if (b) { A.sel = b.dataset.adj; paint(); return; }
+    if (e.target.closest('[data-adjreset]') && A.sel) { delete state.outfit.offsets[A.sel]; save(); renderStage(false); return; }
+    if (e.target.closest('[data-adjdone]')) set(false);
+  });
+  let raf = 0;
+  stage.addEventListener('pointerdown', e => {
+    if (!A.on || e.target.closest('button, .adj-bar')) return;
+    const g = e.target.closest('[data-acc]'); if (g) { A.sel = g.dataset.acc; paint(); }
+    if (!A.sel) return;
+    const m = $('#doll').getScreenCTM(); if (!m) return;
+    const o = (state.outfit.offsets = state.outfit.offsets || {})[A.sel] || [0, 0];
+    A.drag = { x: e.clientX, y: e.clientY, k: m.a || 1, o: o.slice() };
+    try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+    e.preventDefault(); e.stopImmediatePropagation();
+  }, true);
+  stage.addEventListener('pointermove', e => {
+    if (!A.on || !A.drag) return; e.stopImmediatePropagation();
+    const d = A.drag, v = [d.o[0] + (e.clientX - d.x) / d.k, d.o[1] + (e.clientY - d.y) / d.k].map(n => Math.max(-80, Math.min(80, n)));
+    state.outfit.offsets[A.sel] = v;
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; renderStage(false); });
+  }, true);
+  const end = e => { if (!A.drag) return; A.drag = null; save(); e.stopImmediatePropagation(); };
+  stage.addEventListener('pointerup', end, true); stage.addEventListener('pointercancel', end, true);
+  stage.addEventListener('wheel', e => { if (A.on) e.stopImmediatePropagation(); }, true);
+  const rg = renderGrid; renderGrid = function () { rg.apply(this, arguments); if (A.on) paint(); };   // 换了小物，名字列表跟着更新
 })();
 </script>
 

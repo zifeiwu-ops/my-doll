@@ -27,7 +27,8 @@ function cleanOutfit(o) {
   if (!byId(out.hair)) out.hair = 'h4';
   if (out.dress) { out.top = null; out.bottom = null; }
   if (Array.isArray(o.acc)) out.acc = oneEach(o.acc.filter(id => byId(id)));
-  out.hairColor = /^#[0-9a-f]{6}$/i.test(o.hairColor || '') ? o.hairColor : null;   // 色块里的颜色，或者整套造型自带的发色
+  out.hairColor = /^#[0-9a-f]{6}$/i.test(o.hairColor || '') ? o.hairColor : null;
+  out.offsets = {}; if (o.offsets) out.acc.forEach(id => { const v = o.offsets[id]; if (Array.isArray(v) && v.every(Number.isFinite)) out.offsets[id] = v.map(n => Math.max(-80, Math.min(80, n))); });   // 小物拖动过的位置   // 色块里的颜色，或者整套造型自带的发色
   return out;
 }
 
@@ -425,4 +426,45 @@ if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.c
   const up = e => { P.delete(e.pointerId); if (P.size < 2) pinch = null; };
   stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
   addEventListener('resize', apply);
+})();
+
+/* ---------------- 拖动调整小物位置：点 ✥ 进入，点舞台上的小物（或上面的名字）选中，拖着挪；每件单独记住位置 ---------------- */
+(() => {
+  const stage = document.querySelector('.stage'), bar = $('#adjBar'), btn = $('#adjBtn'); if (!stage || !bar || !btn) return;
+  const A = { on: false, sel: null, drag: null };
+  const worn = () => state.outfit.acc.filter(id => byId(id));
+  const paint = () => {
+    const L = worn(); if (A.sel && !L.includes(A.sel)) A.sel = null; if (!A.sel) A.sel = L[L.length - 1] || null;
+    bar.innerHTML = L.length ? `<b>拖动调整</b>` + L.map(id => `<button type="button" class="opt" data-adj="${id}" aria-pressed="${A.sel === id}">${byId(id).name}</button>`).join('') +
+      `<button type="button" class="opt" data-adjreset>还原位置</button><button type="button" class="opt adj-done" data-adjdone>完成</button>`
+      : `<b>还没有戴小物</b>先去「小物」里选一件，再回来拖动<button type="button" class="opt adj-done" data-adjdone>完成</button>`;
+  };
+  const set = on => { A.on = on; bar.hidden = !on; btn.setAttribute('aria-pressed', on); stage.classList.toggle('adjusting', on); if (on) paint(); };
+  btn.addEventListener('click', () => set(!A.on));
+  bar.addEventListener('click', e => {
+    const b = e.target.closest('[data-adj]'); if (b) { A.sel = b.dataset.adj; paint(); return; }
+    if (e.target.closest('[data-adjreset]') && A.sel) { delete state.outfit.offsets[A.sel]; save(); renderStage(false); return; }
+    if (e.target.closest('[data-adjdone]')) set(false);
+  });
+  let raf = 0;
+  stage.addEventListener('pointerdown', e => {
+    if (!A.on || e.target.closest('button, .adj-bar')) return;
+    const g = e.target.closest('[data-acc]'); if (g) { A.sel = g.dataset.acc; paint(); }
+    if (!A.sel) return;
+    const m = $('#doll').getScreenCTM(); if (!m) return;
+    const o = (state.outfit.offsets = state.outfit.offsets || {})[A.sel] || [0, 0];
+    A.drag = { x: e.clientX, y: e.clientY, k: m.a || 1, o: o.slice() };
+    try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+    e.preventDefault(); e.stopImmediatePropagation();
+  }, true);
+  stage.addEventListener('pointermove', e => {
+    if (!A.on || !A.drag) return; e.stopImmediatePropagation();
+    const d = A.drag, v = [d.o[0] + (e.clientX - d.x) / d.k, d.o[1] + (e.clientY - d.y) / d.k].map(n => Math.max(-80, Math.min(80, n)));
+    state.outfit.offsets[A.sel] = v;
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; renderStage(false); });
+  }, true);
+  const end = e => { if (!A.drag) return; A.drag = null; save(); e.stopImmediatePropagation(); };
+  stage.addEventListener('pointerup', end, true); stage.addEventListener('pointercancel', end, true);
+  stage.addEventListener('wheel', e => { if (A.on) e.stopImmediatePropagation(); }, true);
+  const rg = renderGrid; renderGrid = function () { rg.apply(this, arguments); if (A.on) paint(); };   // 换了小物，名字列表跟着更新
 })();

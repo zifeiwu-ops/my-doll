@@ -105,9 +105,10 @@ button{font:inherit;color:inherit}
 .card-btn[aria-pressed="true"]{background:var(--pink-soft);border-color:var(--pink-deep)}
 .card-btn[aria-pressed="true"]::after{content:"";position:absolute;top:8px;right:8px;width:22px;height:22px;background:var(--pink);
   clip-path:path("M11 20 C3 14 1 9 3.5 5.5 C5.5 3 9.5 3 11 6.5 C12.5 3 16.5 3 18.5 5.5 C21 9 19 14 11 20 Z")}
-.thumb{position:relative;overflow:hidden;display:block;aspect-ratio:1/1;border-radius:10px;border:1.5px dashed #BFE7E3;
+.thumb{position:relative;overflow:hidden;display:block;height:auto;border-radius:10px;border:1.5px dashed #BFE7E3;
   background-color:var(--mint-soft);background-image:radial-gradient(circle,#fff 0 2.5px,transparent 3px);background-size:14px 14px}
-.thumb svg{position:absolute;inset:0;display:block;width:100%;height:100%}
+.thumb::before{content:"";display:block;padding-top:100%}   /* 用 padding 撑出正方形：老一点的手机浏览器不认 aspect-ratio，缩略图会塌成 0 高 */
+.thumb svg{position:absolute;left:0;top:0;right:0;bottom:0;display:block;width:100%;height:100%}
 .nm{display:flex;align-items:center;justify-content:center;min-height:2.6em;font-size:12.5px;line-height:1.3}
 .badge{position:absolute;top:-10px;left:-8px;z-index:2;font-family:var(--f-round);font-size:12px;line-height:1;padding:5px 8px 4px;color:#fff;background:var(--pink);border:2px solid #fff;border-radius:999px;transform:rotate(-10deg);box-shadow:0 2px 0 rgba(74,52,48,.2);pointer-events:none}
 .badge.diy{background:#6FC7BE}
@@ -259,7 +260,7 @@ select.name-in{flex:1 1 140px}
   .logo-cn{font-size:26px;-webkit-text-stroke:5px #fff}.logo-cn span{-webkit-text-stroke:5px #fff}
   .ribbon{font-size:11px;padding:1px 10px}
   .memo,.masthead .stk{display:none}
-  .layout{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 43%;gap:8px}
+  .layout{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 34%;gap:7px}
   .tape{display:none}
   .sheet{border-radius:14px;box-shadow:0 0 0 2px #fff,0 0 0 4px var(--aqua-deep),2px 3px 0 2px rgba(74,52,48,.12)}
   .layout>.sheet:first-child{display:flex;flex-direction:column;min-height:0}
@@ -277,12 +278,12 @@ select.name-in{flex:1 1 140px}
   #btnShot{top:10px}#btnRandom{top:62px}#btnReset{top:114px}
   .shot-btn svg{width:16px;height:16px}
   .closet{min-height:0;display:flex;flex-direction:row-reverse;padding:0;overflow:hidden}
-  .tabs{flex:0 0 46px;flex-direction:column;flex-wrap:nowrap;overflow-y:auto;scrollbar-width:none;gap:5px;padding:8px 4px;border-left:2px dashed #F6C3D4}
+  .tabs{flex:0 0 42px;flex-direction:column;flex-wrap:nowrap;overflow-y:auto;scrollbar-width:none;gap:5px;padding:8px 4px;border-left:2px dashed #F6C3D4}
   .tabs::-webkit-scrollbar{display:none}
   .tab{flex:0 0 auto;font-size:12.5px;line-height:1.15;padding:6px 2px 5px;transform:none;writing-mode:horizontal-tb;text-align:center;border-radius:8px;border-left:0;border-right:0}
   .tab .n{display:none}
   .hint-line{display:none}
-  .grid{flex:1 1 auto;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:10px 7px;padding:10px 7px 14px}
+  .grid{flex:1 1 auto;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;grid-template-columns:minmax(0,1fr);align-content:start;gap:10px;padding:10px 7px 14px}   /* 单列：一格一件，图标大 */
   .card-btn{padding:4px 4px 5px;gap:3px;border-radius:12px}
   .nm{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:10.5px;min-height:2.45em;line-height:1.22;word-break:break-all}
   .badge{font-size:9.5px;padding:3px 5px 2px;top:-6px;left:-4px}
@@ -330,9 +331,19 @@ select.name-in{flex:1 1 140px}
 }
 
 /* 套装卡片：竖长的全身图 */
-.look-card .thumb{aspect-ratio:1/2.6}
+.look-card .thumb::before{padding-top:260%}
 .look-ip{font-size:10.5px;color:var(--pink-deep);font-family:var(--f-round);white-space:nowrap}
 @media (max-width:879px){.look-ip{font-size:9px}}
+
+/* 拖动调整小物位置 */
+.adj-bar{position:absolute;left:8px;right:52px;bottom:8px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:6px 8px;background:rgba(255,255,255,.94);border:2px solid var(--ink);border-radius:12px;font-size:12px}
+.adj-bar b{font-family:var(--f-display);font-weight:400;color:var(--pink-deep)}
+.adj-bar .opt{font-size:12px;padding:1px 8px}
+.adj-bar .adj-done{margin-left:auto}
+.stage.adjusting{cursor:move;outline:3px dashed var(--pink);outline-offset:-6px}
+.stage.adjusting [data-acc]{cursor:grab}
+#adjBtn[aria-pressed="true"]{background:var(--pink);color:#fff}
+@media (max-width:879px){.adj-bar{bottom:6px;left:6px;right:50px;font-size:11px}.adj-bar .opt{font-size:11px}}
 </style>
 
 <svg width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false">
@@ -367,7 +378,8 @@ select.name-in{flex:1 1 140px}
         <div class="floor" aria-hidden="true"></div>
         <div class="doll-live" id="dollLive"><svg class="doll" id="doll" viewBox="40 36 220 566" preserveAspectRatio="xMidYMax meet" role="img" aria-label="当前穿搭"></svg></div>
         <div class="sparkles" id="sparkles" aria-hidden="true"></div>
-        <div class="zoom-ctl" aria-label="缩放"><button type="button" id="zIn" aria-label="放大">+</button><button type="button" id="zOut" aria-label="缩小">−</button><button type="button" id="zFit" aria-label="还原大小" style="font-size:12px">1:1</button></div>
+        <div class="zoom-ctl" aria-label="缩放"><button type="button" id="zIn" aria-label="放大">+</button><button type="button" id="zOut" aria-label="缩小">−</button><button type="button" id="zFit" aria-label="还原大小" style="font-size:12px">1:1</button><button type="button" id="adjBtn" aria-label="拖动调整小物位置" aria-pressed="false" style="font-size:15px">✥</button></div>
+        <div class="adj-bar" id="adjBar" hidden></div>
       </div>
       <div class="stage-bar">
         <p class="ootd" id="ootd"></p>
