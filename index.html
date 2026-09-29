@@ -6,7 +6,7 @@
 <title>My doll</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hachi+Maru+Pop&family=ZCOOL+KuaiLe&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600&family=Hachi+Maru+Pop&family=ZCOOL+KuaiLe&display=swap">
 <style>
 :root{
   --aqua:#CFF3F4; --aqua-deep:#8ED7D8; --ink:#4A3430; --ink-soft:#7E6560;
@@ -36,7 +36,9 @@ button{font:inherit;color:inherit}
 .logo-cn{font-family:var(--f-display);font-size:clamp(44px,8vw,66px);line-height:1;letter-spacing:.06em;color:var(--pink);
   -webkit-text-stroke:9px #fff;paint-order:stroke fill;filter:drop-shadow(0 3px 0 rgba(74,52,48,.18))}
 .logo-cn span{-webkit-text-stroke:9px #fff;paint-order:stroke fill}
-.logo-cn .c2{color:#6FC7BE}.logo-cn .c3{color:#F4B63F}.logo-cn .c4{color:#B897E6}
+.logo-cn{font-family:'Fredoka','Arial Rounded MT Bold','Hiragino Maru Gothic ProN','Varela Round','ZCOOL KuaiLe',sans-serif !important;font-weight:600;letter-spacing:.01em !important;color:#F07FA8 !important;filter:drop-shadow(0 3px 0 rgba(233,120,160,.28)) !important}
+.logo-cn .c2,.logo-cn .c3,.logo-cn .c4{color:inherit}
+.logo-cn .c3{color:#EE8FB4}   /* 名字只用一个粉色系，d 稍微浅一点点，不再是彩虹色 */
 .ribbon{position:relative;margin-left:6px;padding:3px 18px;font-family:var(--f-round);font-size:15px;letter-spacing:.06em;color:var(--pink-deep);transform:rotate(-3deg);
   background:repeating-linear-gradient(90deg,#fff 0 10px,var(--pink-soft) 10px 20px);border:2px solid var(--ink);border-radius:4px}
 .ribbon::before,.ribbon::after{content:"";position:absolute;top:50%;width:12px;height:12px;background:var(--pink);border:2px solid var(--ink);transform:translateY(-50%) rotate(45deg);z-index:-1}
@@ -380,6 +382,12 @@ select.name-in{flex:1 1 140px}
   .album .pic{flex:0 0 96px}
   .lab-close{top:10px;right:10px;z-index:4}
 }
+
+/* 名字丝带：可以自己输入，宽度跟着字数变 */
+input.ribbon{font:inherit;font-family:var(--f-round);font-size:15px;letter-spacing:.06em;color:var(--pink-deep);text-align:center;outline:none;max-width:60vw;cursor:text}
+input.ribbon::placeholder{color:#E9A9C0;opacity:1}
+input.ribbon:focus{box-shadow:0 0 0 3px #fff,0 0 0 5px var(--pink)}
+@media (max-width:879px){input.ribbon{font-size:11.5px;max-width:45vw}}
 </style>
 </head>
 <body>
@@ -397,7 +405,7 @@ select.name-in{flex:1 1 140px}
 
 <div class="app">
   <header class="masthead">
-    <h1 class="logo"><span class="logo-cn"><span>M</span><span class="c2">y</span> <span class="c3">d</span><span class="c4">o</span><span>l</span><span class="c2">l</span></span><span class="ribbon">Y2K dress-up</span></h1>
+    <h1 class="logo"><span class="logo-cn"><span>M</span><span class="c2">y</span> <span class="c3">d</span><span class="c4">o</span><span>l</span><span class="c2">l</span></span><input class="ribbon" id="dollName" maxlength="14" placeholder="给娃娃取个名字" aria-label="娃娃的名字" autocomplete="off" spellcheck="false"></h1>
     <div class="memo"><svg class="clip" aria-hidden="true" viewBox="0 0 100 100"><use href="#st-clip" x="0" y="0" width="100" height="100"/></svg><b>本期上新 · 糖果装饰风 + 甜酷街头 173 件</b>
       <p>彩虹抹胸 · 毛绒腿套 · 双丸子头 · 水手领条纹T · 蓬蓬荷叶短裙 · 条纹过膝袜 · 毛领大衣 · 西部靴<br>新姿势「双手叉腰 / 双手捧心」，拍照小屋新增涂鸦贴纸墙、糖果店、放学路口</p></div>
     <svg class="stk" style="top:-6px;right:4%;width:34px;height:34px;color:#FFE27A" aria-hidden="true" viewBox="0 0 100 100"><use href="#st-star" x="0" y="0" width="100" height="100"/></svg>
@@ -8397,6 +8405,16 @@ if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.c
   show(0);
   // 拍完照自动切到「相册」，看得到刚拍的那张
   const sh = $('#stShoot'); if (sh && album) sh.addEventListener('click', () => setTimeout(() => show(items.length - 1), 900));
+})();
+
+/* ---------------- 娃娃的名字（标题旁的丝带）：自己取名，存在本机 ---------------- */
+(() => {
+  const el = $('#dollName'), K = 'y2k-closet-name'; if (!el) return;
+  const fit = () => { el.style.width = `calc(${f1(Math.max(4, [...(el.value || el.placeholder)].reduce((w, ch) => w + (ch.charCodeAt(0) < 256 ? .66 : 1.14), 0)))}em + 44px)`; };   // 字宽 + 丝带左右留白
+  try { el.value = localStorage.getItem(K) || ''; } catch (e) { }
+  fit();
+  el.addEventListener('input', () => { fit(); try { localStorage.setItem(K, el.value.trim()); } catch (e) { } });
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') el.blur(); });
 })();
 </script>
 

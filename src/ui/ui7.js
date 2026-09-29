@@ -488,3 +488,13 @@ if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.c
   // 拍完照自动切到「相册」，看得到刚拍的那张
   const sh = $('#stShoot'); if (sh && album) sh.addEventListener('click', () => setTimeout(() => show(items.length - 1), 900));
 })();
+
+/* ---------------- 娃娃的名字（标题旁的丝带）：自己取名，存在本机 ---------------- */
+(() => {
+  const el = $('#dollName'), K = 'y2k-closet-name'; if (!el) return;
+  const fit = () => { el.style.width = `calc(${f1(Math.max(4, [...(el.value || el.placeholder)].reduce((w, ch) => w + (ch.charCodeAt(0) < 256 ? .66 : 1.14), 0)))}em + 44px)`; };   // 字宽 + 丝带左右留白
+  try { el.value = localStorage.getItem(K) || ''; } catch (e) { }
+  fit();
+  el.addEventListener('input', () => { fit(); try { localStorage.setItem(K, el.value.trim()); } catch (e) { } });
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') el.blur(); });
+})();
