@@ -345,10 +345,41 @@ select.name-in{flex:1 1 140px}
 .adj-bar b{font-family:var(--f-display);font-weight:400;color:var(--pink-deep)}
 .adj-bar .opt{font-size:12px;padding:1px 8px}
 .adj-bar .adj-done{margin-left:auto}
+.adj-lv{display:inline-flex;align-items:center;gap:4px}.adj-lvn{font-size:11px;color:var(--ink-soft);min-width:4.6em;text-align:center}
 .stage.adjusting{cursor:move;outline:3px dashed var(--pink);outline-offset:-6px}
 .stage.adjusting [data-acc]{cursor:grab}
 #adjBtn[aria-pressed="true"]{background:var(--pink);color:#fff}
 @media (max-width:879px){.adj-bar{bottom:6px;left:6px;right:50px;font-size:11px}.adj-bar .opt{font-size:11px}}
+
+/* ---------- 拍照小屋：参考同类游戏的拍照模式 —— 照片一直在眼前，下面一排设置签，一次只展开一项 ---------- */
+.st-tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 6px;border-bottom:2px dashed #F6C3D4}
+.st-tabs::-webkit-scrollbar{display:none}
+.st-tab{flex:0 0 auto;border:2px solid var(--ink);border-radius:999px;background:#fff;padding:3px 13px;font-family:var(--f-display);font-size:14px;cursor:pointer}
+.st-tab[aria-selected="true"]{background:var(--pink);color:#fff}
+.st-panel .st-row{min-height:44px}
+.st-panel .st-row.st-off,.album-wrap.st-off{display:none}
+.st-panel .st-row .row-label{display:none}
+.st-panel .st-row .opts{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding:3px 2px 6px}
+.st-panel .st-row .opts .opt{flex:0 0 auto}
+.st-panel .st-row .stks{flex:1 1 auto;min-width:0;flex-wrap:nowrap;overflow-x:auto;padding:3px 2px 6px}
+.st-panel .st-row .stks .stk-btn{flex:0 0 auto}
+@media (min-width:760px){.st-panel .st-row .opts,.st-panel .st-row .stks{flex-wrap:wrap;overflow:visible}}
+@media (max-width:759px){
+  #studio{padding:0;align-items:stretch;overflow:hidden}
+  .studio-win{max-width:none;height:100vh;height:100dvh;margin:0;border-radius:0;box-shadow:none;border:0;display:flex;flex-direction:column;padding-top:0}
+  .studio-win>.tape,.studio-win .lab-title,.st-left .tap-hint{display:none}
+  .studio-win .lab-body{flex:1 1 auto;min-height:0;padding:8px 8px calc(8px + env(safe-area-inset-bottom));gap:6px}
+  .st-main{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:6px}
+  .st-left{flex:1 1 auto;min-height:0;position:relative;align-items:center;justify-content:center}
+  .st-photo{width:min(100%, calc((100dvh - 200px) * .75));height:auto;aspect-ratio:3/4;margin:auto}
+  .shoot-row{position:absolute;right:6px;bottom:6px;padding:0;z-index:3}
+  .shutter{width:64px;height:64px;padding:0;border-radius:50%;font-size:13px}
+  .st-panel{flex:0 0 auto;gap:4px;padding:8px}
+  .album-wrap{flex:0 0 auto;border-top:0;padding-top:0}
+  .album-wrap .step-h{display:none}
+  .album .pic{flex:0 0 96px}
+  .lab-close{top:10px;right:10px;z-index:4}
+}
 </style>
 </head>
 <body>
@@ -420,6 +451,7 @@ select.name-in{flex:1 1 140px}
           <div class="shoot-row"><button class="btn primary shutter" id="stShoot" type="button">按快门</button></div>
         </div>
         <div class="panel st-panel">
+          <div class="st-tabs" id="stTabs" role="tablist" aria-label="拍照设置"></div>
           <div class="st-row"><span class="row-label">场景</span><div class="opts" id="stScene" role="radiogroup" aria-label="场景"></div></div>
           <div class="st-row"><span class="row-label">姿势</span><div class="opts" id="stPose" role="radiogroup" aria-label="拍照姿势"></div></div>
           <div class="st-row"><span class="row-label">表情</span><div class="opts" id="stFace" role="radiogroup" aria-label="表情"></div></div>
@@ -6576,7 +6608,7 @@ function dollSVG(outfit, over = {}, pose = null) {
   });
   const accL = [], P = pose ? POSES[pose] || POSES.stand : null;   // 没传姿势（DIY 画布）时保持原始比例，画的形状才对得上
   // 玩家拖动过的小物：整件先平移（在姿势变形之前，所以摆什么姿势都跟着）；每层包一个 data-acc，舞台上点它就能选中
-  const OFF = outfit.offsets || {}, shift = (id, Q) => { const o = OFF[id]; return Q.map(l => ({ ...l, svg: `<g data-acc="${id}"${o && (o[0] || o[1]) ? ` transform="translate(${f1(o[0])} ${f1(o[1])})"` : ''}>${l.svg}</g>` })); };
+  const OFF = outfit.offsets || {}, LAY = outfit.layers || {}, shift = (id, Q) => { const o = OFF[id], zt = LAY[id], top = Math.max(...Q.map(l => l.z)); return Q.map(l => ({ ...l, z: zt != null ? f1(l.z - top + zt) : l.z, svg: `<g data-acc="${id}"${o && (o[0] || o[1]) ? ` transform="translate(${f1(o[0])} ${f1(o[1])})"` : ''}>${l.svg}</g>` })); };
   (outfit.acc || []).forEach(id => { const it = byId(id); if (it) { const Q = shift(id, partsOf(it)); if (isHead(it)) H.push(...Q); else if (P && (BAGS.has(id) || HELD[id] || it.sub === 'bag' || it.sub === 'waist')) accL.push(...Q.map(l => ({ ...l, bag: id }))); else L.push(...Q.map(l => ({ ...l, cat: 'acc', id }))); } });
   // 戴帽子时，帽顶以上的头发（丸子、高马尾、呆毛）收进帽子里，不会从帽子上穿出来；遮阳帽没有帽顶，不收
   const hatId = (outfit.acc || []).find(id => { const it = byId(id); return it && it.sub === 'hat' && !OPEN_HATS.has(id); });
@@ -6618,7 +6650,9 @@ const POSES = {
   spread: { name: '芭蕾展臂', head: -5, body: LEAN, skirt: { flare: 3.2, lift: 1.2 }, hair: { flare: 2.6, lift: 1 }, L: { up: 28, fore: 12 }, R: { up: -28, fore: -12 } }
 };
 const BAGS = new Set(['a4', 'a27', 'a33', 'a34', 'a47', 'a58', 'a42', 'a53', 'a48', 'a49', 'a50']);        // 包不跟着手臂变形，整只保留在原处
-const OPEN_HATS = new Set(['a95']);                                                                    // 没有帽顶的帽子（遮阳帽）
+const OPEN_HATS = new Set(['a95']);
+/* 小物可以选的上下层级（从后到前）：后发之后 · 衣服下面 · 上衣和外套之间 · 外套外面 · 刘海下面 · 最上面 */
+const ACC_LEVELS = [[1.5, '后发后面'], [19, '衣服下面'], [33, '外套下面'], [45, '外套外面'], [49, '刘海下面'], [60, '最上面']];                                                                    // 没有帽顶的帽子（遮阳帽）
 const HELD = { a47: 'L', a34: 'R', a73: 'L', a90: 'L' };                                               // 拎在手上的包跟着那只手走
 const PANTS_TPL = new Set(['widePants', 'cargo', 'flareJeans', 'skinnyJeans', 'slacks', 'sashPants', 'skirtJeans', 'wideFlare', 'wrapCargo', 'balloonPants', 'shorts', 'capris', 'bermuda', 'culottes', 'beltShorts']);
 const RIG = (() => {
@@ -7902,6 +7936,7 @@ function cleanOutfit(o) {
   if (out.dress) { out.top = null; out.bottom = null; }
   if (Array.isArray(o.acc)) out.acc = oneEach(o.acc.filter(id => byId(id)));
   out.hairColor = /^#[0-9a-f]{6}$/i.test(o.hairColor || '') ? o.hairColor : null;
+  out.layers = {}; if (o.layers) out.acc.forEach(id => { if (ACC_LEVELS.some(([z]) => z === o.layers[id])) out.layers[id] = o.layers[id]; });
   out.offsets = {}; if (o.offsets) out.acc.forEach(id => { const v = o.offsets[id]; if (Array.isArray(v) && v.every(Number.isFinite)) out.offsets[id] = v.map(n => Math.max(-80, Math.min(80, n))); });   // 小物拖动过的位置   // 色块里的颜色，或者整套造型自带的发色
   return out;
 }
@@ -8307,17 +8342,23 @@ if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.c
   const stage = document.querySelector('.stage'), bar = $('#adjBar'), btn = $('#adjBtn'); if (!stage || !bar || !btn) return;
   const A = { on: false, sel: null, drag: null };
   const worn = () => state.outfit.acc.filter(id => byId(id));
+  // 当前层级：玩家设过就用设的；没设过就按这件小物本来的 z 找最近的一档
+  const levelIdx = () => { const L = state.outfit.layers || {}, z = L[A.sel] != null ? L[A.sel] : Math.max(...partsOf(byId(A.sel)).map(l => l.z)); let k = 0; ACC_LEVELS.forEach(([v], i) => { if (Math.abs(v - z) < Math.abs(ACC_LEVELS[k][0] - z)) k = i; }); return k; };
+  const curLevel = () => ACC_LEVELS[levelIdx()][1];
   const paint = () => {
     const L = worn(); if (A.sel && !L.includes(A.sel)) A.sel = null; if (!A.sel) A.sel = L[L.length - 1] || null;
     bar.innerHTML = L.length ? `<b>拖动调整</b>` + L.map(id => `<button type="button" class="opt" data-adj="${id}" aria-pressed="${A.sel === id}">${byId(id).name}</button>`).join('') +
-      `<button type="button" class="opt" data-adjreset>还原位置</button><button type="button" class="opt adj-done" data-adjdone>完成</button>`
+      (A.sel ? `<span class="adj-lv"><button type="button" class="opt" data-adjz="-1" aria-label="往后一层">↓ 往后</button><span class="adj-lvn">${curLevel()}</span><button type="button" class="opt" data-adjz="1" aria-label="往前一层">往前 ↑</button></span>` : '') +
+      `<button type="button" class="opt" data-adjreset>还原</button><button type="button" class="opt adj-done" data-adjdone>完成</button>`
       : `<b>还没有戴小物</b>先去「小物」里选一件，再回来拖动<button type="button" class="opt adj-done" data-adjdone>完成</button>`;
   };
   const set = on => { A.on = on; bar.hidden = !on; btn.setAttribute('aria-pressed', on); stage.classList.toggle('adjusting', on); if (on) paint(); };
   btn.addEventListener('click', () => set(!A.on));
   bar.addEventListener('click', e => {
     const b = e.target.closest('[data-adj]'); if (b) { A.sel = b.dataset.adj; paint(); return; }
-    if (e.target.closest('[data-adjreset]') && A.sel) { delete state.outfit.offsets[A.sel]; save(); renderStage(false); return; }
+    if (e.target.closest('[data-adjreset]') && A.sel) { delete state.outfit.offsets[A.sel]; delete (state.outfit.layers || {})[A.sel]; save(); renderStage(false); paint(); return; }
+    const zb = e.target.closest('[data-adjz]');
+    if (zb && A.sel) { const i = levelIdx(), j = Math.max(0, Math.min(ACC_LEVELS.length - 1, i + +zb.dataset.adjz)); (state.outfit.layers = state.outfit.layers || {})[A.sel] = ACC_LEVELS[j][0]; save(); renderStage(false); paint(); return; }
     if (e.target.closest('[data-adjdone]')) set(false);
   });
   let raf = 0;
@@ -8341,6 +8382,19 @@ if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.c
   stage.addEventListener('pointerup', end, true); stage.addEventListener('pointercancel', end, true);
   stage.addEventListener('wheel', e => { if (A.on) e.stopImmediatePropagation(); }, true);
   const rg = renderGrid; renderGrid = function () { rg.apply(this, arguments); if (A.on) paint(); };   // 换了小物，名字列表跟着更新
+})();
+
+/* ---------------- 拍照小屋的设置签：一次只展开一项，照片一直看得见 ---------------- */
+(() => {
+  const bar = $('#stTabs'); if (!bar) return;
+  const rows = [...document.querySelectorAll('.st-panel .st-row')], album = document.querySelector('.album-wrap');
+  const items = rows.map(r => [r, r.querySelector('.row-label').textContent.trim()]).concat(album ? [[album, '相册']] : []);
+  let cur = 0;
+  const show = i => { cur = i; items.forEach(([el], k) => el.classList.toggle('st-off', k !== i)); bar.innerHTML = items.map(([, n], k) => `<button type="button" class="st-tab" role="tab" data-sttab="${k}" aria-selected="${k === i}">${n}</button>`).join(''); };
+  bar.addEventListener('click', e => { const b = e.target.closest('[data-sttab]'); if (b) show(+b.dataset.sttab); });
+  show(0);
+  // 拍完照自动切到「相册」，看得到刚拍的那张
+  const sh = $('#stShoot'); if (sh && album) sh.addEventListener('click', () => setTimeout(() => show(items.length - 1), 900));
 })();
 </script>
 

@@ -72,7 +72,7 @@ function dollSVG(outfit, over = {}, pose = null) {
   });
   const accL = [], P = pose ? POSES[pose] || POSES.stand : null;   // 没传姿势（DIY 画布）时保持原始比例，画的形状才对得上
   // 玩家拖动过的小物：整件先平移（在姿势变形之前，所以摆什么姿势都跟着）；每层包一个 data-acc，舞台上点它就能选中
-  const OFF = outfit.offsets || {}, shift = (id, Q) => { const o = OFF[id]; return Q.map(l => ({ ...l, svg: `<g data-acc="${id}"${o && (o[0] || o[1]) ? ` transform="translate(${f1(o[0])} ${f1(o[1])})"` : ''}>${l.svg}</g>` })); };
+  const OFF = outfit.offsets || {}, LAY = outfit.layers || {}, shift = (id, Q) => { const o = OFF[id], zt = LAY[id], top = Math.max(...Q.map(l => l.z)); return Q.map(l => ({ ...l, z: zt != null ? f1(l.z - top + zt) : l.z, svg: `<g data-acc="${id}"${o && (o[0] || o[1]) ? ` transform="translate(${f1(o[0])} ${f1(o[1])})"` : ''}>${l.svg}</g>` })); };
   (outfit.acc || []).forEach(id => { const it = byId(id); if (it) { const Q = shift(id, partsOf(it)); if (isHead(it)) H.push(...Q); else if (P && (BAGS.has(id) || HELD[id] || it.sub === 'bag' || it.sub === 'waist')) accL.push(...Q.map(l => ({ ...l, bag: id }))); else L.push(...Q.map(l => ({ ...l, cat: 'acc', id }))); } });
   // 戴帽子时，帽顶以上的头发（丸子、高马尾、呆毛）收进帽子里，不会从帽子上穿出来；遮阳帽没有帽顶，不收
   const hatId = (outfit.acc || []).find(id => { const it = byId(id); return it && it.sub === 'hat' && !OPEN_HATS.has(id); });
@@ -114,7 +114,9 @@ const POSES = {
   spread: { name: '芭蕾展臂', head: -5, body: LEAN, skirt: { flare: 3.2, lift: 1.2 }, hair: { flare: 2.6, lift: 1 }, L: { up: 28, fore: 12 }, R: { up: -28, fore: -12 } }
 };
 const BAGS = new Set(['a4', 'a27', 'a33', 'a34', 'a47', 'a58', 'a42', 'a53', 'a48', 'a49', 'a50']);        // 包不跟着手臂变形，整只保留在原处
-const OPEN_HATS = new Set(['a95']);                                                                    // 没有帽顶的帽子（遮阳帽）
+const OPEN_HATS = new Set(['a95']);
+/* 小物可以选的上下层级（从后到前）：后发之后 · 衣服下面 · 上衣和外套之间 · 外套外面 · 刘海下面 · 最上面 */
+const ACC_LEVELS = [[1.5, '后发后面'], [19, '衣服下面'], [33, '外套下面'], [45, '外套外面'], [49, '刘海下面'], [60, '最上面']];                                                                    // 没有帽顶的帽子（遮阳帽）
 const HELD = { a47: 'L', a34: 'R', a73: 'L', a90: 'L' };                                               // 拎在手上的包跟着那只手走
 const PANTS_TPL = new Set(['widePants', 'cargo', 'flareJeans', 'skinnyJeans', 'slacks', 'sashPants', 'skirtJeans', 'wideFlare', 'wrapCargo', 'balloonPants', 'shorts', 'capris', 'bermuda', 'culottes', 'beltShorts']);
 const RIG = (() => {
