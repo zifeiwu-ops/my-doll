@@ -1,5 +1,5 @@
 /* =====================================================================
-   联动：偶像活动（Aikatsu!）风格的 8 套私服造型 —— 按参考图的搭配思路用本作的版型重画（不描原图）
+   偶像私服：8 套舞台偶像风的私服造型 —— 按参考图的搭配思路用本作的版型重画（不描原图）
    每件衣服带 ip / 风格标签；衣橱里可以按「系列 / 颜色 / 风格」筛选，选了系列还能一键换上整套造型
    ===================================================================== */
 PATTERN_DEFS += `
@@ -66,23 +66,23 @@ const IDOL20 = [
   { id: 'b80', cat: 'bottom', tpl: 'aMini', name: '柠檬黄白花A字裙', fill: { p: 'yellowblossom' } },
   { id: 'b81', cat: 'bottom', tpl: 'hotShorts', name: '湖蓝短裤', fill: { c: '#5EC8C8' } }
 ];
-IDOL20.forEach(i => { i.isNew = true; i.ip = 'aikatsu'; });
+IDOL20.forEach(i => { i.isNew = true; i.ip = 'idol'; });
 WARDROBE.unshift(...IDOL20);
 
 /* 整套造型：一键换上（发型用本作的发型 + 发色） */
 const LOOKS = [
-  { name: '白水手领 · 大波点', ip: 'aikatsu', o: { hair: 'h32', hairColor: '#E4EAD6', dress: 'd26', top: null, bottom: null, outer: null, legs: 'l19', warmer: null, shoes: 's2', acc: ['a90'] } },
-  { name: '紫夜花朵长裙', ip: 'aikatsu', o: { hair: 'h20', hairColor: '#A8532E', dress: 'd27', top: null, bottom: null, outer: null, legs: null, warmer: null, shoes: 's17', acc: ['a74'] } },
-  { name: '露肩荷叶 · 碎花牛仔', ip: 'aikatsu', o: { hair: 'h12', hairColor: '#B070D8', top: 't86', bottom: 'b77', dress: null, outer: null, legs: null, warmer: null, shoes: 's11', acc: ['a115'] } },
-  { name: '白纱衬衫 · 薄荷短裙', ip: 'aikatsu', o: { hair: 'h7', hairColor: '#F2DC7A', top: 't87', bottom: 'b78', dress: null, outer: null, legs: null, warmer: null, shoes: 's34', acc: [] } },
-  { name: '绿格衬衫 · 牛仔荷叶裙', ip: 'aikatsu', o: { hair: 'h8', hairColor: '#3E5AB8', top: 't88', bottom: 'b79', dress: null, outer: null, legs: 'l33', warmer: null, shoes: 's8', acc: ['a89'] } },
-  { name: '薄荷衬衫 · 白花黄裙', ip: 'aikatsu', o: { hair: 'h17', hairColor: '#F4AFC8', top: 't90', bottom: 'b80', dress: null, outer: null, legs: null, warmer: null, shoes: 's1', acc: [] } },
-  { name: '粉蓝格子背带裙', ip: 'aikatsu', o: { hair: 'h30', hairColor: '#C8844A', top: 't91', dress: 'd28', bottom: null, outer: null, legs: null, warmer: null, shoes: 's4', acc: ['a47'] } },
-  { name: '白紫连帽 · 湖蓝短裤', ip: 'aikatsu', o: { hair: 'h5', hairColor: '#D8323C', top: 't89', outer: 'o43', bottom: 'b81', dress: null, legs: 'l7', warmer: null, shoes: 's8', acc: [] } }
+  { name: '白水手领 · 大波点', ip: 'idol', o: { hair: 'h32', hairColor: '#E4EAD6', dress: 'd26', top: null, bottom: null, outer: null, legs: 'l19', warmer: null, shoes: 's2', acc: ['a90'] } },
+  { name: '紫夜花朵长裙', ip: 'idol', o: { hair: 'h20', hairColor: '#A8532E', dress: 'd27', top: null, bottom: null, outer: null, legs: null, warmer: null, shoes: 's17', acc: ['a74'] } },
+  { name: '露肩荷叶 · 碎花牛仔', ip: 'idol', o: { hair: 'h12', hairColor: '#B070D8', top: 't86', bottom: 'b77', dress: null, outer: null, legs: null, warmer: null, shoes: 's11', acc: ['a115'] } },
+  { name: '白纱衬衫 · 薄荷短裙', ip: 'idol', o: { hair: 'h7', hairColor: '#F2DC7A', top: 't87', bottom: 'b78', dress: null, outer: null, legs: null, warmer: null, shoes: 's34', acc: [] } },
+  { name: '绿格衬衫 · 牛仔荷叶裙', ip: 'idol', o: { hair: 'h8', hairColor: '#3E5AB8', top: 't88', bottom: 'b79', dress: null, outer: null, legs: 'l33', warmer: null, shoes: 's8', acc: ['a89'] } },
+  { name: '薄荷衬衫 · 白花黄裙', ip: 'idol', o: { hair: 'h17', hairColor: '#F4AFC8', top: 't90', bottom: 'b80', dress: null, outer: null, legs: null, warmer: null, shoes: 's1', acc: [] } },
+  { name: '粉蓝格子背带裙', ip: 'idol', o: { hair: 'h30', hairColor: '#C8844A', top: 't91', dress: 'd28', bottom: null, outer: null, legs: null, warmer: null, shoes: 's4', acc: ['a47'] } },
+  { name: '白紫连帽 · 湖蓝短裤', ip: 'idol', o: { hair: 'h5', hairColor: '#D8323C', top: 't89', outer: 'o43', bottom: 'b81', dress: null, legs: 'l7', warmer: null, shoes: 's8', acc: [] } }
 ];
 
 /* ---------- 筛选标签 ---------- */
-const IP_LABEL = { aikatsu: '偶像活动' };
+const IP_LABEL = {};   // 系列名在 wardrobe23 里按上新主题统一定义
 const STYLE_RULES = [['甜美', /蝴蝶结|荷叶|蕾丝|泡泡|蛋糕|爱心|草莓|娃娃|公主|芭蕾|纱|粉色|丸子|双马尾|揪揪|大卷/], ['街头', /卫衣|连帽|工装|运动|链条|破洞|摇滚|马丁|老爹|热裤|阔腿|网|炸毛|凌乱|挑染/], ['复古', /格纹|格|波点|碎花|花朵|灯芯绒|菱格|古着|麻花|费尔岛|豹纹|波波|盘发|卷发/],
   ['学院', /水手|百褶|领结|背带|领带|乐福|牛津|马甲|齐刘海|低马尾|编发/], ['休闲', /T|牛仔|短裤|衬衫|开衫|条纹|针织|毛衣|帆布|短发|直发|中分|锁骨/]];
 const styleOf = it => STYLE_RULES.filter(([, re]) => re.test(it.name)).map(([k]) => k);

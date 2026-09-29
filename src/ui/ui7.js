@@ -128,7 +128,7 @@ function filterBarHTML(t, list) {
   const f = flt(), items = list || allItems().filter(i => i.cat === t);
   const chip = (k, v, label, n) => `<button type="button" class="opt" data-flt="${k}" data-v="${v}" aria-pressed="${f[k] === v}">${label}${n != null ? `<span class="n">${n}</span>` : ''}</button>`;
   const cOf = i => (i.o ? lookColor(i) : colorOf(i)), sOf = i => (i.o ? lookStyle(i) : styleOf(i));
-  const ips = [...new Set(items.map(i => i.ip).filter(Boolean))], cols = [...new Set(items.map(cOf).filter(Boolean))], sts = STYLE_RULES.map(([k]) => k).filter(k => items.some(i => sOf(i).includes(k)));
+  const ORD = Object.keys(IP_LABEL), ips = [...new Set(items.map(i => i.ip).filter(Boolean))].sort((a, b) => ORD.indexOf(a) - ORD.indexOf(b)), cols = [...new Set(items.map(cOf).filter(Boolean))], sts = STYLE_RULES.map(([k]) => k).filter(k => items.some(i => sOf(i).includes(k)));
   const row = (label, body) => `<div class="flt-row"><span class="flt-label">${label}</span><div class="flt-opts">${body}</div></div>`;
   const on = ['ip', 'color', 'style'].filter(k => f[k]).length;
   return `<div class="flt${state.fltOpen ? ' open' : ''}"><button type="button" class="flt-toggle" data-flttoggle aria-expanded="${!!state.fltOpen}">筛选${on ? `<span class="n">${on}</span>` : ''} ▾</button><div class="flt-body">` +

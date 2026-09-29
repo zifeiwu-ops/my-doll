@@ -6379,7 +6379,7 @@ WARDROBE.forEach(i => { if (V16_IDS.has(i.id)) i.isNew = true; });
 })();
 
 /* =====================================================================
-   联动：偶像活动（Aikatsu!）风格的 8 套私服造型 —— 按参考图的搭配思路用本作的版型重画（不描原图）
+   偶像私服：8 套舞台偶像风的私服造型 —— 按参考图的搭配思路用本作的版型重画（不描原图）
    每件衣服带 ip / 风格标签；衣橱里可以按「系列 / 颜色 / 风格」筛选，选了系列还能一键换上整套造型
    ===================================================================== */
 PATTERN_DEFS += `
@@ -6446,23 +6446,23 @@ const IDOL20 = [
   { id: 'b80', cat: 'bottom', tpl: 'aMini', name: '柠檬黄白花A字裙', fill: { p: 'yellowblossom' } },
   { id: 'b81', cat: 'bottom', tpl: 'hotShorts', name: '湖蓝短裤', fill: { c: '#5EC8C8' } }
 ];
-IDOL20.forEach(i => { i.isNew = true; i.ip = 'aikatsu'; });
+IDOL20.forEach(i => { i.isNew = true; i.ip = 'idol'; });
 WARDROBE.unshift(...IDOL20);
 
 /* 整套造型：一键换上（发型用本作的发型 + 发色） */
 const LOOKS = [
-  { name: '白水手领 · 大波点', ip: 'aikatsu', o: { hair: 'h32', hairColor: '#E4EAD6', dress: 'd26', top: null, bottom: null, outer: null, legs: 'l19', warmer: null, shoes: 's2', acc: ['a90'] } },
-  { name: '紫夜花朵长裙', ip: 'aikatsu', o: { hair: 'h20', hairColor: '#A8532E', dress: 'd27', top: null, bottom: null, outer: null, legs: null, warmer: null, shoes: 's17', acc: ['a74'] } },
-  { name: '露肩荷叶 · 碎花牛仔', ip: 'aikatsu', o: { hair: 'h12', hairColor: '#B070D8', top: 't86', bottom: 'b77', dress: null, outer: null, legs: null, warmer: null, shoes: 's11', acc: ['a115'] } },
-  { name: '白纱衬衫 · 薄荷短裙', ip: 'aikatsu', o: { hair: 'h7', hairColor: '#F2DC7A', top: 't87', bottom: 'b78', dress: null, outer: null, legs: null, warmer: null, shoes: 's34', acc: [] } },
-  { name: '绿格衬衫 · 牛仔荷叶裙', ip: 'aikatsu', o: { hair: 'h8', hairColor: '#3E5AB8', top: 't88', bottom: 'b79', dress: null, outer: null, legs: 'l33', warmer: null, shoes: 's8', acc: ['a89'] } },
-  { name: '薄荷衬衫 · 白花黄裙', ip: 'aikatsu', o: { hair: 'h17', hairColor: '#F4AFC8', top: 't90', bottom: 'b80', dress: null, outer: null, legs: null, warmer: null, shoes: 's1', acc: [] } },
-  { name: '粉蓝格子背带裙', ip: 'aikatsu', o: { hair: 'h30', hairColor: '#C8844A', top: 't91', dress: 'd28', bottom: null, outer: null, legs: null, warmer: null, shoes: 's4', acc: ['a47'] } },
-  { name: '白紫连帽 · 湖蓝短裤', ip: 'aikatsu', o: { hair: 'h5', hairColor: '#D8323C', top: 't89', outer: 'o43', bottom: 'b81', dress: null, legs: 'l7', warmer: null, shoes: 's8', acc: [] } }
+  { name: '白水手领 · 大波点', ip: 'idol', o: { hair: 'h32', hairColor: '#E4EAD6', dress: 'd26', top: null, bottom: null, outer: null, legs: 'l19', warmer: null, shoes: 's2', acc: ['a90'] } },
+  { name: '紫夜花朵长裙', ip: 'idol', o: { hair: 'h20', hairColor: '#A8532E', dress: 'd27', top: null, bottom: null, outer: null, legs: null, warmer: null, shoes: 's17', acc: ['a74'] } },
+  { name: '露肩荷叶 · 碎花牛仔', ip: 'idol', o: { hair: 'h12', hairColor: '#B070D8', top: 't86', bottom: 'b77', dress: null, outer: null, legs: null, warmer: null, shoes: 's11', acc: ['a115'] } },
+  { name: '白纱衬衫 · 薄荷短裙', ip: 'idol', o: { hair: 'h7', hairColor: '#F2DC7A', top: 't87', bottom: 'b78', dress: null, outer: null, legs: null, warmer: null, shoes: 's34', acc: [] } },
+  { name: '绿格衬衫 · 牛仔荷叶裙', ip: 'idol', o: { hair: 'h8', hairColor: '#3E5AB8', top: 't88', bottom: 'b79', dress: null, outer: null, legs: 'l33', warmer: null, shoes: 's8', acc: ['a89'] } },
+  { name: '薄荷衬衫 · 白花黄裙', ip: 'idol', o: { hair: 'h17', hairColor: '#F4AFC8', top: 't90', bottom: 'b80', dress: null, outer: null, legs: null, warmer: null, shoes: 's1', acc: [] } },
+  { name: '粉蓝格子背带裙', ip: 'idol', o: { hair: 'h30', hairColor: '#C8844A', top: 't91', dress: 'd28', bottom: null, outer: null, legs: null, warmer: null, shoes: 's4', acc: ['a47'] } },
+  { name: '白紫连帽 · 湖蓝短裤', ip: 'idol', o: { hair: 'h5', hairColor: '#D8323C', top: 't89', outer: 'o43', bottom: 'b81', dress: null, legs: 'l7', warmer: null, shoes: 's8', acc: [] } }
 ];
 
 /* ---------- 筛选标签 ---------- */
-const IP_LABEL = { aikatsu: '偶像活动' };
+const IP_LABEL = {};   // 系列名在 wardrobe23 里按上新主题统一定义
 const STYLE_RULES = [['甜美', /蝴蝶结|荷叶|蕾丝|泡泡|蛋糕|爱心|草莓|娃娃|公主|芭蕾|纱|粉色|丸子|双马尾|揪揪|大卷/], ['街头', /卫衣|连帽|工装|运动|链条|破洞|摇滚|马丁|老爹|热裤|阔腿|网|炸毛|凌乱|挑染/], ['复古', /格纹|格|波点|碎花|花朵|灯芯绒|菱格|古着|麻花|费尔岛|豹纹|波波|盘发|卷发/],
   ['学院', /水手|百褶|领结|背带|领带|乐福|牛津|马甲|齐刘海|低马尾|编发/], ['休闲', /T|牛仔|短裤|衬衫|开衫|条纹|针织|毛衣|帆布|短发|直发|中分|锁骨/]];
 const styleOf = it => STYLE_RULES.filter(([, re]) => re.test(it.name)).map(([k]) => k);
@@ -6477,15 +6477,6 @@ function colorOf(it) {
   } catch (e) { c = null; }
   return (_colorCache[it.id] = c ? colorName(c) : null);
 }
-
-/* =====================================================================
-   守护甜心（Shugo Chara!）：游戏里原有的单品里，一眼能认出是亚梦私服的标志性单品打上系列标签（不配整套）
-   ===================================================================== */
-IP_LABEL.shugo = '守护甜心';
-['h36', 'a99',                                                     // 侧小揪 + X 字发夹
-  'd24', 'o39', 'o40', 't81', 't82', 'o38', 't84', 't83', 'a109', 'a112', 'd20', 'o33', 'b64', 't75', 't71', 't72', 'd21', 't73', 'b71',
-  't67', 'b60', 't68', 'b61', 't69', 'b62', 't70', 'b63', 'l30', 'l31', 'l24', 'l25', 'l23', 'l28', 's25', 'a95', 'a96'
-].forEach(id => { const it = WARDROBE.find(i => i.id === id); if (it) it.ip = 'shugo'; });
 
 /* =====================================================================
    初始居家服（参考同类换装游戏：刚进游戏穿的是一套软软的家居服）
@@ -6518,6 +6509,17 @@ const HOME22 = [
   }
 ];
 WARDROBE.unshift(...HOME22);
+
+/* =====================================================================
+   系列：按每一期上新的主题划分（不用作品名）。每件衣服 / 发型 / 鞋袜 / 小物都归到它上新的那一期，没有归期的算「经典基础」
+   ===================================================================== */
+for (const k of Object.keys(IP_LABEL)) delete IP_LABEL[k];
+Object.assign(IP_LABEL, { home: '居家', classic: '经典基础', campus: '千禧校园', vintage: '美式古着', coquette: 'Coquette 芭蕾', candy: '糖果装饰', street: '甜酷街头', idol: '偶像私服' });
+(() => {
+  const B = [['home', HOME22.map(i => i.id)], ['idol', IDOL20.map(i => i.id)], ['street', [...V16_IDS]], ['candy', [...V15_IDS]], ['coquette', [...V13_IDS]], ['vintage', [...V11_IDS]], ['campus', [...V10_IDS]]];
+  const of = {}; B.slice().reverse().forEach(([k, ids]) => ids.forEach(id => { of[id] = k; }));   // 后上新的优先
+  WARDROBE.forEach(i => { i.ip = of[i.id] || 'classic'; });
+})();
 
 /* ---------- 小物分区：帽子 / 发饰 / 耳饰 / 眼镜 / 颈饰 / 包包 / 手饰 / 腰饰 ---------- */
 const ACC_GROUPS = [['hat', '帽子头巾'], ['hairacc', '发饰'], ['ear', '耳饰'], ['glasses', '眼镜'], ['neck', '项链颈饰'], ['bag', '包包'], ['hand', '手饰'], ['waist', '腰饰胸针'], ['deco', '贴纸创可贴']];
@@ -8036,7 +8038,7 @@ function filterBarHTML(t, list) {
   const f = flt(), items = list || allItems().filter(i => i.cat === t);
   const chip = (k, v, label, n) => `<button type="button" class="opt" data-flt="${k}" data-v="${v}" aria-pressed="${f[k] === v}">${label}${n != null ? `<span class="n">${n}</span>` : ''}</button>`;
   const cOf = i => (i.o ? lookColor(i) : colorOf(i)), sOf = i => (i.o ? lookStyle(i) : styleOf(i));
-  const ips = [...new Set(items.map(i => i.ip).filter(Boolean))], cols = [...new Set(items.map(cOf).filter(Boolean))], sts = STYLE_RULES.map(([k]) => k).filter(k => items.some(i => sOf(i).includes(k)));
+  const ORD = Object.keys(IP_LABEL), ips = [...new Set(items.map(i => i.ip).filter(Boolean))].sort((a, b) => ORD.indexOf(a) - ORD.indexOf(b)), cols = [...new Set(items.map(cOf).filter(Boolean))], sts = STYLE_RULES.map(([k]) => k).filter(k => items.some(i => sOf(i).includes(k)));
   const row = (label, body) => `<div class="flt-row"><span class="flt-label">${label}</span><div class="flt-opts">${body}</div></div>`;
   const on = ['ip', 'color', 'style'].filter(k => f[k]).length;
   return `<div class="flt${state.fltOpen ? ' open' : ''}"><button type="button" class="flt-toggle" data-flttoggle aria-expanded="${!!state.fltOpen}">筛选${on ? `<span class="n">${on}</span>` : ''} ▾</button><div class="flt-body">` +
