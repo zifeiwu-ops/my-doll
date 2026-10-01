@@ -7066,9 +7066,12 @@ const HAND = { L: [84, 336], R: [216, 336] };
 function posedSVG(P, L, H, bags, W0) {
   // 裙子 / 连衣裙 / 长外套盖过膝盖（裤子除外）就不踢腿：直接看这一层的布片有没有伸到膝盖以下
   const reachesKnee = l => { let hit = false; l.svg.replace(/ d="([^"]*)"/g, (m, d) => { if (hit || /[a-y]/.test(d)) return m; const n = d.match(/-?\d*\.?\d+/g) || []; for (let i = 0; i + 1 < n.length; i += 2) if (+n[i + 1] > RIG.yK - 4 && +n[i] > 150.6) { hit = true; break; } return m; }); return hit; };
-  const legOK = (P.leg || P.legLen) && !L.some(l => (l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(pantsKey(W0.bottom))))) && reachesKnee(l));
+  const legOK = (P.leg || P.legLen || P.legBig) && !L.some(l => (l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(pantsKey(W0.bottom))))) && reachesKnee(l));
   const base = P.warp ? WARP_POSES[P.warp] : {};
-  const W = { head: 0, hip: 0, kneeL: 0, footL: 0, kneeR: 0, footR: 0, armL: 0, armR: 0, tilt: 0, ...base, ...(P.body || {}), head: P.head ?? base.head ?? 0, arms: { L: P.L, R: P.R }, leg: legOK ? P.leg : 0, legLen: legOK ? P.legLen : 0 };
+  const W = { head: 0, hip: 0, kneeL: 0, footL: 0, kneeR: 0, footR: 0, armL: 0, armR: 0, tilt: 0, ...base, ...(P.body || {}), head: P.head ?? base.head ?? 0, arms: { L: P.L, R: P.R }, lean: P.lean || 0, lift: P.lift || 0,
+    legs: (() => { const big = P.legBig && !legOK, L = big ? null : P.legL, R = big ? null : { ...(P.legR || {}) };   // 长裙盖住膝盖时，大幅度的腿部动作不做
+      if (legOK && (P.leg || P.legLen)) Object.assign(R, { knee: (R.knee || 0) + (P.leg || 0), len: (R.len ?? 1) * (P.legLen || 1) });
+      return { L, R }; })() };
   // 裙摆：默认跟着胯的反方向轻轻荡；发尾：默认跟着歪头方向顺一点。姿势里的 skirt / hair 再加上动作本身的甩动
   const kick = legOK ? 1 : 0, sk = P.skirt || {}, hr = P.hair || {};
   Object.assign(W, { skirtSway: -.34 * W.hip + (sk.sway || 0) + kick * 2.4, skirtFlare: (sk.flare || 0) + kick * 3.2, skirtLift: sk.lift || 0,
@@ -7160,6 +7163,8 @@ const WARP_GAP = (() => {
     const t = y < 316 ? torsoL(y) : legO(y), a = y >= 220 && y <= 352 ? armI0(y) : null;
     T[y] = t == null ? null : 150 - t; A[y] = a == null ? null : 150 - a;
   }
+  // 手贴着大腿的那几行，手和腿连成一块、量不出空隙：用上下最近一行的空隙补上，不然手的内侧会被当成身体留在原地，抬手时扯出尖刺
+  for (let y = 222; y <= 352; y++) if (A[y] == null || T[y] == null || A[y] - T[y] < 1.5) { let d = 1; while (d < 40) { for (const yy of [y - d, y + d]) if (yy >= 222 && yy <= 352 && A[yy] != null && T[yy] != null && A[yy] - T[yy] >= 1.5 && !(A[y] != null && T[y] != null && A[y] - T[y] >= 1.5)) { A[y] = A[yy]; T[y] = T[yy]; } if (A[y] != null && T[y] != null && A[y] - T[y] >= 1.5) break; d++; } }
   return { T, A };
 })();
 /* 时装比例（参考时尚插画的 7 头身）：头部整体缩小一点、腿拉长一截，再整体上移放进画面。
@@ -7226,11 +7231,24 @@ function warpAt(W, x, y, o = {}) {
     if (A.fore && we) [px, py] = rotP(px, py, sideJ(k, RIG.E), A.fore * we);
     if (A.up) [px, py] = rotP(px, py, sideJ(k, RIG.S), A.up * m);
   }
-  // 6) 踢腿：右腿膝盖以下绕膝盖转
-  if ((W.leg || W.legLen) && o.leg !== false) { const wl = ((o.legSide ? o.legSide === 'R' : x > 150) ? 1 : 0) * sstep(RIG.yK - 18, RIG.yK + 8, y);
-    // 膝盖只能往前后弯：从正面看，小腿往后抬 = 小腿变短、脚跟抬起；只留一点点往外的角度，不再整条小腿往侧面折
-    if (wl && W.legLen) py = RIG.K[1] + (py - RIG.K[1]) * (1 + (W.legLen - 1) * wl);
-    if (wl && W.leg) [px, py] = rotP(px, py, RIG.K, W.leg * wl); }
+  // 6) 两条腿：先绕膝盖弯小腿（从正面看 = 小腿变短、脚跟抬起，再带一点角度），再绕髋关节转整条腿（迈步、分腿、收腿）
+  //    裙子不能被两条腿撕开：裙子这层左右权重过渡得很宽，整片裙摆跟着两条腿的平均位置走
+  const LG = W.legs;
+  if (LG && o.leg !== false && y > 296) for (const s of ['L', 'R']) {
+    const G = LG[s]; if (!G) continue;
+    const yi = Math.round(Math.max(316, Math.min(574, y))), bw = Math.max(2.4, Math.min(11, (150 - legI(yi)) - 1.2));
+    const wr = o.legSide ? (o.legSide === 'R' ? 1 : 0) : o.skirt ? sstep(112, 188, x) : sstep(150 - bw, 150 + bw, x), ws = s === 'R' ? wr : 1 - wr;
+    if (!ws) continue;
+    const K = s === 'R' ? RIG.K : [300 - RIG.K[0], RIG.K[1]], HJ = [s === 'R' ? 166 : 134, 318];
+    const wk = ws * sstep(RIG.yK - 18, RIG.yK + 8, y);
+    if (wk && G.len != null && G.len !== 1) py = K[1] + (py - K[1]) * (1 + (G.len - 1) * wk);
+    if (wk && G.knee) [px, py] = rotP(px, py, K, G.knee * wk);
+    const wt = ws * sstep(300, 338, y);
+    if (wt && G.hip) [px, py] = rotP(px, py, HJ, G.hip * wt);
+  }
+  // 7) 上身前后左右倾：绕腰转（胯以下不动）；手臂整条跟着上身走
+  if (W.lean) { const wl = Math.max(1 - sstep(262, 312, y), m), c = [150 + H * .9, 300], F = [ux + px, uy + py], R2 = rotP(F[0], F[1], c, W.lean * wl); ux += R2[0] - F[0]; uy += R2[1] - F[1]; }
+  if (W.lift) uy -= W.lift;
   const pr = propOffset(x, y);
   return [ux + px - x + pr[0], uy + py - y + pr[1]];
 }
@@ -8668,6 +8686,49 @@ renderStudioUI = function () {
 };
 
 /* =====================================================================
+   姿势大改：身体不再是一根直棍
+   · 每个姿势都有「重心腿 + 放松腿」：放松那条腿膝盖往里收、脚跟轻轻抬起（小腿缩短），胯往重心腿那边送
+   · 两条腿可以各自绕髋关节转（分腿、收腿、迈步），小腿绕膝盖弯（踮脚、跳起、往后勾）
+   · 上身可以绕腰倾斜（lean），整个人可以离地（lift，跳起来）
+   · 手臂角度按真实关节范围重新调过：肩膀外展 / 内收、手肘只往里弯，手落在腰、脸、胸口这些真实会放的位置
+   legL / legR：{ hip 整条腿转角（左腿正 = 往外，右腿负 = 往外），knee 小腿转角，len 小腿缩短（< 1 = 往后抬 / 踮脚） }
+   legBig：腿动作很大（跳、走、踢），长裙盖住膝盖时自动不做
+   ===================================================================== */
+const FREE_L = { hip: -1.2, knee: 2.4, len: .95 }, FREE_R = { hip: 1.2, knee: -2.4, len: .95 };   // 放松腿：膝盖微微往里，脚跟略抬
+const POSE21 = {
+  stand: { name: '自然站立', head: -3, body: { hip: 3.4, kneeL: 2.4, footL: 1, tilt: .014 }, legL: FREE_L, L: { up: 3, fore: -8 }, R: { up: -2.4, fore: 7 }, hair: { sway: .6 } },
+  clasp: { name: '乖巧', head: -5, body: LEAN, legL: { hip: -1.6, knee: 3, len: .93 }, L: { up: -4, fore: -44 }, R: { up: 4, fore: 44 } },
+  behind: { name: '背手', head: 5, body: LEAN_L, legR: { hip: 2, knee: -3, len: .92 }, L: { up: 6, fore: -30, back: true }, R: { up: -6, fore: 30, back: true } },
+  hip: { name: '叉腰', head: -6, body: { ...LEAN, hip: 6 }, lean: -1.6, legL: { hip: 3.2, knee: -1, len: .97 }, L: { up: 24, fore: -98, len: .64 }, R: { up: -5, fore: -8 } },
+  wave: { name: '打招呼', head: 6, body: LEAN_L, lean: 1.4, legR: FREE_R, skirt: { sway: 1.2 }, hair: { sway: 1.6 }, R: { up: -16, fore: -150, over: true }, L: { up: 5, fore: 8 } },
+  kick: { name: '踢腿', head: 5, body: { hip: -3.4, tilt: -.024 }, lean: 1.8, leg: -7, legLen: .56, legL: { hip: -.8 }, hair: { sway: -3.5, flare: 2.4, lift: 1.2 }, L: { up: 14, fore: 16 }, R: { up: -14, fore: -18 } },
+  curtsy: { name: '提裙', head: -7, body: LEAN, legL: { hip: -2.4, knee: 4, len: .88 }, skirt: { flare: 5.5, lift: 2.6 }, hair: { flare: 1.2 }, L: { up: 14, fore: 16 }, R: { up: -14, fore: -16 } },
+  heart: { name: '比心', head: 6, body: LEAN_L, legR: FREE_R, L: { up: -8, fore: -140 }, R: { up: 8, fore: 140 } },
+  drink: { name: '拿饮料', head: 6, body: LEAN_L, legR: { hip: 2.4, knee: -2, len: .94 }, L: { up: 24, fore: -98, len: .64 }, R: { up: -10, fore: 168, len: .76 }, hair: { sway: 1.2 } },
+  camera: { name: '拿相机', head: -5, body: LEAN, legL: FREE_L, L: { up: 18, fore: -144, len: .84 }, R: { up: -18, fore: 144, len: .84 } },
+  stride: { name: '迈步', head: 3, body: { hip: -3.6, kneeL: 1.6, tilt: -.02 }, lean: 1, legBig: true, legL: { hip: -1.6 }, legR: { hip: 2.2, knee: -3, len: .8 }, L: { up: -6, fore: -18 }, R: { up: -10, fore: 6 }, skirt: { sway: 1.6, flare: 1.4 }, hair: { sway: -1.6 } },
+  spread: { name: '芭蕾展臂', head: -6, body: LEAN, legL: { hip: -3, knee: 2, len: .86 }, skirt: { flare: 3.2, lift: 1.2 }, hair: { flare: 2.6, lift: 1 }, L: { up: 30, fore: 14 }, R: { up: -30, fore: -14 } },
+  handsHips: { name: '双手叉腰', head: 3, body: LEAN, legBig: true, legL: { hip: 4.4 }, legR: { hip: -3.2 }, L: { up: 24, fore: -98, len: .64 }, R: { up: -24, fore: 98, len: .64 } },
+  cupFace: { name: '双手捧心', head: 7, body: LEAN_L, legR: { hip: 2.4, knee: -3.4, len: .9 }, L: { up: 4, fore: -160, over: true }, R: { up: -4, fore: 160, over: true } },
+  /* ---------- 新姿势 ---------- */
+  tiptoe: { name: '踮脚', isNew: true, head: 7, body: { hip: -1.4, tilt: -.01 }, lift: 5, legL: { len: .9, knee: 1.4 }, legR: { len: .9, knee: -1.4 }, hair: { sway: 1, lift: .6 }, L: { up: 6, fore: -30, back: true }, R: { up: -6, fore: 30, back: true } },
+  kneeIn: { name: '单膝内扣', isNew: true, head: -8, body: { hip: -5, kneeR: 4, footR: 2, tilt: -.02 }, lean: 2, legR: { hip: 2.4, knee: 6, len: .84 }, L: { up: -4, fore: -50 }, R: { up: 6, fore: 52 }, hair: { sway: -1.4 } },
+  wide: { name: '酷girl分腿', isNew: true, head: -2, body: { hip: 1.6, tilt: .01 }, legBig: true, legL: { hip: 6, knee: -1.6 }, legR: { hip: -6, knee: 1.6 }, L: { up: 10, fore: 14 }, R: { up: -24, fore: 98, len: .64 } },
+  jump: { name: '跳起来', isNew: true, head: -6, body: { hip: 0 }, lift: 24, legBig: true, legL: { hip: 4, knee: 14, len: .58 }, legR: { hip: -2, knee: -10, len: .66 }, L: { up: 30, fore: 40 }, R: { up: -30, fore: -36 }, skirt: { flare: 4, lift: 4.4 }, hair: { flare: 3.6, lift: 4, sway: -1 } },
+  walk: { name: '走路', isNew: true, head: 2, body: { hip: 2.6, tilt: .016 }, lean: -1.2, legBig: true, legL: { hip: -2.4, knee: 3.4, len: .78 }, legR: { hip: -1 }, L: { up: -2, fore: 14 }, R: { up: -9, fore: -26 }, skirt: { sway: -1.4, flare: 1.2 }, hair: { sway: 1.6 } },
+  leanCute: { name: '歪身俏皮', isNew: true, head: 10, body: { hip: 8, kneeL: 4, footL: 2, tilt: .03 }, lean: -5, legL: { hip: -2, knee: 4, len: .9 }, L: { up: 16, fore: 20 }, R: { up: -24, fore: 98, len: .64 }, hair: { sway: 2.4 } },
+  think: { name: '若有所思', isNew: true, head: 7, body: LEAN_L, legR: FREE_R, L: { up: -8, fore: -82, len: .9 }, R: { up: 14, fore: -160, len: .85, over: true } },
+  hairTouch: { name: '撩头发', isNew: true, head: -8, body: LEAN, lean: -1, legL: FREE_L, L: { up: 20, fore: 155, over: true }, R: { up: -4, fore: -10 }, hair: { sway: -1.4, flare: 1 } },
+  cheer: { name: '惊喜举手', isNew: true, head: -4, body: { hip: 1 }, lift: 6, legL: { len: .9, knee: 2 }, legR: { len: .9, knee: -2 }, L: { up: 18, fore: 150, over: true }, R: { up: -18, fore: -150, over: true }, hair: { flare: 2, lift: 2 }, skirt: { flare: 2.6, lift: 1.6 } },
+  twirl: { name: '转圈圈', isNew: true, head: 8, body: LEAN_L, lean: 2, legR: { hip: 3, knee: -5, len: .8 }, L: { up: 30, fore: 24 }, R: { up: -26, fore: -34 }, skirt: { flare: 8, lift: 5, sway: 3 }, hair: { flare: 4, lift: 2.4, sway: 3 } },
+  peek: { name: '探头', isNew: true, head: 12, body: { hip: -6, kneeR: 3.4, footR: 1.6, tilt: -.03 }, lean: 6, legR: { hip: 1.6, knee: -3, len: .92 }, L: { up: -6, fore: -40 }, R: { up: 6, fore: 44 }, hair: { sway: 3, flare: 1 } }
+};
+/* 已有的姿势只改角度，保留手里拿的东西（extra）等其它设置；没写的关节回到默认 */
+Object.entries(POSE21).forEach(([k, v]) => { const o = POSES[k]; POSES[k] = o ? { ...(o.extra ? { extra: o.extra } : {}), ...(o.warp ? { warp: o.warp } : {}), ...v } : v; });
+['shy', 'drink', 'camera', 'stride'].forEach(k => { if (POSES[k]) delete POSES[k].isNew; });
+
+
+/* =====================================================================
    界面
    ===================================================================== */
 const $ = s => document.querySelector(s);
@@ -9227,6 +9288,7 @@ if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.c
 
 /* ---------------- 本期上新（滚动公告条）：改这里的清单就行；go = 点了跳到哪个分区，或者 shot 拍照 / adj 调位置 ---------------- */
 const NEWS = [
+  ['姿势大改：重心腿 + 放松腿、上身倾斜，新增踮脚、跳起来、走路、转圈圈等 11 个姿势', 'shot'],
   ['照片识别版型：放一张衣服照片，自动量出袖长、衣长、领口、下摆，裁一件新的', 'diy'],
   ['拍照小屋上新 5 个主题：蝴蝶标本、水钻大头贴、天使和纸、薄荷手账、泪滴星夜', 'shot'],
   ['田园针织上新：费尔岛背心、贝雷帽、麻花毛衣等 8 套', 'set'],

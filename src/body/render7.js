@@ -146,9 +146,12 @@ const HAND = { L: [84, 336], R: [216, 336] };
 function posedSVG(P, L, H, bags, W0) {
   // 裙子 / 连衣裙 / 长外套盖过膝盖（裤子除外）就不踢腿：直接看这一层的布片有没有伸到膝盖以下
   const reachesKnee = l => { let hit = false; l.svg.replace(/ d="([^"]*)"/g, (m, d) => { if (hit || /[a-y]/.test(d)) return m; const n = d.match(/-?\d*\.?\d+/g) || []; for (let i = 0; i + 1 < n.length; i += 2) if (+n[i + 1] > RIG.yK - 4 && +n[i] > 150.6) { hit = true; break; } return m; }); return hit; };
-  const legOK = (P.leg || P.legLen) && !L.some(l => (l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(pantsKey(W0.bottom))))) && reachesKnee(l));
+  const legOK = (P.leg || P.legLen || P.legBig) && !L.some(l => (l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(pantsKey(W0.bottom))))) && reachesKnee(l));
   const base = P.warp ? WARP_POSES[P.warp] : {};
-  const W = { head: 0, hip: 0, kneeL: 0, footL: 0, kneeR: 0, footR: 0, armL: 0, armR: 0, tilt: 0, ...base, ...(P.body || {}), head: P.head ?? base.head ?? 0, arms: { L: P.L, R: P.R }, leg: legOK ? P.leg : 0, legLen: legOK ? P.legLen : 0 };
+  const W = { head: 0, hip: 0, kneeL: 0, footL: 0, kneeR: 0, footR: 0, armL: 0, armR: 0, tilt: 0, ...base, ...(P.body || {}), head: P.head ?? base.head ?? 0, arms: { L: P.L, R: P.R }, lean: P.lean || 0, lift: P.lift || 0,
+    legs: (() => { const big = P.legBig && !legOK, L = big ? null : P.legL, R = big ? null : { ...(P.legR || {}) };   // 长裙盖住膝盖时，大幅度的腿部动作不做
+      if (legOK && (P.leg || P.legLen)) Object.assign(R, { knee: (R.knee || 0) + (P.leg || 0), len: (R.len ?? 1) * (P.legLen || 1) });
+      return { L, R }; })() };
   // 裙摆：默认跟着胯的反方向轻轻荡；发尾：默认跟着歪头方向顺一点。姿势里的 skirt / hair 再加上动作本身的甩动
   const kick = legOK ? 1 : 0, sk = P.skirt || {}, hr = P.hair || {};
   Object.assign(W, { skirtSway: -.34 * W.hip + (sk.sway || 0) + kick * 2.4, skirtFlare: (sk.flare || 0) + kick * 3.2, skirtLift: sk.lift || 0,

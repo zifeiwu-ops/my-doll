@@ -16,6 +16,8 @@ const WARP_GAP = (() => {
     const t = y < 316 ? torsoL(y) : legO(y), a = y >= 220 && y <= 352 ? armI0(y) : null;
     T[y] = t == null ? null : 150 - t; A[y] = a == null ? null : 150 - a;
   }
+  // 手贴着大腿的那几行，手和腿连成一块、量不出空隙：用上下最近一行的空隙补上，不然手的内侧会被当成身体留在原地，抬手时扯出尖刺
+  for (let y = 222; y <= 352; y++) if (A[y] == null || T[y] == null || A[y] - T[y] < 1.5) { let d = 1; while (d < 40) { for (const yy of [y - d, y + d]) if (yy >= 222 && yy <= 352 && A[yy] != null && T[yy] != null && A[yy] - T[yy] >= 1.5 && !(A[y] != null && T[y] != null && A[y] - T[y] >= 1.5)) { A[y] = A[yy]; T[y] = T[yy]; } if (A[y] != null && T[y] != null && A[y] - T[y] >= 1.5) break; d++; } }
   return { T, A };
 })();
 /* 时装比例（参考时尚插画的 7 头身）：头部整体缩小一点、腿拉长一截，再整体上移放进画面。
@@ -82,11 +84,24 @@ function warpAt(W, x, y, o = {}) {
     if (A.fore && we) [px, py] = rotP(px, py, sideJ(k, RIG.E), A.fore * we);
     if (A.up) [px, py] = rotP(px, py, sideJ(k, RIG.S), A.up * m);
   }
-  // 6) 踢腿：右腿膝盖以下绕膝盖转
-  if ((W.leg || W.legLen) && o.leg !== false) { const wl = ((o.legSide ? o.legSide === 'R' : x > 150) ? 1 : 0) * sstep(RIG.yK - 18, RIG.yK + 8, y);
-    // 膝盖只能往前后弯：从正面看，小腿往后抬 = 小腿变短、脚跟抬起；只留一点点往外的角度，不再整条小腿往侧面折
-    if (wl && W.legLen) py = RIG.K[1] + (py - RIG.K[1]) * (1 + (W.legLen - 1) * wl);
-    if (wl && W.leg) [px, py] = rotP(px, py, RIG.K, W.leg * wl); }
+  // 6) 两条腿：先绕膝盖弯小腿（从正面看 = 小腿变短、脚跟抬起，再带一点角度），再绕髋关节转整条腿（迈步、分腿、收腿）
+  //    裙子不能被两条腿撕开：裙子这层左右权重过渡得很宽，整片裙摆跟着两条腿的平均位置走
+  const LG = W.legs;
+  if (LG && o.leg !== false && y > 296) for (const s of ['L', 'R']) {
+    const G = LG[s]; if (!G) continue;
+    const yi = Math.round(Math.max(316, Math.min(574, y))), bw = Math.max(2.4, Math.min(11, (150 - legI(yi)) - 1.2));
+    const wr = o.legSide ? (o.legSide === 'R' ? 1 : 0) : o.skirt ? sstep(112, 188, x) : sstep(150 - bw, 150 + bw, x), ws = s === 'R' ? wr : 1 - wr;
+    if (!ws) continue;
+    const K = s === 'R' ? RIG.K : [300 - RIG.K[0], RIG.K[1]], HJ = [s === 'R' ? 166 : 134, 318];
+    const wk = ws * sstep(RIG.yK - 18, RIG.yK + 8, y);
+    if (wk && G.len != null && G.len !== 1) py = K[1] + (py - K[1]) * (1 + (G.len - 1) * wk);
+    if (wk && G.knee) [px, py] = rotP(px, py, K, G.knee * wk);
+    const wt = ws * sstep(300, 338, y);
+    if (wt && G.hip) [px, py] = rotP(px, py, HJ, G.hip * wt);
+  }
+  // 7) 上身前后左右倾：绕腰转（胯以下不动）；手臂整条跟着上身走
+  if (W.lean) { const wl = Math.max(1 - sstep(262, 312, y), m), c = [150 + H * .9, 300], F = [ux + px, uy + py], R2 = rotP(F[0], F[1], c, W.lean * wl); ux += R2[0] - F[0]; uy += R2[1] - F[1]; }
+  if (W.lift) uy -= W.lift;
   const pr = propOffset(x, y);
   return [ux + px - x + pr[0], uy + py - y + pr[1]];
 }
