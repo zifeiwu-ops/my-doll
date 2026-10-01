@@ -12,7 +12,7 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify({ custom: state
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || 'null');
-    if (s && Array.isArray(s.custom)) state.custom = s.custom.filter(c => c && c.id && (TPL[c.tpl] || c.shape) && c.color);
+    if (s && Array.isArray(s.custom)) state.custom = s.custom.filter(c => c && c.id && (TPL[c.tpl] || c.shape || (c.fit && c.fit.kind)) && c.color);
     if (s && s.outfit) return s.outfit;
   } catch (e) { }
   return null;
@@ -187,7 +187,7 @@ let toastT;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
 
 /* ---------------- DIY 实验室 ---------------- */
-const lab = { ui: 'tpl', P: null, M: null, kind: '', res: null, tpl: 'hoodie', mode: 'pattern', scale: 30, name: '', nameTouched: false, sample: '', opener: null };
+const lab = { ui: 'fit', fit: null, fitAuto: null, fitInfo: '', P: null, M: null, kind: '', res: null, tpl: 'hoodie', mode: 'pattern', scale: 30, name: '', nameTouched: false, sample: '', opener: null };
 const CAT_NAME = { top: '上衣', outer: '外套', bottom: '下装', dress: '连衣裙' };
 const SWATCHES = ['#F7B2CC', '#F48FB1', '#FFE27A', '#BFEBE4', '#8FD9CD', '#A7D1EE', '#C9AEF2', '#FBF6E6', '#CDB994', '#9A6448', '#6F92BC', '#2E2A30'];
 const LAB_DEFAULT = { top: 'hoodie', outer: 'puffJacket', bottom: 'shorts', dress: 'denimDress' };
@@ -201,13 +201,15 @@ const KIND_TEXT = {
 };
 function previewItem() {
   if (!lab.res) return null;
+  if (lab.ui === 'fit') return lab.fit ? { id: 'preview', diy: true, cat: FIT.catOf(lab.fit), fit: lab.fit, thumb: FIT.thumb(lab.fit), name: '预览', mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale } : null;
   if (lab.ui === 'draw') return dr.shape ? { id: 'preview', diy: true, cat: dr.cat, shape: dr.shape, lines: dr.lines, thumb: dr.thumb, name: '预览', mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale } : null;
   return { id: 'preview', diy: true, cat: TPL[lab.tpl].cat, tpl: lab.tpl, name: '预览', mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale };
 }
-function autoName() { return lab.res ? `${colorName(lab.res.color)}${lab.mode === 'pattern' && lab.res.tile ? '印花' : ''}${lab.ui === 'draw' ? '手绘' + CAT_NAME[dr.cat] : TPL[lab.tpl].name}` : ''; }
+function autoName() { return lab.res ? `${colorName(lab.res.color)}${lab.mode === 'pattern' && lab.res.tile ? '印花' : ''}${lab.ui === 'fit' && lab.fit ? FIT.name(lab.fit) : lab.ui === 'draw' ? '手绘' + CAT_NAME[dr.cat] : TPL[lab.tpl].name}` : ''; }
 function openLab(cat, opener, ui) {
   lab.opener = opener || null;
-  lab.ui = ui === 'draw' ? 'draw' : 'tpl';
+  lab.ui = ui === 'draw' ? 'draw' : ui === 'tpl' ? 'tpl' : 'fit';
+  lab.catHint = cat;
   if (LAB_DEFAULT[cat] && TPL[lab.tpl].cat !== cat) lab.tpl = LAB_DEFAULT[cat];
   if (lab.ui === 'draw' && DRAW_VIEW[cat] && dr.cat !== cat) { dr.cat = cat; dr.strokes = []; rebuildDrawn(); }
   $('#lab').hidden = false; document.body.classList.add('modal-open');
@@ -229,6 +231,7 @@ function loadSample(kind) { loadSource(sampleImage(kind), kind); }
 function useSwatch(c) {
   lab.P = null; lab.M = null; lab.sample = ''; lab.kind = 'swatch';
   lab.res = { mode: 'solid', color: c, palette: [c], tile: null }; lab.mode = 'solid';
+  if (!lab.fit) { lab.fit = FIT.params(null); lab.fitAuto = { ...lab.fit }; lab.fitInfo = 'none'; }
   if (!lab.nameTouched) lab.name = autoName();
   refreshLab();
 }
@@ -237,8 +240,44 @@ function setLabUI(ui) {
   if (!lab.nameTouched) lab.name = autoName();
   refreshLab();
 }
+function runFit() {
+  const ok = lab.P && lab.M && lab.kind !== 'closeup' && lab.kind !== 'fallback', f = ok ? FIT.analyze(lab.M, lab.P.W, lab.P.H) : null;
+  if (f) { lab.fit = FIT.params(f); lab.fitInfo = 'ok'; }
+  else { lab.fit = FIT.params(null); lab.fitInfo = ok ? 'none' : lab.kind === 'closeup' ? 'closeup' : 'none'; const k = { top: 'top', outer: 'outer', dress: 'dress', bottom: 'skirt' }[lab.catHint]; if (k && k !== 'top') fitKind(k); }
+  lab.fitAuto = { ...lab.fit };
+}
+const FIT_LEN = { top: [236, 340], outer: [250, 470], dress: [300, 540], skirt: [312, 560], pants: [330, 567] };
+function fitKind(k) {
+  const p = lab.fit; if (!p || p.kind === k) return; const was = p.kind; p.kind = k;
+  if (k === 'pants') { p.hem = p.hem > 400 ? 567 : 350; p.leg = p.leg || 1; }
+  else if (k === 'skirt') { if (was !== 'pants') p.hem = 345; p.flare = p.flare > 4 ? p.flare : 16; }
+  else { p.neck = p.neck || 'crew'; p.sleeve = p.sleeve ?? 1; p.sw = p.sw || .5; p.nw = p.nw || .3; p.flare = p.flare ?? 0; p.waist = p.waist || 0;
+    const [lo, hi] = FIT_LEN[k]; p.hem = k === 'dress' ? Math.max(p.hem || 0, 400) : Math.min(hi, Math.max(lo, (was === 'dress' || was === 'skirt' || was === 'pants') ? (k === 'outer' ? 320 : 300) : p.hem)); }
+  p.hem = Math.max(FIT_LEN[k][0], Math.min(FIT_LEN[k][1], p.hem));
+}
+function renderFit() {
+  const p = lab.fit; if (!p) return;
+  const msg = { ok: '照片里量出来的版型', none: '没认出明显的衣服轮廓，先给了一件基础款，可以手动调', closeup: '这张是布料特写，看不到整件衣服的形状，先给了一件基础款' }[lab.fitInfo] || '';
+  $('#fitRes').innerHTML = `${msg}：` + FIT.describe(p).map(t => `<span class="tag">${t}</span>`).join('') + `<span class="tag">${FIT.KIND_N[p.kind]}</span>`;
+  const chips = (o, cur, at) => Object.entries(o).map(([k, n]) => `<button type="button" role="radio" ${at}="${k}" aria-checked="${k === cur}">${n}</button>`).join('');
+  $('#fitKind').innerHTML = chips(FIT.KIND_N, p.kind, 'data-fk');
+  const upper = p.kind !== 'skirt' && p.kind !== 'pants';
+  $('#fitNeckRow').hidden = !upper; $('#fitSlvRow').hidden = !upper || p.neck === 'strap'; $('#fitSwRow').hidden = !upper || p.neck === 'strap' || p.sleeve < .05; $('#fitWaistRow').hidden = p.kind !== 'dress';
+  if (upper) $('#fitNeck').innerHTML = chips(FIT.NECK_N, p.neck, 'data-fn');
+  $('#fitSlv').value = Math.round((p.sleeve || 0) * 100); $('#fitSw').value = Math.round((p.sw || .5) * 100);
+  const [lo, hi] = FIT_LEN[p.kind]; $('#fitLen').value = Math.round((p.hem - lo) / (hi - lo) * 100);
+  $('#fitFlL').textContent = p.kind === 'pants' ? '裤腿' : '下摆';
+  $('#fitFl').value = p.kind === 'pants' ? Math.round((p.leg - .5) / 1.3 * 100) : Math.round(((p.flare || 0) + 2) / 72 * 100);
+  $('#fitWaist').checked = !!p.waist;
+  const D = FIT.describe(p);
+  $('#fitSlvV').textContent = p.sleeve < .05 ? '无袖' : p.sleeve < .36 ? '短袖' : p.sleeve < .7 ? '中袖' : '长袖';
+  $('#fitSwV').textContent = p.sw > .8 ? '宽松' : p.sw < .42 ? '贴身' : '常规';
+  $('#fitLenV').textContent = D[upper ? 2 : 0] || ''; $('#fitFlV').textContent = upper ? (p.waist ? '收腰' : D[3]) : D[1];
+}
+function fitChanged() { if (!lab.nameTouched) lab.name = autoName(); refreshLab(); }
 function runExtract() {
   lab.res = V.extract(lab.P, lab.M, lab.kind);
+  runFit();
   lab.mode = lab.res.mode;
   if (!lab.nameTouched) lab.name = autoName();
   refreshLab();
@@ -270,11 +309,11 @@ function renderTplRow() {
 }
 function refreshLab() {
   rebuildUserDefs();
-  const draw = lab.ui === 'draw';
-  $('#tplPane').hidden = draw; $('#drawPane').hidden = !draw;
+  const draw = lab.ui === 'draw', fit = lab.ui === 'fit';
+  $('#tplPane').hidden = draw || fit; $('#drawPane').hidden = !draw; $('#fitPane').hidden = !fit;
   document.querySelectorAll('#labModes [data-ui]').forEach(b => b.setAttribute('aria-selected', b.dataset.ui === lab.ui));
-  $('#labTitle').textContent = draw ? '自己画版型' : '照片做衣服';
-  if (!draw) renderTplRow();
+  $('#labTitle').textContent = draw ? '自己画版型' : fit ? '照片识别版型' : '照片做衣服';
+  if (fit) renderFit(); else if (!draw) renderTplRow();
   const has = !!lab.res;
   $('#btnAdd').disabled = !has || (draw && !dr.shape);
   $('#tapHint').hidden = !has || !lab.P;
@@ -290,8 +329,8 @@ function refreshLab() {
   $('#scaleRow').hidden = lab.mode !== 'pattern' || !lab.res.tile;
   $('#scale').value = lab.scale;
   $('#itemName').value = lab.name;
-  const cat = draw ? dr.cat : TPL[lab.tpl].cat;
-  const svg = $('#labDoll'); svg.setAttribute('viewBox', draw ? (dr.thumb || DRAW_VIEW[cat].join(' ')) : TPL[lab.tpl].thumb);
+  const cat = draw ? dr.cat : fit ? FIT.catOf(lab.fit) : TPL[lab.tpl].cat;
+  const svg = $('#labDoll'); svg.setAttribute('viewBox', draw ? (dr.thumb || DRAW_VIEW[cat].join(' ')) : fit ? FIT.thumb(lab.fit) : TPL[lab.tpl].thumb);
   if (draw) drawRender();
   const over = cat === 'dress' ? { dress: previewItem() } : cat === 'outer' ? { outer: previewItem() } : { [cat]: previewItem(), dress: null };
   svg.innerHTML = dollSVG(state.outfit, over);
@@ -300,7 +339,8 @@ function addToCloset() {
   if (!lab.res) return;
   const id = 'u' + Date.now().toString(36), name = (lab.name.trim() || autoName()).slice(0, 16);
   let it;
-  if (lab.ui === 'draw') { if (!dr.shape) return; it = { id, diy: true, cat: dr.cat, shape: dr.shape, lines: dr.lines, thumb: dr.thumb, name, mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale }; }
+  if (lab.ui === 'fit') { if (!lab.fit) return; it = { id, diy: true, cat: FIT.catOf(lab.fit), fit: { ...lab.fit }, thumb: FIT.thumb(lab.fit), name, mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale }; }
+  else if (lab.ui === 'draw') { if (!dr.shape) return; it = { id, diy: true, cat: dr.cat, shape: dr.shape, lines: dr.lines, thumb: dr.thumb, name, mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale }; }
   else { const t = TPL[lab.tpl]; it = { id, diy: true, cat: t.cat, tpl: lab.tpl, name, mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale }; }
   state.custom.push(it); state.outfit[it.cat] = id;
   if (it.cat === 'dress') { state.outfit.top = null; state.outfit.bottom = null; }
@@ -348,7 +388,7 @@ function bind() {
       const again = $(`[data-face="${fb.dataset.face}"][data-fid="${fb.dataset.fid}"]`); if (again) again.focus();
       return;
     }
-    const labBtn = e.target.closest('[data-lab]'); if (labBtn) { openLab(labBtn.dataset.lab, labBtn, 'tpl'); return; }
+    const labBtn = e.target.closest('[data-lab]'); if (labBtn) { openLab(labBtn.dataset.lab, labBtn, 'fit'); return; }
     const drawBtn = e.target.closest('[data-draw]'); if (drawBtn) { openLab(drawBtn.dataset.draw, drawBtn, 'draw'); return; }
     if (e.target.closest('[data-flttoggle]')) { state.fltOpen = !state.fltOpen; renderGrid(); return; }
     const fb2 = e.target.closest('[data-flt]'); if (fb2) { const f = flt(); f[fb2.dataset.flt] = f[fb2.dataset.flt] === fb2.dataset.v ? '' : fb2.dataset.v; renderGrid(); const again = $(`[data-flt="${fb2.dataset.flt}"][data-v="${fb2.dataset.v}"]`); if (again) again.focus(); return; }
@@ -379,6 +419,14 @@ function bind() {
     const m = V.tapMask(lab.P, tx, ty); lab.M = m.M; lab.kind = m.kind; runExtract();
   });
   document.querySelectorAll('#fabricSeg button').forEach(b => b.addEventListener('click', () => { lab.mode = b.dataset.mode; if (!lab.nameTouched) lab.name = autoName(); refreshLab(); }));
+  $('#fitKind').addEventListener('click', e => { const b = e.target.closest('[data-fk]'); if (b) { fitKind(b.dataset.fk); fitChanged(); } });
+  $('#fitNeck').addEventListener('click', e => { const b = e.target.closest('[data-fn]'); if (b) { lab.fit.neck = b.dataset.fn; fitChanged(); } });
+  $('#fitSlv').addEventListener('input', e => { lab.fit.sleeve = +e.target.value / 100; fitChanged(); });
+  $('#fitSw').addEventListener('input', e => { lab.fit.sw = +e.target.value / 100; fitChanged(); });
+  $('#fitLen').addEventListener('input', e => { const [lo, hi] = FIT_LEN[lab.fit.kind]; lab.fit.hem = Math.round(lo + (hi - lo) * e.target.value / 100); fitChanged(); });
+  $('#fitFl').addEventListener('input', e => { const v = +e.target.value / 100; if (lab.fit.kind === 'pants') lab.fit.leg = +(.5 + v * 1.3).toFixed(2); else lab.fit.flare = Math.round(-2 + v * 72); fitChanged(); });
+  $('#fitWaist').addEventListener('change', e => { lab.fit.waist = e.target.checked ? 1 : 0; fitChanged(); });
+  $('#fitReset').addEventListener('click', () => { if (lab.fitAuto) { lab.fit = { ...lab.fitAuto }; fitChanged(); } });
   $('#labModes').addEventListener('click', e => { const b = e.target.closest('[data-ui]'); if (b && b.dataset.ui !== lab.ui) setLabUI(b.dataset.ui); });
   $('#swatchRow').innerHTML = '<span>直接选颜色：</span>' + SWATCHES.map(c => `<button class="sw" type="button" data-sw="${c}" aria-pressed="false" aria-label="${colorName(c)}" style="background:${c}"></button>`).join('');
   $('#swatchRow').addEventListener('click', e => { const b = e.target.closest('[data-sw]'); if (b) useSwatch(b.dataset.sw); });

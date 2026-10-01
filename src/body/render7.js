@@ -25,6 +25,7 @@ function resolveFill(it) {
 const slotOf = it => it.slot || it.cat;
 const isHead = it => it.cat === 'hair' || it.head || HEAD_ACC.includes(it.id) || ['hat', 'hairacc', 'ear', 'glasses'].includes(it.sub);
 function partsOf(it) {
+  if (it.fit) return [{ z: Z[FIT.catOf(it.fit)], svg: FIT.render(it.fit, resolveFill(it)) }];
   if (it.shape) return [{ z: Z[it.cat], svg: piece(it.shape, resolveFill(it).fill, { evenodd: true, folds: it.lines || [] }) }];
   if (it.tpl) { const T = TPL[it.tpl], F = resolveFill(it); return [{ z: T.z ?? Z[it.cat], svg: T.render(F) }].concat(T.back ? [{ z: 9, svg: T.back(F) }] : []); }
   if (it.png) return [{ z: it.z ?? 30, svg: `<image href="${it.png}" x="0" y="0" width="300" height="600"/>` }];
@@ -61,7 +62,7 @@ function dollSVG(outfit, over = {}, pose = null) {
   if (!top && !fullDress) L.push({ z: 12, svg: cami });
   if (!bottom && !dress) L.push({ z: 12, svg: shorts });
   // 长裙、阔腿/喇叭裤会盖住腿套，这时不穿腿套（紧身裤可以把腿套套在外面）
-  [slot('hair'), top, slot('outer'), bottom, dress, slot('legs'), (dress && tplOf(dress) && tplOf(dress).long) || (bottom && PANTS_OVER.has(bottom.tpl) && !PANTS_TUCK.has(bottom.tpl)) ? null : slot('warmer'), slot('shoes')].forEach(it => { if (it) (isHead(it) ? H : L).push(...partsOf(it).map(l => ({ ...l, cat: it.cat, drawn: !!it.shape }))); });
+  [slot('hair'), top, slot('outer'), bottom, dress, slot('legs'), (dress && tplOf(dress) && tplOf(dress).long) || (bottom && PANTS_OVER.has(pantsKey(bottom)) && !PANTS_TUCK.has(pantsKey(bottom))) ? null : slot('warmer'), slot('shoes')].forEach(it => { if (it) (isHead(it) ? H : L).push(...partsOf(it).map(l => ({ ...l, cat: it.cat, drawn: !!it.shape }))); });
   // 高筒靴（靴口在小腿以上）：腿套收进靴筒里，不然靴子上的扣带会从腿套边上戳出来
   const wm = slot('warmer'), sh = slot('shoes');
   const bootTop = sh ? +thumbOf(sh).split(' ')[1] : 600;
@@ -121,6 +122,8 @@ const OPEN_HATS = new Set(['a95']);
 /* 小物可以选的上下层级（从后到前）：后发之后 · 衣服下面 · 上衣和外套之间 · 外套外面 · 刘海下面 · 最上面 */
 const ACC_LEVELS = [[1.5, '后发后面'], [19, '衣服下面'], [33, '外套下面'], [45, '外套外面'], [49, '刘海下面'], [60, '最上面']];                                                                    // 没有帽顶的帽子（遮阳帽）
 const HELD = { a47: 'L', a34: 'R', a73: 'L', a90: 'L' };                                               // 拎在手上的包跟着那只手走
+/* 照片识别出来的裤子按长度当成短裤 / 长裤处理 */
+const pantsKey = it => (it && it.fit ? (it.fit.kind === 'pants' ? (it.fit.hem > 480 ? 'widePants' : 'shorts') : '') : it && it.tpl);
 const PANTS_TPL = new Set(['widePants', 'cargo', 'flareJeans', 'skinnyJeans', 'slacks', 'sashPants', 'skirtJeans', 'wideFlare', 'wrapCargo', 'balloonPants', 'shorts', 'capris', 'bermuda', 'culottes', 'beltShorts']);
 const RIG = (() => {
   const yE = 266, yK = 432;
@@ -143,7 +146,7 @@ const HAND = { L: [84, 336], R: [216, 336] };
 function posedSVG(P, L, H, bags, W0) {
   // 裙子 / 连衣裙 / 长外套盖过膝盖（裤子除外）就不踢腿：直接看这一层的布片有没有伸到膝盖以下
   const reachesKnee = l => { let hit = false; l.svg.replace(/ d="([^"]*)"/g, (m, d) => { if (hit || /[a-y]/.test(d)) return m; const n = d.match(/-?\d*\.?\d+/g) || []; for (let i = 0; i + 1 < n.length; i += 2) if (+n[i + 1] > RIG.yK - 4 && +n[i] > 150.6) { hit = true; break; } return m; }); return hit; };
-  const legOK = (P.leg || P.legLen) && !L.some(l => (l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(W0.bottom.tpl)))) && reachesKnee(l));
+  const legOK = (P.leg || P.legLen) && !L.some(l => (l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(pantsKey(W0.bottom))))) && reachesKnee(l));
   const base = P.warp ? WARP_POSES[P.warp] : {};
   const W = { head: 0, hip: 0, kneeL: 0, footL: 0, kneeR: 0, footR: 0, armL: 0, armR: 0, tilt: 0, ...base, ...(P.body || {}), head: P.head ?? base.head ?? 0, arms: { L: P.L, R: P.R }, leg: legOK ? P.leg : 0, legLen: legOK ? P.legLen : 0 };
   // 裙摆：默认跟着胯的反方向轻轻荡；发尾：默认跟着歪头方向顺一点。姿势里的 skirt / hair 再加上动作本身的甩动
@@ -154,7 +157,7 @@ function posedSVG(P, L, H, bags, W0) {
   const inward = k => (k === 'L' ? -1 : 1) * ((P[k].up || 0) + (P[k].fore || 0)) > 20;
   const front = ['L', 'R'].filter(k => moves(k) && !P[k].back && (inward(k) || P[k].over)), back = ['L', 'R'].filter(k => moves(k) && P[k].back);
   const garment = l => l.cat !== 'body' && l.cat !== 'acc' && !l.drawn;
-  const skirty = l => l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(W0.bottom.tpl)));
+  const skirty = l => l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(pantsKey(W0.bottom))));
   const opt = l => (garment(l) ? { garment: true, skirt: skirty(l) } : {}), FREE = { arms: false, leg: false };
   const Ls = L.slice().sort((a, b) => a.z - b.z);
   const out = Ls.map(l => ({ z: l.z, svg: warpSVG(l.svg, W, opt(l)) }));

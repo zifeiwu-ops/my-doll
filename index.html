@@ -192,6 +192,11 @@ input[type=range]{flex:1 1 140px;accent-color:var(--pink-deep)}
 .draw-tools .btn[disabled]{opacity:.45;cursor:default}
 .check{display:inline-flex;align-items:center;gap:6px;font-size:14px;cursor:pointer}
 .check input{width:18px;height:18px;accent-color:var(--pink-deep)}
+.fit-res{margin:0 0 8px;font-size:14px;line-height:1.6}
+.fit-res .tag{display:inline-block;margin:2px 4px 2px 0;padding:1px 9px;border-radius:999px;background:var(--pink-soft,#FDE6EE);border:1.5px solid var(--ink);font-size:12.5px}
+.fit-grid .row{flex-wrap:wrap}
+.fit-grid input[type=range]{flex:1;min-width:120px;accent-color:var(--pink-deep)}
+.fit-v{min-width:56px;font-size:12.5px;color:var(--ink-soft)}
 .draw-hint{margin:12px 0 0;font-size:12.5px;line-height:1.6;color:var(--ink-soft)}
 .draw-hint b{color:var(--ink);font-weight:400;font-family:var(--f-display)}
 .swatch-row .sw{width:26px;height:26px;padding:0;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1.5px var(--ink);cursor:pointer}
@@ -506,8 +511,24 @@ input.ribbon:focus{box-shadow:0 0 0 3px #fff,0 0 0 5px var(--pink)}
     <div class="lab-body">
       <h2 class="lab-title" id="labTitle">照片做衣服</h2>
       <div class="lab-modes" id="labModes" role="tablist" aria-label="DIY 方式">
-        <button type="button" role="tab" data-ui="tpl" aria-selected="true">套用现成版型</button>
+        <button type="button" role="tab" data-ui="fit" aria-selected="true">照片识别版型</button>
+        <button type="button" role="tab" data-ui="tpl" aria-selected="false">套用现成版型</button>
         <button type="button" role="tab" data-ui="draw" aria-selected="false">自己画版型</button>
+      </div>
+      <div id="fitPane" hidden>
+        <h3 class="step-h"><b>1</b>从照片里识别出的版型（不对可以改）</h3>
+        <p class="fit-res" id="fitRes" aria-live="polite"></p>
+        <div class="fit-grid">
+          <div class="row"><span class="row-label">类型</span><div class="seg" id="fitKind" role="radiogroup" aria-label="衣服类型"></div></div>
+          <div class="row" id="fitNeckRow"><span class="row-label">领口</span><div class="seg" id="fitNeck" role="radiogroup" aria-label="领口"></div></div>
+          <div class="row" id="fitSlvRow"><label class="row-label" for="fitSlv">袖长</label><input type="range" id="fitSlv" min="0" max="100" step="1"><span class="fit-v" id="fitSlvV"></span></div>
+          <div class="row" id="fitSwRow"><label class="row-label" for="fitSw">袖宽</label><input type="range" id="fitSw" min="30" max="120" step="1"><span class="fit-v" id="fitSwV"></span></div>
+          <div class="row"><label class="row-label" for="fitLen">长度</label><input type="range" id="fitLen" min="0" max="100" step="1"><span class="fit-v" id="fitLenV"></span></div>
+          <div class="row"><label class="row-label" for="fitFl" id="fitFlL">下摆</label><input type="range" id="fitFl" min="0" max="100" step="1"><span class="fit-v" id="fitFlV"></span></div>
+          <div class="row" id="fitWaistRow"><label class="check"><input type="checkbox" id="fitWaist"> 收腰（上身到腰线，下面接裙摆）</label></div>
+          <div class="row"><button class="btn sm" id="fitReset" type="button">恢复识别结果</button></div>
+        </div>
+        <p class="draw-hint">照片里衣服<b>平铺、挂着、穿在身上</b>都能识别：会量袖子多长多粗、衣长、腰身、下摆、领口深浅和形状，再按娃娃的身材重新裁一件。背景越干净越准；框得不对就点一下照片里的衣服。</p>
       </div>
       <div id="tplPane">
         <h3 class="step-h"><b>1</b>选一个版型</h3>
@@ -6918,6 +6939,7 @@ function resolveFill(it) {
 const slotOf = it => it.slot || it.cat;
 const isHead = it => it.cat === 'hair' || it.head || HEAD_ACC.includes(it.id) || ['hat', 'hairacc', 'ear', 'glasses'].includes(it.sub);
 function partsOf(it) {
+  if (it.fit) return [{ z: Z[FIT.catOf(it.fit)], svg: FIT.render(it.fit, resolveFill(it)) }];
   if (it.shape) return [{ z: Z[it.cat], svg: piece(it.shape, resolveFill(it).fill, { evenodd: true, folds: it.lines || [] }) }];
   if (it.tpl) { const T = TPL[it.tpl], F = resolveFill(it); return [{ z: T.z ?? Z[it.cat], svg: T.render(F) }].concat(T.back ? [{ z: 9, svg: T.back(F) }] : []); }
   if (it.png) return [{ z: it.z ?? 30, svg: `<image href="${it.png}" x="0" y="0" width="300" height="600"/>` }];
@@ -6954,7 +6976,7 @@ function dollSVG(outfit, over = {}, pose = null) {
   if (!top && !fullDress) L.push({ z: 12, svg: cami });
   if (!bottom && !dress) L.push({ z: 12, svg: shorts });
   // 长裙、阔腿/喇叭裤会盖住腿套，这时不穿腿套（紧身裤可以把腿套套在外面）
-  [slot('hair'), top, slot('outer'), bottom, dress, slot('legs'), (dress && tplOf(dress) && tplOf(dress).long) || (bottom && PANTS_OVER.has(bottom.tpl) && !PANTS_TUCK.has(bottom.tpl)) ? null : slot('warmer'), slot('shoes')].forEach(it => { if (it) (isHead(it) ? H : L).push(...partsOf(it).map(l => ({ ...l, cat: it.cat, drawn: !!it.shape }))); });
+  [slot('hair'), top, slot('outer'), bottom, dress, slot('legs'), (dress && tplOf(dress) && tplOf(dress).long) || (bottom && PANTS_OVER.has(pantsKey(bottom)) && !PANTS_TUCK.has(pantsKey(bottom))) ? null : slot('warmer'), slot('shoes')].forEach(it => { if (it) (isHead(it) ? H : L).push(...partsOf(it).map(l => ({ ...l, cat: it.cat, drawn: !!it.shape }))); });
   // 高筒靴（靴口在小腿以上）：腿套收进靴筒里，不然靴子上的扣带会从腿套边上戳出来
   const wm = slot('warmer'), sh = slot('shoes');
   const bootTop = sh ? +thumbOf(sh).split(' ')[1] : 600;
@@ -7014,6 +7036,8 @@ const OPEN_HATS = new Set(['a95']);
 /* 小物可以选的上下层级（从后到前）：后发之后 · 衣服下面 · 上衣和外套之间 · 外套外面 · 刘海下面 · 最上面 */
 const ACC_LEVELS = [[1.5, '后发后面'], [19, '衣服下面'], [33, '外套下面'], [45, '外套外面'], [49, '刘海下面'], [60, '最上面']];                                                                    // 没有帽顶的帽子（遮阳帽）
 const HELD = { a47: 'L', a34: 'R', a73: 'L', a90: 'L' };                                               // 拎在手上的包跟着那只手走
+/* 照片识别出来的裤子按长度当成短裤 / 长裤处理 */
+const pantsKey = it => (it && it.fit ? (it.fit.kind === 'pants' ? (it.fit.hem > 480 ? 'widePants' : 'shorts') : '') : it && it.tpl);
 const PANTS_TPL = new Set(['widePants', 'cargo', 'flareJeans', 'skinnyJeans', 'slacks', 'sashPants', 'skirtJeans', 'wideFlare', 'wrapCargo', 'balloonPants', 'shorts', 'capris', 'bermuda', 'culottes', 'beltShorts']);
 const RIG = (() => {
   const yE = 266, yK = 432;
@@ -7036,7 +7060,7 @@ const HAND = { L: [84, 336], R: [216, 336] };
 function posedSVG(P, L, H, bags, W0) {
   // 裙子 / 连衣裙 / 长外套盖过膝盖（裤子除外）就不踢腿：直接看这一层的布片有没有伸到膝盖以下
   const reachesKnee = l => { let hit = false; l.svg.replace(/ d="([^"]*)"/g, (m, d) => { if (hit || /[a-y]/.test(d)) return m; const n = d.match(/-?\d*\.?\d+/g) || []; for (let i = 0; i + 1 < n.length; i += 2) if (+n[i + 1] > RIG.yK - 4 && +n[i] > 150.6) { hit = true; break; } return m; }); return hit; };
-  const legOK = (P.leg || P.legLen) && !L.some(l => (l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(W0.bottom.tpl)))) && reachesKnee(l));
+  const legOK = (P.leg || P.legLen) && !L.some(l => (l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(pantsKey(W0.bottom))))) && reachesKnee(l));
   const base = P.warp ? WARP_POSES[P.warp] : {};
   const W = { head: 0, hip: 0, kneeL: 0, footL: 0, kneeR: 0, footR: 0, armL: 0, armR: 0, tilt: 0, ...base, ...(P.body || {}), head: P.head ?? base.head ?? 0, arms: { L: P.L, R: P.R }, leg: legOK ? P.leg : 0, legLen: legOK ? P.legLen : 0 };
   // 裙摆：默认跟着胯的反方向轻轻荡；发尾：默认跟着歪头方向顺一点。姿势里的 skirt / hair 再加上动作本身的甩动
@@ -7047,7 +7071,7 @@ function posedSVG(P, L, H, bags, W0) {
   const inward = k => (k === 'L' ? -1 : 1) * ((P[k].up || 0) + (P[k].fore || 0)) > 20;
   const front = ['L', 'R'].filter(k => moves(k) && !P[k].back && (inward(k) || P[k].over)), back = ['L', 'R'].filter(k => moves(k) && P[k].back);
   const garment = l => l.cat !== 'body' && l.cat !== 'acc' && !l.drawn;
-  const skirty = l => l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(W0.bottom.tpl)));
+  const skirty = l => l.cat === 'dress' || l.cat === 'outer' || (l.cat === 'bottom' && !(W0.bottom && PANTS_TPL.has(pantsKey(W0.bottom))));
   const opt = l => (garment(l) ? { garment: true, skirt: skirty(l) } : {}), FREE = { arms: false, leg: false };
   const Ls = L.slice().sort((a, b) => a.z - b.z);
   const out = Ls.map(l => ({ z: l.z, svg: warpSVG(l.svg, W, opt(l)) }));
@@ -7586,6 +7610,161 @@ function bindDraw() {
   $('#drawBase').addEventListener('change', e => { const k = e.target.value; if (!k) return; dr.strokes.push({ t: 'base', k }); rebuildDrawn(); afterDrawChange(); });
   let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (!$('#lab').hidden && lab.ui === 'draw') drawRender(); }, 150); });
 }
+
+/* =====================================================================
+   照片识别版型：从照片里框出的衣服轮廓（蒙版）量出版型参数，再在娃娃身上重新生成一件
+   1. 量轮廓：衣身宽、袖子伸出去多长多粗、衣长、腰身收不收、下摆放多少、领口深浅和形状、
+      是不是吊带、下半截是不是分成两条腿（裤子）、上口窄下摆宽（半裙）
+   2. 换算到娃娃：全部按「衣身半宽」做单位（平铺 / 挂拍 / 穿着拍都不受照片大小影响），
+      再用现成的版型零件（衣身 bodyD、袖子 sleeveD、吊带 tankD、裙 skirtD、裤 pantsD）拼出来，
+      所以描边、阴影、褶皱和其它衣服是一套
+   3. 识别结果可以在面板里改：类型、领口、袖长、袖宽、长度、下摆
+   ===================================================================== */
+const FIT = (() => {
+  const ip = (A, v) => { if (v <= A[0][0]) return A[0][1]; for (let i = 1; i < A.length; i++) if (v <= A[i][0]) { const [x0, y0] = A[i - 1], [x1, y1] = A[i]; return y0 + (y1 - y0) * (v - x0) / (x1 - x0); } return A[A.length - 1][1]; };
+  const inv = (A, y) => ip(A.map(([a, b]) => [b, a]), y);
+  const cl = (v, a, b) => Math.max(a, Math.min(b, v));
+  const med = a => { const s = a.filter(v => v != null && isFinite(v)).sort((x, y) => x - y); return s.length ? s[s.length >> 1] : null; };
+
+  /* ---------- 1. 量轮廓 ---------- */
+  function analyze(M, W, H) {
+    let x0 = W, x1 = -1, y0 = H, y1 = -1, n = 0, sx = 0;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (M[y * W + x]) { n++; sx += x; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (n < 40 || y1 - y0 < 8) return null;
+    const h = y1 - y0 + 1, cx = (sx / n + (x0 + x1) / 2) / 2;
+    const segs = [];
+    for (let y = y0; y <= y1; y++) { const s = []; let a = -1; for (let x = 0; x <= W; x++) { const on = x < W && M[y * W + x]; if (on && a < 0) a = x; if (!on && a >= 0) { s.push([a, x - 1]); a = -1; } } segs[y] = s; }
+    const at = t => y0 + Math.round(cl(t, 0, 1) * (h - 1));
+    const cen = y => { const s = segs[y] || []; let best = null, bd = 1e9; s.forEach(g => { const d = g[0] <= cx && g[1] >= cx ? 0 : Math.min(Math.abs(g[0] - cx), Math.abs(g[1] - cx)); if (d < bd) { bd = d; best = g; } }); return bd <= 1.5 ? best : null; };
+    const hw = y => { const g = cen(y); return g ? (g[1] - g[0] + 1) / 2 : null; };
+    const band = (a, b, f) => { const v = []; for (let t = a; t <= b + 1e-6; t += .02) v.push(f(at(t))); return v; };
+    const gapAt = y => { const s = segs[y] || []; return s.length >= 2 && !s.some(g => g[0] <= cx + .5 && g[1] >= cx - .5) && s.some(g => g[1] < cx) && s.some(g => g[0] > cx); };
+
+    /* 裤子：下半截中间是空的，两边各一条腿 */
+    const lower = band(.68, .97, gapAt), pants = lower.filter(Boolean).length / lower.length > .6;
+    if (pants) {
+      let cr = y1; for (let y = y1; y >= y0; y--) { if (!gapAt(y)) { cr = y + 1; break; } }
+      const wt = med(band(.01, .06, hw)) || (x1 - x0) / 2;
+      const legW = med(band(.9, .98, y => { const s = segs[y] || []; return s.length ? s.reduce((m, g) => Math.max(m, g[1] - g[0] + 1), 0) : null; })) || wt;
+      return { kind: 'pants', L: h / wt, crotch: (cr - y0) / wt, leg: legW / wt, conf: .8 };
+    }
+    /* 衣身半宽：取中段 */
+    const tw = Math.min(med(band(.5, .8, hw)) ?? 1e9, med(band(.2, .4, hw)) ?? 1e9) < 1e9 ? Math.min(med(band(.5, .8, hw)) ?? 1e9, med(band(.2, .4, hw)) ?? 1e9) : (x1 - x0) / 4, wTop = med(band(.01, .06, hw)) || tw, wHem = med(band(.9, .98, hw)) || tw;
+    /* 每一列的最上沿 → 肩线和领口 */
+    const topY = x => { x = Math.round(x); if (x < 0 || x >= W) return null; for (let y = y0; y <= y1; y++) if (M[y * W + x]) return y; return null; };
+    const sh = Math.min(...[-.75, -.6, -.45, .45, .6, .75].map(k => topY(cx + k * tw) ?? 1e9));
+    const midTop = med([-1, 0, 1].map(k => topY(cx + k)));
+    const notch = (midTop ?? sh) - sh;
+    const widthAt = dy => { let c = 0; for (let x = Math.round(cx - .8 * tw); x <= cx + .8 * tw; x++) { const t = topY(x); if (t == null || t > sh + dy) c++; } return c / 2; };
+    const nw = notch > 1 ? widthAt(Math.max(1, notch * .2)) : 0, nMid = notch > 2 ? widthAt(notch * .55) : 0;
+    /* 吊带：最上面几行在中间是空的、两边是细细的带子 */
+    let strapRows = 0, rows = 0;
+    for (let y = sh; y < sh + Math.max(3, h * .12); y++) { const s = (segs[y] || []).filter(g => g[1] > cx - tw && g[0] < cx + tw); if (!s.length) continue; rows++; if (s.length >= 2 && !s.some(g => g[0] <= cx && g[1] >= cx) && s.every(g => g[1] - g[0] + 1 < .4 * tw)) strapRows++; }
+    const strap = rows > 0 && strapRows / rows > .5;
+    /* 袖子：衣身外面的那部分；从肩点量到最远的袖口 */
+    const side = sgn => {
+      const ax = cx + sgn * tw, ay = topY(ax) ?? sh; let A = 0, far = 0;
+      for (let y = y0; y <= y0 + h * .92; y++) for (let x = 0; x < W; x++) { if (!M[y * W + x] || (x - cx) * sgn <= tw * 1.15) continue; if (y > sh + tw * 1.3) { const g = cen(y); if (g && x >= g[0] && x <= g[1]) continue; } A++; const d = Math.hypot(x - ax, y - ay); if (d > far) far = d; }
+      return { A, far };
+    };
+    const sL = side(-1), sR = side(1), sA = (sL.A + sR.A) / 2, sFar = Math.max(sL.far, sR.far) * .6 + Math.min(sL.far, sR.far) * .4;
+    const sleeved = !strap && sA / n > .025 && sFar > tw * .35;
+    const prof = band(.25, .6, hw).map(v => v == null ? null : v / tw), waist = Math.min(...prof.filter(v => v != null), 9);
+    const L = (y1 - sh) / tw;
+    /* 半裙：没有袖子、没有领口凹陷、上口明显比下摆窄、整体不高 */
+    const mono = [.05, .3, .6, .95].map(t => hw(at(t))), up = mono.every((v, i) => v != null && (!i || v >= mono[i - 1] * .97));
+    const skirt = up && !strap && notch < h * .05 && wTop < wHem * .82 && h / wTop < 6.5 && Math.abs(topY(cx - wTop * .8) - topY(cx + wTop * .8)) < h * .06;
+    if (skirt) return { kind: 'skirt', L: h / wTop, flare: wHem / wTop, conf: .7 };
+    return {
+      kind: L > 3.6 ? 'dress' : 'top', L, tw, strap, sleeved,
+      sleeve: sleeved ? sFar / tw : 0, sw: sleeved ? sA / Math.max(1, sFar) / tw : 0,
+      notch: notch / tw, nw: nw / tw, vr: nw ? nMid / nw : 1, high: midTop != null && midTop < sh - tw * .1,
+      waist, hem: wHem / tw, conf: sleeved || strap || notch > 1 ? .8 : .55
+    };
+  }
+
+  /* ---------- 2. 换算成娃娃上的参数 ---------- */
+  const TOP_HEM = [[1.4, 236], [1.9, 256], [2.4, 276], [2.9, 296], [3.4, 312], [4.2, 370], [5, 430], [6, 500]];
+  const SKIRT_HEM = [[1.6, 318], [2.2, 345], [3.3, 400], [4.4, 460], [5.5, 530]];
+  const PANT_HEMS = [[1.5, 335], [1.9, 350], [2.9, 420], [4, 505], [5.2, 567]];
+  const SLV = [[0, 214], [.25, 224], [.4, 238], [.6, 262], [.8, 290], [1, 318]];
+  function params(f) {
+    if (!f) return { kind: 'top', neck: 'crew', sleeve: 1, sw: .5, hem: 300, flare: 0, waist: 0, conf: 0 };
+    if (f.kind === 'pants') return { kind: 'pants', hem: Math.round(ip(PANT_HEMS, f.L)), leg: +cl(f.leg, .5, 1.8).toFixed(2), conf: f.conf };
+    if (f.kind === 'skirt') return { kind: 'skirt', hem: Math.round(ip(SKIRT_HEM, f.L)), flare: Math.round(cl((f.flare - 1) * 32, 0, 60)), conf: f.conf };
+    const neck = f.strap ? 'strap' : f.high ? 'high' : f.notch > .55 ? (f.vr < .62 ? 'v' : f.vr > .9 ? 'square' : 'scoop') : f.notch > .32 ? (f.vr < .55 ? 'v' : 'scoop') : 'crew';
+    const sleeve = f.sleeved ? +cl((f.sleeve - .45) / 2.45, .12, 1).toFixed(2) : 0;
+    const hem = Math.round(ip(TOP_HEM, f.L)), fl = cl((f.hem - 1) * 30, -2, 70);
+    return { kind: f.kind, neck, sleeve, sw: +cl((f.sw || .36) * 1.4, .3, 1.2).toFixed(2), hem, flare: Math.round(fl), waist: f.kind === 'dress' && f.hem > 1.5 ? 1 : 0, nw: +cl(f.nw || .3, .15, .8).toFixed(2), conf: f.conf };
+  }
+  const catOf = p => p.kind === 'pants' || p.kind === 'skirt' ? 'bottom' : p.kind;
+
+  /* ---------- 3. 在娃娃身上生成 ---------- */
+  function render(p, F) {
+    if (p.kind === 'pants') {
+      const hem = cl(p.hem, 330, 567), eh = 2.6 + (p.leg - .9) * 18, ease = y => 2.6 + Math.max(0, eh - 2.6) * Math.pow(cl((y - 300) / (hem - 300), 0, 1), 1.3) + Math.min(0, eh - 2.6) * .3;
+      const d = pantsD({ top: 282, hem, crotch: 327, ease, inE: y => 2 + Math.max(0, eh - 2.6) * .45 * cl((y - 330) / (hem - 330), 0, 1) });
+      return piece(d, F.fill, { lines: [{ d: FLY, o: .5 }, { d: POCKET, o: .5 }, { d: mir(POCKET), o: .5 }] }) + piece(bandD(279, 8, 3.4, 2.8), F.rib || F.fill, {});
+    }
+    if (p.kind === 'skirt') {
+      const hem = cl(p.hem, 312, 560);
+      return piece(skirtD({ top: 282, hem, flare: p.flare, hipY: Math.min(300, hem - 12), curve: 3 + p.flare * .05 }), F.fill, { folds: fm(`M 128 ${f1(hem - (hem - 290) * .6)} Q 126 ${f1(hem - (hem - 290) * .3)} ${f1(124 - p.flare * .5)} ${f1(hem - 2)}`) }) + piece(bandD(279, 7, 3.4, 2.6), F.rib || F.fill, {});
+    }
+    const outer = p.kind === 'outer', tw = 150 - sideX(232);
+    const e = outer ? 4.4 : 2.8 + p.sw * 1.2, hem = cl(p.hem, 236, 540);
+    let out = '';
+    /* 连衣裙收腰：上身到腰线，下面接一条裙子 */
+    if (p.kind === 'dress' && p.waist) {
+      out += piece(skirtD({ top: 252, hem, flare: p.flare, hipY: Math.min(296, hem - 10), dip: 2, e: 2 }), F.fill, { folds: fm(`M 130 ${f1(262 + (hem - 262) * .3)} Q 127 ${f1(262 + (hem - 262) * .6)} ${f1(126 - p.flare * .5)} ${f1(hem - 2)}`) });
+    }
+    const bHem = p.kind === 'dress' && p.waist ? 256 : hem, bFlare = p.kind === 'dress' && p.waist ? 0 : p.flare;
+    const neckX = cl(150 - (p.nw || .3) * tw * 1.1, 128, 141);
+    const neckY = { crew: 170, high: 168, scoop: 184, square: 186, v: 196 }[p.neck] ?? 170;
+    const neckW = p.neck === 'v' ? 1.2 : p.neck === 'square' ? (150 - neckX) * .92 : p.neck === 'scoop' ? (150 - neckX) * .62 : 7;
+    const body = p.neck === 'strap' ? tankD({ top: 193, strapX: 128.6, e: 2.2, hem: bHem, hemE: 2.6 + bFlare * .2, flare: bFlare * .8, dip: 3.4 })
+      : bodyD({ hem: bHem, e: e / 1.22, hemE: (e + 1) / 1.3, neckY: outer ? Math.max(neckY, 190) : neckY, neckW: outer ? 1.2 : neckW, neckX: outer ? Math.min(neckX, 136) : neckX, flare: bFlare, se: 2.2 + p.sw });
+    const bodyFolds = fm(`M 126 ${f1(236 + (bHem - 236) * .1)} Q 128 ${f1(236 + (bHem - 236) * .4)} 126 ${f1(236 + (bHem - 236) * .65)}`);
+    const lines = outer ? [{ d: `M 150 ${Math.max(neckY, 190)} L 150 ${f1(bHem + 1)}`, o: .7 }] : p.neck === 'v' || p.neck === 'scoop' || p.neck === 'square' ? [] : [];
+    if (p.neck === 'strap') { const st = 'M 128.8 193.5 L 129.4 170.6'; out += strap(st, F.base, 1.6) + strap(mir(st), F.base, 1.6); }
+    out += piece(body, F.fill, { folds: bodyFolds, lines });
+    if (p.sleeve > .05 && p.neck !== 'strap') {
+      const y1 = Math.round(ip(SLV, p.sleeve)), wide = p.sw - .5, eo = cl(2.8 + wide * 14, 2, 12), ei = cl(2.4 + wide * 5, 1.6, 5.4), puff = cl((p.sw - .62) * 9, 0, 5);
+      const sl = sleeveD({ y1, puff, eo, ei, se: 2.4 + Math.max(0, wide) * 3 }), fo = y1 > 280 ? ['M 98 264 Q 102 272 100 282'] : [];
+      out += piece(sl, F.fill, { folds: fo }) + piece(mir(sl), F.fill, { folds: fo.map(mir) });
+      if (y1 > 290) { const cf = cuffD(y1, 7, eo, ei); out += piece(cf, F.rib || F.fill, {}) + piece(mir(cf), F.rib || F.fill, {}); }
+    }
+    if (p.neck === 'high') out += piece(spline([[139.6, 151, 'c'], [160.4, 151, 'c'], [162.4, 168, 'c'], [150, 171.6], [137.6, 168, 'c']]), F.rib || F.fill, { lines: [{ d: ribLines(140, 160, 151, 170, 2.6), o: .3, w: .7 }] });
+    else if (p.neck === 'crew' && !outer) out += piece(spline([[137.4, 163.2, 'c'], [150, 169.4], [162.6, 163.2, 'c'], [163.6, 166.6, 'c'], [150, 174.2], [136.4, 166.6, 'c']]), F.rib || F.fill, { rim: false });
+    return out;
+  }
+  const VIEW = { top: '72 136 156 200', outer: '64 132 172 230', bottom: '70 262 160 320', dress: '60 132 180 420' };
+  function thumb(p) {
+    const c = catOf(p);
+    if (c === 'bottom') { const hh = Math.max(100, p.hem - 262 + 20), s = Math.max(hh, 120); return `${f1(150 - s / 2)} 266 ${f1(s)} ${f1(s)}`; }
+    const hh = Math.max(130, p.hem - 136 + 14), s = Math.max(hh, 150); return `${f1(150 - s / 2)} 134 ${f1(s)} ${f1(s)}`;
+  }
+  const NECK_N = { crew: '圆领', high: '高领', scoop: '大圆领', square: '方领', v: 'V领', strap: '吊带' };
+  const lenName = p => {
+    if (p.kind === 'pants') return p.hem < 360 ? '短裤' : p.hem < 450 ? '五分裤' : p.hem < 530 ? '九分裤' : '长裤';
+    if (p.kind === 'skirt') return p.hem < 350 ? '短裙' : p.hem < 420 ? '及膝裙' : p.hem < 490 ? '中长裙' : '长裙';
+    if (p.kind === 'dress') return p.hem < 360 ? '短款' : p.hem < 430 ? '及膝' : p.hem < 490 ? '中长' : '长款';
+    return p.hem < 268 ? '短款' : p.hem < 312 ? '常规' : '长款';
+  };
+  const slvName = p => (p.neck === 'strap' ? '' : p.sleeve < .05 ? '无袖' : p.sleeve < .36 ? '短袖' : p.sleeve < .7 ? '中袖' : '长袖');
+  const silName = p => (p.kind === 'pants' ? (p.leg > 1.2 ? '阔腿' : p.leg < .7 ? '修身' : '直筒') : p.flare > 30 ? '大摆' : p.flare > 10 ? 'A字' : p.flare < 2 ? '直身' : '微A');
+  function describe(p) {
+    if (p.kind === 'pants') return [lenName(p), silName(p)];
+    if (p.kind === 'skirt') return [lenName(p), silName(p)];
+    return [slvName(p), NECK_N[p.neck], lenName(p), p.waist ? '收腰' : silName(p)].filter(Boolean);
+  }
+  const KIND_N = { top: '上衣', outer: '外套', dress: '连衣裙', skirt: '半裙', pants: '裤子' };
+  const name = p => {
+    if (p.kind === 'pants') return (silName(p) === '直筒' ? '' : silName(p)) + lenName(p);
+    if (p.kind === 'skirt') return silName(p).replace('直身', '直筒') + lenName(p);
+    return slvName(p) + NECK_N[p.neck].replace('吊带', '吊带') + KIND_N[p.kind];
+  };
+  return { analyze, params, render, catOf, thumb, describe, name, KIND_N, NECK_N };
+})();
 
 /* =====================================================================
    照片识别（纯前端，不需要模型文件）
@@ -8317,7 +8496,7 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify({ custom: state
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || 'null');
-    if (s && Array.isArray(s.custom)) state.custom = s.custom.filter(c => c && c.id && (TPL[c.tpl] || c.shape) && c.color);
+    if (s && Array.isArray(s.custom)) state.custom = s.custom.filter(c => c && c.id && (TPL[c.tpl] || c.shape || (c.fit && c.fit.kind)) && c.color);
     if (s && s.outfit) return s.outfit;
   } catch (e) { }
   return null;
@@ -8492,7 +8671,7 @@ let toastT;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
 
 /* ---------------- DIY 实验室 ---------------- */
-const lab = { ui: 'tpl', P: null, M: null, kind: '', res: null, tpl: 'hoodie', mode: 'pattern', scale: 30, name: '', nameTouched: false, sample: '', opener: null };
+const lab = { ui: 'fit', fit: null, fitAuto: null, fitInfo: '', P: null, M: null, kind: '', res: null, tpl: 'hoodie', mode: 'pattern', scale: 30, name: '', nameTouched: false, sample: '', opener: null };
 const CAT_NAME = { top: '上衣', outer: '外套', bottom: '下装', dress: '连衣裙' };
 const SWATCHES = ['#F7B2CC', '#F48FB1', '#FFE27A', '#BFEBE4', '#8FD9CD', '#A7D1EE', '#C9AEF2', '#FBF6E6', '#CDB994', '#9A6448', '#6F92BC', '#2E2A30'];
 const LAB_DEFAULT = { top: 'hoodie', outer: 'puffJacket', bottom: 'shorts', dress: 'denimDress' };
@@ -8506,13 +8685,15 @@ const KIND_TEXT = {
 };
 function previewItem() {
   if (!lab.res) return null;
+  if (lab.ui === 'fit') return lab.fit ? { id: 'preview', diy: true, cat: FIT.catOf(lab.fit), fit: lab.fit, thumb: FIT.thumb(lab.fit), name: '预览', mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale } : null;
   if (lab.ui === 'draw') return dr.shape ? { id: 'preview', diy: true, cat: dr.cat, shape: dr.shape, lines: dr.lines, thumb: dr.thumb, name: '预览', mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale } : null;
   return { id: 'preview', diy: true, cat: TPL[lab.tpl].cat, tpl: lab.tpl, name: '预览', mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale };
 }
-function autoName() { return lab.res ? `${colorName(lab.res.color)}${lab.mode === 'pattern' && lab.res.tile ? '印花' : ''}${lab.ui === 'draw' ? '手绘' + CAT_NAME[dr.cat] : TPL[lab.tpl].name}` : ''; }
+function autoName() { return lab.res ? `${colorName(lab.res.color)}${lab.mode === 'pattern' && lab.res.tile ? '印花' : ''}${lab.ui === 'fit' && lab.fit ? FIT.name(lab.fit) : lab.ui === 'draw' ? '手绘' + CAT_NAME[dr.cat] : TPL[lab.tpl].name}` : ''; }
 function openLab(cat, opener, ui) {
   lab.opener = opener || null;
-  lab.ui = ui === 'draw' ? 'draw' : 'tpl';
+  lab.ui = ui === 'draw' ? 'draw' : ui === 'tpl' ? 'tpl' : 'fit';
+  lab.catHint = cat;
   if (LAB_DEFAULT[cat] && TPL[lab.tpl].cat !== cat) lab.tpl = LAB_DEFAULT[cat];
   if (lab.ui === 'draw' && DRAW_VIEW[cat] && dr.cat !== cat) { dr.cat = cat; dr.strokes = []; rebuildDrawn(); }
   $('#lab').hidden = false; document.body.classList.add('modal-open');
@@ -8534,6 +8715,7 @@ function loadSample(kind) { loadSource(sampleImage(kind), kind); }
 function useSwatch(c) {
   lab.P = null; lab.M = null; lab.sample = ''; lab.kind = 'swatch';
   lab.res = { mode: 'solid', color: c, palette: [c], tile: null }; lab.mode = 'solid';
+  if (!lab.fit) { lab.fit = FIT.params(null); lab.fitAuto = { ...lab.fit }; lab.fitInfo = 'none'; }
   if (!lab.nameTouched) lab.name = autoName();
   refreshLab();
 }
@@ -8542,8 +8724,44 @@ function setLabUI(ui) {
   if (!lab.nameTouched) lab.name = autoName();
   refreshLab();
 }
+function runFit() {
+  const ok = lab.P && lab.M && lab.kind !== 'closeup' && lab.kind !== 'fallback', f = ok ? FIT.analyze(lab.M, lab.P.W, lab.P.H) : null;
+  if (f) { lab.fit = FIT.params(f); lab.fitInfo = 'ok'; }
+  else { lab.fit = FIT.params(null); lab.fitInfo = ok ? 'none' : lab.kind === 'closeup' ? 'closeup' : 'none'; const k = { top: 'top', outer: 'outer', dress: 'dress', bottom: 'skirt' }[lab.catHint]; if (k && k !== 'top') fitKind(k); }
+  lab.fitAuto = { ...lab.fit };
+}
+const FIT_LEN = { top: [236, 340], outer: [250, 470], dress: [300, 540], skirt: [312, 560], pants: [330, 567] };
+function fitKind(k) {
+  const p = lab.fit; if (!p || p.kind === k) return; const was = p.kind; p.kind = k;
+  if (k === 'pants') { p.hem = p.hem > 400 ? 567 : 350; p.leg = p.leg || 1; }
+  else if (k === 'skirt') { if (was !== 'pants') p.hem = 345; p.flare = p.flare > 4 ? p.flare : 16; }
+  else { p.neck = p.neck || 'crew'; p.sleeve = p.sleeve ?? 1; p.sw = p.sw || .5; p.nw = p.nw || .3; p.flare = p.flare ?? 0; p.waist = p.waist || 0;
+    const [lo, hi] = FIT_LEN[k]; p.hem = k === 'dress' ? Math.max(p.hem || 0, 400) : Math.min(hi, Math.max(lo, (was === 'dress' || was === 'skirt' || was === 'pants') ? (k === 'outer' ? 320 : 300) : p.hem)); }
+  p.hem = Math.max(FIT_LEN[k][0], Math.min(FIT_LEN[k][1], p.hem));
+}
+function renderFit() {
+  const p = lab.fit; if (!p) return;
+  const msg = { ok: '照片里量出来的版型', none: '没认出明显的衣服轮廓，先给了一件基础款，可以手动调', closeup: '这张是布料特写，看不到整件衣服的形状，先给了一件基础款' }[lab.fitInfo] || '';
+  $('#fitRes').innerHTML = `${msg}：` + FIT.describe(p).map(t => `<span class="tag">${t}</span>`).join('') + `<span class="tag">${FIT.KIND_N[p.kind]}</span>`;
+  const chips = (o, cur, at) => Object.entries(o).map(([k, n]) => `<button type="button" role="radio" ${at}="${k}" aria-checked="${k === cur}">${n}</button>`).join('');
+  $('#fitKind').innerHTML = chips(FIT.KIND_N, p.kind, 'data-fk');
+  const upper = p.kind !== 'skirt' && p.kind !== 'pants';
+  $('#fitNeckRow').hidden = !upper; $('#fitSlvRow').hidden = !upper || p.neck === 'strap'; $('#fitSwRow').hidden = !upper || p.neck === 'strap' || p.sleeve < .05; $('#fitWaistRow').hidden = p.kind !== 'dress';
+  if (upper) $('#fitNeck').innerHTML = chips(FIT.NECK_N, p.neck, 'data-fn');
+  $('#fitSlv').value = Math.round((p.sleeve || 0) * 100); $('#fitSw').value = Math.round((p.sw || .5) * 100);
+  const [lo, hi] = FIT_LEN[p.kind]; $('#fitLen').value = Math.round((p.hem - lo) / (hi - lo) * 100);
+  $('#fitFlL').textContent = p.kind === 'pants' ? '裤腿' : '下摆';
+  $('#fitFl').value = p.kind === 'pants' ? Math.round((p.leg - .5) / 1.3 * 100) : Math.round(((p.flare || 0) + 2) / 72 * 100);
+  $('#fitWaist').checked = !!p.waist;
+  const D = FIT.describe(p);
+  $('#fitSlvV').textContent = p.sleeve < .05 ? '无袖' : p.sleeve < .36 ? '短袖' : p.sleeve < .7 ? '中袖' : '长袖';
+  $('#fitSwV').textContent = p.sw > .8 ? '宽松' : p.sw < .42 ? '贴身' : '常规';
+  $('#fitLenV').textContent = D[upper ? 2 : 0] || ''; $('#fitFlV').textContent = upper ? (p.waist ? '收腰' : D[3]) : D[1];
+}
+function fitChanged() { if (!lab.nameTouched) lab.name = autoName(); refreshLab(); }
 function runExtract() {
   lab.res = V.extract(lab.P, lab.M, lab.kind);
+  runFit();
   lab.mode = lab.res.mode;
   if (!lab.nameTouched) lab.name = autoName();
   refreshLab();
@@ -8575,11 +8793,11 @@ function renderTplRow() {
 }
 function refreshLab() {
   rebuildUserDefs();
-  const draw = lab.ui === 'draw';
-  $('#tplPane').hidden = draw; $('#drawPane').hidden = !draw;
+  const draw = lab.ui === 'draw', fit = lab.ui === 'fit';
+  $('#tplPane').hidden = draw || fit; $('#drawPane').hidden = !draw; $('#fitPane').hidden = !fit;
   document.querySelectorAll('#labModes [data-ui]').forEach(b => b.setAttribute('aria-selected', b.dataset.ui === lab.ui));
-  $('#labTitle').textContent = draw ? '自己画版型' : '照片做衣服';
-  if (!draw) renderTplRow();
+  $('#labTitle').textContent = draw ? '自己画版型' : fit ? '照片识别版型' : '照片做衣服';
+  if (fit) renderFit(); else if (!draw) renderTplRow();
   const has = !!lab.res;
   $('#btnAdd').disabled = !has || (draw && !dr.shape);
   $('#tapHint').hidden = !has || !lab.P;
@@ -8595,8 +8813,8 @@ function refreshLab() {
   $('#scaleRow').hidden = lab.mode !== 'pattern' || !lab.res.tile;
   $('#scale').value = lab.scale;
   $('#itemName').value = lab.name;
-  const cat = draw ? dr.cat : TPL[lab.tpl].cat;
-  const svg = $('#labDoll'); svg.setAttribute('viewBox', draw ? (dr.thumb || DRAW_VIEW[cat].join(' ')) : TPL[lab.tpl].thumb);
+  const cat = draw ? dr.cat : fit ? FIT.catOf(lab.fit) : TPL[lab.tpl].cat;
+  const svg = $('#labDoll'); svg.setAttribute('viewBox', draw ? (dr.thumb || DRAW_VIEW[cat].join(' ')) : fit ? FIT.thumb(lab.fit) : TPL[lab.tpl].thumb);
   if (draw) drawRender();
   const over = cat === 'dress' ? { dress: previewItem() } : cat === 'outer' ? { outer: previewItem() } : { [cat]: previewItem(), dress: null };
   svg.innerHTML = dollSVG(state.outfit, over);
@@ -8605,7 +8823,8 @@ function addToCloset() {
   if (!lab.res) return;
   const id = 'u' + Date.now().toString(36), name = (lab.name.trim() || autoName()).slice(0, 16);
   let it;
-  if (lab.ui === 'draw') { if (!dr.shape) return; it = { id, diy: true, cat: dr.cat, shape: dr.shape, lines: dr.lines, thumb: dr.thumb, name, mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale }; }
+  if (lab.ui === 'fit') { if (!lab.fit) return; it = { id, diy: true, cat: FIT.catOf(lab.fit), fit: { ...lab.fit }, thumb: FIT.thumb(lab.fit), name, mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale }; }
+  else if (lab.ui === 'draw') { if (!dr.shape) return; it = { id, diy: true, cat: dr.cat, shape: dr.shape, lines: dr.lines, thumb: dr.thumb, name, mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale }; }
   else { const t = TPL[lab.tpl]; it = { id, diy: true, cat: t.cat, tpl: lab.tpl, name, mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale }; }
   state.custom.push(it); state.outfit[it.cat] = id;
   if (it.cat === 'dress') { state.outfit.top = null; state.outfit.bottom = null; }
@@ -8653,7 +8872,7 @@ function bind() {
       const again = $(`[data-face="${fb.dataset.face}"][data-fid="${fb.dataset.fid}"]`); if (again) again.focus();
       return;
     }
-    const labBtn = e.target.closest('[data-lab]'); if (labBtn) { openLab(labBtn.dataset.lab, labBtn, 'tpl'); return; }
+    const labBtn = e.target.closest('[data-lab]'); if (labBtn) { openLab(labBtn.dataset.lab, labBtn, 'fit'); return; }
     const drawBtn = e.target.closest('[data-draw]'); if (drawBtn) { openLab(drawBtn.dataset.draw, drawBtn, 'draw'); return; }
     if (e.target.closest('[data-flttoggle]')) { state.fltOpen = !state.fltOpen; renderGrid(); return; }
     const fb2 = e.target.closest('[data-flt]'); if (fb2) { const f = flt(); f[fb2.dataset.flt] = f[fb2.dataset.flt] === fb2.dataset.v ? '' : fb2.dataset.v; renderGrid(); const again = $(`[data-flt="${fb2.dataset.flt}"][data-v="${fb2.dataset.v}"]`); if (again) again.focus(); return; }
@@ -8684,6 +8903,14 @@ function bind() {
     const m = V.tapMask(lab.P, tx, ty); lab.M = m.M; lab.kind = m.kind; runExtract();
   });
   document.querySelectorAll('#fabricSeg button').forEach(b => b.addEventListener('click', () => { lab.mode = b.dataset.mode; if (!lab.nameTouched) lab.name = autoName(); refreshLab(); }));
+  $('#fitKind').addEventListener('click', e => { const b = e.target.closest('[data-fk]'); if (b) { fitKind(b.dataset.fk); fitChanged(); } });
+  $('#fitNeck').addEventListener('click', e => { const b = e.target.closest('[data-fn]'); if (b) { lab.fit.neck = b.dataset.fn; fitChanged(); } });
+  $('#fitSlv').addEventListener('input', e => { lab.fit.sleeve = +e.target.value / 100; fitChanged(); });
+  $('#fitSw').addEventListener('input', e => { lab.fit.sw = +e.target.value / 100; fitChanged(); });
+  $('#fitLen').addEventListener('input', e => { const [lo, hi] = FIT_LEN[lab.fit.kind]; lab.fit.hem = Math.round(lo + (hi - lo) * e.target.value / 100); fitChanged(); });
+  $('#fitFl').addEventListener('input', e => { const v = +e.target.value / 100; if (lab.fit.kind === 'pants') lab.fit.leg = +(.5 + v * 1.3).toFixed(2); else lab.fit.flare = Math.round(-2 + v * 72); fitChanged(); });
+  $('#fitWaist').addEventListener('change', e => { lab.fit.waist = e.target.checked ? 1 : 0; fitChanged(); });
+  $('#fitReset').addEventListener('click', () => { if (lab.fitAuto) { lab.fit = { ...lab.fitAuto }; fitChanged(); } });
   $('#labModes').addEventListener('click', e => { const b = e.target.closest('[data-ui]'); if (b && b.dataset.ui !== lab.ui) setLabUI(b.dataset.ui); });
   $('#swatchRow').innerHTML = '<span>直接选颜色：</span>' + SWATCHES.map(c => `<button class="sw" type="button" data-sw="${c}" aria-pressed="false" aria-label="${colorName(c)}" style="background:${c}"></button>`).join('');
   $('#swatchRow').addEventListener('click', e => { const b = e.target.closest('[data-sw]'); if (b) useSwatch(b.dataset.sw); });

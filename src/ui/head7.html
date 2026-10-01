@@ -187,6 +187,11 @@ input[type=range]{flex:1 1 140px;accent-color:var(--pink-deep)}
 .draw-tools .btn[disabled]{opacity:.45;cursor:default}
 .check{display:inline-flex;align-items:center;gap:6px;font-size:14px;cursor:pointer}
 .check input{width:18px;height:18px;accent-color:var(--pink-deep)}
+.fit-res{margin:0 0 8px;font-size:14px;line-height:1.6}
+.fit-res .tag{display:inline-block;margin:2px 4px 2px 0;padding:1px 9px;border-radius:999px;background:var(--pink-soft,#FDE6EE);border:1.5px solid var(--ink);font-size:12.5px}
+.fit-grid .row{flex-wrap:wrap}
+.fit-grid input[type=range]{flex:1;min-width:120px;accent-color:var(--pink-deep)}
+.fit-v{min-width:56px;font-size:12.5px;color:var(--ink-soft)}
 .draw-hint{margin:12px 0 0;font-size:12.5px;line-height:1.6;color:var(--ink-soft)}
 .draw-hint b{color:var(--ink);font-weight:400;font-family:var(--f-display)}
 .swatch-row .sw{width:26px;height:26px;padding:0;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1.5px var(--ink);cursor:pointer}
@@ -498,8 +503,24 @@ input.ribbon:focus{box-shadow:0 0 0 3px #fff,0 0 0 5px var(--pink)}
     <div class="lab-body">
       <h2 class="lab-title" id="labTitle">照片做衣服</h2>
       <div class="lab-modes" id="labModes" role="tablist" aria-label="DIY 方式">
-        <button type="button" role="tab" data-ui="tpl" aria-selected="true">套用现成版型</button>
+        <button type="button" role="tab" data-ui="fit" aria-selected="true">照片识别版型</button>
+        <button type="button" role="tab" data-ui="tpl" aria-selected="false">套用现成版型</button>
         <button type="button" role="tab" data-ui="draw" aria-selected="false">自己画版型</button>
+      </div>
+      <div id="fitPane" hidden>
+        <h3 class="step-h"><b>1</b>从照片里识别出的版型（不对可以改）</h3>
+        <p class="fit-res" id="fitRes" aria-live="polite"></p>
+        <div class="fit-grid">
+          <div class="row"><span class="row-label">类型</span><div class="seg" id="fitKind" role="radiogroup" aria-label="衣服类型"></div></div>
+          <div class="row" id="fitNeckRow"><span class="row-label">领口</span><div class="seg" id="fitNeck" role="radiogroup" aria-label="领口"></div></div>
+          <div class="row" id="fitSlvRow"><label class="row-label" for="fitSlv">袖长</label><input type="range" id="fitSlv" min="0" max="100" step="1"><span class="fit-v" id="fitSlvV"></span></div>
+          <div class="row" id="fitSwRow"><label class="row-label" for="fitSw">袖宽</label><input type="range" id="fitSw" min="30" max="120" step="1"><span class="fit-v" id="fitSwV"></span></div>
+          <div class="row"><label class="row-label" for="fitLen">长度</label><input type="range" id="fitLen" min="0" max="100" step="1"><span class="fit-v" id="fitLenV"></span></div>
+          <div class="row"><label class="row-label" for="fitFl" id="fitFlL">下摆</label><input type="range" id="fitFl" min="0" max="100" step="1"><span class="fit-v" id="fitFlV"></span></div>
+          <div class="row" id="fitWaistRow"><label class="check"><input type="checkbox" id="fitWaist"> 收腰（上身到腰线，下面接裙摆）</label></div>
+          <div class="row"><button class="btn sm" id="fitReset" type="button">恢复识别结果</button></div>
+        </div>
+        <p class="draw-hint">照片里衣服<b>平铺、挂着、穿在身上</b>都能识别：会量袖子多长多粗、衣长、腰身、下摆、领口深浅和形状，再按娃娃的身材重新裁一件。背景越干净越准；框得不对就点一下照片里的衣服。</p>
       </div>
       <div id="tplPane">
         <h3 class="step-h"><b>1</b>选一个版型</h3>
