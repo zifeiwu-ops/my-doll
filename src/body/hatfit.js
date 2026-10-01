@@ -17,7 +17,7 @@ function hatGeo(it, L) {   // 帽子的上沿、帽口（前面正中那一段�
 }
 /* 帽顶统一落在「头发顶 + 一层蓬松的头发」上：头发顶在 y≈59，帽顶目标 y≈45（软帽 / 鸭舌帽 / 报童帽），头巾贴一点 y≈50；
    贝雷帽本来就斜搭在头顶，遮阳帽没有帽顶、猫耳兜帽是整个包住，不改高度 */
-const HAT_TOP = { a5: 50, a24: 50, a43: 50, a56: 50 }, HAT_KEEP = new Set(['a46', 'a95', 'a35', 'a76', 'a116', 'a118']);
+const HAT_TOP = { a5: 50, a24: 50, a43: 50, a56: 50 }, HAT_KEEP = new Set(['a46', 'a95', 'a35', 'a76', 'a116', 'a118', 'a125', 'a126', 'a128']);
 function fitHat(it, L) {
   const g = hatGeo(it, L); if (!g) return L;
   const { yt, yb } = g, T = HAT_KEEP.has(it.id) ? yt : (HAT_TOP[it.id] ?? 45), k = Math.max(.35, Math.min(1.6, (yb - T) / Math.max(8, yb - yt)));
