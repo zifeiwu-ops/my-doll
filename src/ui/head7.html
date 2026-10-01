@@ -366,6 +366,11 @@ select.name-in{flex:1 1 140px}
 .st-panel .st-row .stks{flex:1 1 auto;min-width:0;flex-wrap:nowrap;overflow-x:auto;padding:3px 2px 6px}
 .st-panel .st-row .stks .stk-btn{flex:0 0 auto}
 @media (min-width:760px){.st-panel .st-row .opts,.st-panel .st-row .stks{flex-wrap:wrap;overflow:visible}}
+.st-panel .st-row .stks{display:block;overflow:visible}
+.stk-sets{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.stk-sets .opt{font-size:12px;padding:3px 10px}
+.stk-sets .opt[aria-selected="true"]{background:var(--pink-deep);color:#fff}
+.stk-grid{display:flex;gap:6px;flex-wrap:wrap}
 @media (max-width:759px){
   #studio{padding:0;align-items:stretch;overflow:hidden}
   .studio-win{max-width:none;height:100vh;height:100dvh;margin:0;border-radius:0;box-shadow:none;border:0;display:flex;flex-direction:column;padding-top:0}
@@ -473,6 +478,7 @@ input.ribbon:focus{box-shadow:0 0 0 3px #fff,0 0 0 5px var(--pink)}
         </div>
         <div class="panel st-panel">
           <div class="st-tabs" id="stTabs" role="tablist" aria-label="拍照设置"></div>
+          <div class="st-row"><span class="row-label">主题</span><div class="opts" id="stTheme" role="group" aria-label="一键主题"></div></div>
           <div class="st-row"><span class="row-label">场景</span><div class="opts" id="stScene" role="radiogroup" aria-label="场景"></div></div>
           <div class="st-row"><span class="row-label">姿势</span><div class="opts" id="stPose" role="radiogroup" aria-label="拍照姿势"></div></div>
           <div class="st-row"><span class="row-label">表情</span><div class="opts" id="stFace" role="radiogroup" aria-label="表情"></div></div>
