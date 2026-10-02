@@ -334,6 +334,10 @@ function refreshLab() {
   rebuildUserDefs();
   const draw = lab.ui === 'draw', fit = lab.ui === 'fit';
   $('#tplPane').hidden = draw || fit; $('#drawPane').hidden = !draw; $('#fitPane').hidden = !fit;
+  // 照片识别版型：上传照片是第一步，放在最上面；其它方式里照片只是面料，回到「选面料」里
+  const pb = $('#photoBlock'), home = fit ? $('#fitPhoto') : $('#photoHome'); if (pb && home && pb.parentNode !== home) home.appendChild(pb);
+  $('#fabricH').innerHTML = fit ? '<b>3</b>面料：自动取自上面的照片，也可以直接选颜色' : '<b>2</b>选面料：放一张衣服照片，或直接选颜色';
+  $('#previewH').innerHTML = fit ? '<b>4</b>看看效果' : '<b>3</b>看看效果';
   document.querySelectorAll('#labModes [data-ui]').forEach(b => b.setAttribute('aria-selected', b.dataset.ui === lab.ui));
   $('#labTitle').textContent = draw ? '自己画版型' : fit ? '照片识别版型' : '照片做衣服';
   if (fit) renderFit(); else if (!draw) renderTplRow();

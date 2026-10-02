@@ -192,6 +192,9 @@ input[type=range]{flex:1 1 140px;accent-color:var(--pink-deep)}
 .draw-tools .btn[disabled]{opacity:.45;cursor:default}
 .check{display:inline-flex;align-items:center;gap:6px;font-size:14px;cursor:pointer}
 .check input{width:18px;height:18px;accent-color:var(--pink-deep)}
+.fit-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:18px;align-items:start}
+@media (max-width:760px){.fit-cols{grid-template-columns:1fr}}
+#fitPhoto .drop{margin-bottom:8px}
 .fit-res{margin:0 0 8px;font-size:14px;line-height:1.6}
 .fit-res .tag{display:inline-block;margin:2px 4px 2px 0;padding:1px 9px;border-radius:999px;background:var(--pink-soft,#FDE6EE);border:1.5px solid var(--ink);font-size:12.5px}
 .fit-grid .row{flex-wrap:wrap}
@@ -522,7 +525,13 @@ input.ribbon:focus{box-shadow:0 0 0 3px #fff,0 0 0 5px var(--pink)}
         <button type="button" role="tab" data-ui="draw" aria-selected="false">自己画版型</button>
       </div>
       <div id="fitPane" hidden>
-        <h3 class="step-h"><b>1</b>照片里这件衣服的版型</h3>
+        <div class="fit-cols">
+        <div class="fit-photo-col">
+        <h3 class="step-h"><b>1</b>放一张衣服照片</h3>
+        <div id="fitPhoto"></div>
+        </div>
+        <div class="fit-res-col">
+        <h3 class="step-h"><b>2</b>照片里这件衣服的版型</h3>
         <p class="fit-res" id="fitRes" aria-live="polite"></p>
         <div class="fit-grid">
           <div class="row"><span class="row-label">类型</span><div class="seg" id="fitKind" role="radiogroup" aria-label="衣服类型"></div></div>
@@ -537,6 +546,8 @@ input.ribbon:focus{box-shadow:0 0 0 3px #fff,0 0 0 5px var(--pink)}
         </div>
         <p class="draw-hint" id="fitTraceNote" hidden>形状直接取自照片：把框出来的那件衣服按比例搬到娃娃身上——衣身对齐肩线，袖子转到手臂的方向，裤腿对齐两条腿，所以荷叶边、泡泡袖、不规则下摆、领口都和照片一样。<b>平铺拍最准</b>；框得不对就点一下照片里的衣服。</p>
         <p class="draw-hint" id="fitParamNote">这张照片看不到整件衣服的轮廓（布料特写或只选了颜色），先给了一件可以调的基础款。放一张能看到整件衣服的照片，就会按照片的轮廓来裁。</p>
+        </div>
+        </div>
       </div>
       <div id="tplPane">
         <h3 class="step-h"><b>1</b>选一个版型</h3>
@@ -567,7 +578,8 @@ input.ribbon:focus{box-shadow:0 0 0 3px #fff,0 0 0 5px var(--pink)}
       </div>
       <div class="lab-main">
         <div class="panel">
-          <h3 class="step-h"><b>2</b>选面料：放一张衣服照片，或直接选颜色</h3>
+          <h3 class="step-h" id="fabricH"><b>2</b>选面料：放一张衣服照片，或直接选颜色</h3>
+          <div id="photoHome"><div id="photoBlock">
           <label class="drop" id="drop" for="file">
             <input type="file" id="file" accept="image/*">
             <span class="big">点这里选照片，或把照片拖进来</span>
@@ -584,11 +596,12 @@ input.ribbon:focus{box-shadow:0 0 0 3px #fff,0 0 0 5px var(--pink)}
             <button class="btn sm" type="button" data-sample="stripe">条纹T恤</button>
             <button class="btn sm" type="button" data-sample="floral">碎花布料</button>
           </div>
+          </div></div>
           <div class="samples swatch-row" id="swatchRow"></div>
           <p class="privacy">照片只在你的浏览器里处理，不会上传到任何地方。</p>
         </div>
         <div class="panel">
-          <h3 class="step-h"><b>3</b>看看效果</h3>
+          <h3 class="step-h" id="previewH"><b>3</b>看看效果</h3>
           <div class="preview"><svg id="labDoll" viewBox="80 180 140 196" preserveAspectRatio="xMidYMid meet" role="img" aria-label="新衣服预览"></svg></div>
           <div class="row"><span class="row-label">提取的颜色</span><div class="palette" id="palette"></div></div>
           <div class="row"><span class="row-label">面料</span>
@@ -9429,6 +9442,10 @@ function refreshLab() {
   rebuildUserDefs();
   const draw = lab.ui === 'draw', fit = lab.ui === 'fit';
   $('#tplPane').hidden = draw || fit; $('#drawPane').hidden = !draw; $('#fitPane').hidden = !fit;
+  // 照片识别版型：上传照片是第一步，放在最上面；其它方式里照片只是面料，回到「选面料」里
+  const pb = $('#photoBlock'), home = fit ? $('#fitPhoto') : $('#photoHome'); if (pb && home && pb.parentNode !== home) home.appendChild(pb);
+  $('#fabricH').innerHTML = fit ? '<b>3</b>面料：自动取自上面的照片，也可以直接选颜色' : '<b>2</b>选面料：放一张衣服照片，或直接选颜色';
+  $('#previewH').innerHTML = fit ? '<b>4</b>看看效果' : '<b>3</b>看看效果';
   document.querySelectorAll('#labModes [data-ui]').forEach(b => b.setAttribute('aria-selected', b.dataset.ui === lab.ui));
   $('#labTitle').textContent = draw ? '自己画版型' : fit ? '照片识别版型' : '照片做衣服';
   if (fit) renderFit(); else if (!draw) renderTplRow();
