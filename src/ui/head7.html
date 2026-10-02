@@ -514,19 +514,21 @@ input.ribbon:focus{box-shadow:0 0 0 3px #fff,0 0 0 5px var(--pink)}
         <button type="button" role="tab" data-ui="draw" aria-selected="false">自己画版型</button>
       </div>
       <div id="fitPane" hidden>
-        <h3 class="step-h"><b>1</b>从照片里识别出的版型（不对可以改）</h3>
+        <h3 class="step-h"><b>1</b>照片里这件衣服的版型</h3>
         <p class="fit-res" id="fitRes" aria-live="polite"></p>
         <div class="fit-grid">
           <div class="row"><span class="row-label">类型</span><div class="seg" id="fitKind" role="radiogroup" aria-label="衣服类型"></div></div>
           <div class="row" id="fitNeckRow"><span class="row-label">领口</span><div class="seg" id="fitNeck" role="radiogroup" aria-label="领口"></div></div>
           <div class="row" id="fitSlvRow"><label class="row-label" for="fitSlv">袖长</label><input type="range" id="fitSlv" min="0" max="100" step="1"><span class="fit-v" id="fitSlvV"></span></div>
           <div class="row" id="fitSwRow"><label class="row-label" for="fitSw">袖宽</label><input type="range" id="fitSw" min="30" max="120" step="1"><span class="fit-v" id="fitSwV"></span></div>
-          <div class="row"><label class="row-label" for="fitLen">长度</label><input type="range" id="fitLen" min="0" max="100" step="1"><span class="fit-v" id="fitLenV"></span></div>
+          <div class="row"><label class="row-label" for="fitLen" id="fitLenL">长度</label><input type="range" id="fitLen" min="0" max="100" step="1"><span class="fit-v" id="fitLenV"></span></div>
           <div class="row"><label class="row-label" for="fitFl" id="fitFlL">下摆</label><input type="range" id="fitFl" min="0" max="100" step="1"><span class="fit-v" id="fitFlV"></span></div>
           <div class="row" id="fitWaistRow"><label class="check"><input type="checkbox" id="fitWaist"> 收腰（上身到腰线，下面接裙摆）</label></div>
+          <div class="row" id="fitLinesRow" hidden><label class="check"><input type="checkbox" id="fitLines" checked> 描上照片里的线（门襟、口袋、拼接）</label></div>
           <div class="row"><button class="btn sm" id="fitReset" type="button">恢复识别结果</button></div>
         </div>
-        <p class="draw-hint">照片里衣服<b>平铺、挂着、穿在身上</b>都能识别：会量袖子多长多粗、衣长、腰身、下摆、领口深浅和形状，再按娃娃的身材重新裁一件。背景越干净越准；框得不对就点一下照片里的衣服。</p>
+        <p class="draw-hint" id="fitTraceNote" hidden>形状直接取自照片：把框出来的那件衣服按比例搬到娃娃身上——衣身对齐肩线，袖子转到手臂的方向，裤腿对齐两条腿，所以荷叶边、泡泡袖、不规则下摆、领口都和照片一样。<b>平铺拍最准</b>；框得不对就点一下照片里的衣服。</p>
+        <p class="draw-hint" id="fitParamNote">这张照片看不到整件衣服的轮廓（布料特写或只选了颜色），先给了一件可以调的基础款。放一张能看到整件衣服的照片，就会按照片的轮廓来裁。</p>
       </div>
       <div id="tplPane">
         <h3 class="step-h"><b>1</b>选一个版型</h3>

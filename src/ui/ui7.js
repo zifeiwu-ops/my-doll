@@ -201,11 +201,12 @@ const KIND_TEXT = {
 };
 function previewItem() {
   if (!lab.res) return null;
+  if (lab.ui === 'fit' && lab.trace) return traceItem('preview', '预览');
   if (lab.ui === 'fit') return lab.fit ? { id: 'preview', diy: true, cat: FIT.catOf(lab.fit), fit: lab.fit, thumb: FIT.thumb(lab.fit), name: '预览', mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale } : null;
   if (lab.ui === 'draw') return dr.shape ? { id: 'preview', diy: true, cat: dr.cat, shape: dr.shape, lines: dr.lines, thumb: dr.thumb, name: '预览', mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale } : null;
   return { id: 'preview', diy: true, cat: TPL[lab.tpl].cat, tpl: lab.tpl, name: '预览', mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale };
 }
-function autoName() { return lab.res ? `${colorName(lab.res.color)}${lab.mode === 'pattern' && lab.res.tile ? '印花' : ''}${lab.ui === 'fit' && lab.fit ? FIT.name(lab.fit) : lab.ui === 'draw' ? '手绘' + CAT_NAME[dr.cat] : TPL[lab.tpl].name}` : ''; }
+function autoName() { return lab.res ? `${colorName(lab.res.color)}${lab.mode === 'pattern' && lab.res.tile ? '印花' : ''}${lab.ui === 'fit' && lab.trace ? '照片版' + FIT2.NAME[lab.trace.kind] : lab.ui === 'fit' && lab.fit ? FIT.name(lab.fit) : lab.ui === 'draw' ? '手绘' + CAT_NAME[dr.cat] : TPL[lab.tpl].name}` : ''; }
 function openLab(cat, opener, ui) {
   lab.opener = opener || null;
   lab.ui = ui === 'draw' ? 'draw' : ui === 'tpl' ? 'tpl' : 'fit';
@@ -245,7 +246,16 @@ function runFit() {
   if (f) { lab.fit = FIT.params(f); lab.fitInfo = 'ok'; }
   else { lab.fit = FIT.params(null); lab.fitInfo = ok ? 'none' : lab.kind === 'closeup' ? 'closeup' : 'none'; const k = { top: 'top', outer: 'outer', dress: 'dress', bottom: 'skirt' }[lab.catHint]; if (k && k !== 'top') fitKind(k); }
   lab.fitAuto = { ...lab.fit };
+  // 有照片轮廓：直接描照片里那件衣服的形状（参数版只在看不到整件衣服时兜底）
+  lab.tr = ok && f ? { kind: f.kind, auto: f.kind, ease: 1, len: 1, lines: !(lab.res && lab.res.mode === 'pattern') } : null;   // 印花布上到处都是边，默认不描线
+  buildTrace();
 }
+function buildTrace() {
+  lab.trace = null;
+  if (!lab.tr || !lab.P || !lab.M) return;
+  try { lab.trace = FIT2.build(lab.P, lab.M, lab.tr.kind, { ease: lab.tr.ease, len: lab.tr.len, lines: lab.tr.lines }); } catch (e) { lab.trace = null; }
+}
+const traceItem = (id, name) => { const t = lab.trace; return { id, diy: true, cat: t.cat, shape: t.shape, lines: t.lines, thumb: t.thumb, pantsShape: t.pants || undefined, name, mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale }; };
 const FIT_LEN = { top: [236, 340], outer: [250, 470], dress: [300, 540], skirt: [312, 560], pants: [330, 567] };
 function fitKind(k) {
   const p = lab.fit; if (!p || p.kind === k) return; const was = p.kind; p.kind = k;
@@ -256,6 +266,19 @@ function fitKind(k) {
   p.hem = Math.max(FIT_LEN[k][0], Math.min(FIT_LEN[k][1], p.hem));
 }
 function renderFit() {
+  const T = lab.trace, chipsT = (o, cur, at) => Object.entries(o).map(([k, n]) => `<button type="button" role="radio" ${at}="${k}" aria-checked="${k === cur}">${n}</button>`).join('');
+  ['#fitNeckRow', '#fitSlvRow', '#fitSwRow', '#fitWaistRow'].forEach(k => { $(k).hidden = !!T; });
+  $('#fitLinesRow').hidden = !T; $('#fitTraceNote').hidden = !T; $('#fitParamNote').hidden = !!T;
+  if (T) {
+    $('#fitRes').innerHTML = `照着照片里这件衣服的轮廓裁好了<span class="tag">${FIT2.NAME[T.kind]}</span>` + (T.lines.length ? `<span class="tag">描了 ${T.lines.length} 条线</span>` : '') + (lab.tr.kind !== lab.tr.auto ? `<span class="tag">类型已手动改</span>` : '');
+    $('#fitKind').innerHTML = chipsT(FIT2.NAME, lab.tr.kind, 'data-fk');
+    $('#fitLenL').textContent = '长度'; $('#fitFlL').textContent = '宽松';
+    $('#fitLen').value = Math.round((lab.tr.len - .75) / .5 * 100); $('#fitFl').value = Math.round((lab.tr.ease - .8) / .45 * 100);
+    $('#fitLenV').textContent = lab.tr.len > 1.04 ? '加长' : lab.tr.len < .96 ? '改短' : '照片原样'; $('#fitFlV').textContent = lab.tr.ease > 1.04 ? '放宽' : lab.tr.ease < .96 ? '收窄' : '照片原样';
+    $('#fitLines').checked = lab.tr.lines;
+    return;
+  }
+  $('#fitLenL').textContent = '长度';
   const p = lab.fit; if (!p) return;
   const msg = { ok: '照片里量出来的版型', none: '没认出明显的衣服轮廓，先给了一件基础款，可以手动调', closeup: '这张是布料特写，看不到整件衣服的形状，先给了一件基础款' }[lab.fitInfo] || '';
   $('#fitRes').innerHTML = `${msg}：` + FIT.describe(p).map(t => `<span class="tag">${t}</span>`).join('') + `<span class="tag">${FIT.KIND_N[p.kind]}</span>`;
@@ -329,8 +352,8 @@ function refreshLab() {
   $('#scaleRow').hidden = lab.mode !== 'pattern' || !lab.res.tile;
   $('#scale').value = lab.scale;
   $('#itemName').value = lab.name;
-  const cat = draw ? dr.cat : fit ? FIT.catOf(lab.fit) : TPL[lab.tpl].cat;
-  const svg = $('#labDoll'); svg.setAttribute('viewBox', draw ? (dr.thumb || DRAW_VIEW[cat].join(' ')) : fit ? FIT.thumb(lab.fit) : TPL[lab.tpl].thumb);
+  const cat = draw ? dr.cat : fit ? (lab.trace ? lab.trace.cat : FIT.catOf(lab.fit)) : TPL[lab.tpl].cat;
+  const svg = $('#labDoll'); svg.setAttribute('viewBox', draw ? (dr.thumb || DRAW_VIEW[cat].join(' ')) : fit ? (lab.trace ? lab.trace.thumb : FIT.thumb(lab.fit)) : TPL[lab.tpl].thumb);
   if (draw) drawRender();
   const over = cat === 'dress' ? { dress: previewItem() } : cat === 'outer' ? { outer: previewItem() } : { [cat]: previewItem(), dress: null };
   svg.innerHTML = dollSVG(state.outfit, over);
@@ -339,7 +362,8 @@ function addToCloset() {
   if (!lab.res) return;
   const id = 'u' + Date.now().toString(36), name = (lab.name.trim() || autoName()).slice(0, 16);
   let it;
-  if (lab.ui === 'fit') { if (!lab.fit) return; it = { id, diy: true, cat: FIT.catOf(lab.fit), fit: { ...lab.fit }, thumb: FIT.thumb(lab.fit), name, mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale }; }
+  if (lab.ui === 'fit' && lab.trace) it = traceItem(id, name);
+  else if (lab.ui === 'fit') { if (!lab.fit) return; it = { id, diy: true, cat: FIT.catOf(lab.fit), fit: { ...lab.fit }, thumb: FIT.thumb(lab.fit), name, mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale }; }
   else if (lab.ui === 'draw') { if (!dr.shape) return; it = { id, diy: true, cat: dr.cat, shape: dr.shape, lines: dr.lines, thumb: dr.thumb, name, mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale }; }
   else { const t = TPL[lab.tpl]; it = { id, diy: true, cat: t.cat, tpl: lab.tpl, name, mode: lab.mode, color: lab.res.color, tile: lab.res.tile, scale: lab.scale }; }
   state.custom.push(it); state.outfit[it.cat] = id;
@@ -419,14 +443,15 @@ function bind() {
     const m = V.tapMask(lab.P, tx, ty); lab.M = m.M; lab.kind = m.kind; runExtract();
   });
   document.querySelectorAll('#fabricSeg button').forEach(b => b.addEventListener('click', () => { lab.mode = b.dataset.mode; if (!lab.nameTouched) lab.name = autoName(); refreshLab(); }));
-  $('#fitKind').addEventListener('click', e => { const b = e.target.closest('[data-fk]'); if (b) { fitKind(b.dataset.fk); fitChanged(); } });
+  $('#fitKind').addEventListener('click', e => { const b = e.target.closest('[data-fk]'); if (b && lab.trace) { lab.tr.kind = b.dataset.fk; buildTrace(); fitChanged(); return; } if (b) { fitKind(b.dataset.fk); fitChanged(); } });
   $('#fitNeck').addEventListener('click', e => { const b = e.target.closest('[data-fn]'); if (b) { lab.fit.neck = b.dataset.fn; fitChanged(); } });
   $('#fitSlv').addEventListener('input', e => { lab.fit.sleeve = +e.target.value / 100; fitChanged(); });
   $('#fitSw').addEventListener('input', e => { lab.fit.sw = +e.target.value / 100; fitChanged(); });
-  $('#fitLen').addEventListener('input', e => { const [lo, hi] = FIT_LEN[lab.fit.kind]; lab.fit.hem = Math.round(lo + (hi - lo) * e.target.value / 100); fitChanged(); });
-  $('#fitFl').addEventListener('input', e => { const v = +e.target.value / 100; if (lab.fit.kind === 'pants') lab.fit.leg = +(.5 + v * 1.3).toFixed(2); else lab.fit.flare = Math.round(-2 + v * 72); fitChanged(); });
+  $('#fitLen').addEventListener('input', e => { if (lab.trace) { lab.tr.len = .75 + .5 * e.target.value / 100; buildTrace(); fitChanged(); return; } const [lo, hi] = FIT_LEN[lab.fit.kind]; lab.fit.hem = Math.round(lo + (hi - lo) * e.target.value / 100); fitChanged(); });
+  $('#fitFl').addEventListener('input', e => { if (lab.trace) { lab.tr.ease = .8 + .45 * e.target.value / 100; buildTrace(); fitChanged(); return; } const v = +e.target.value / 100; if (lab.fit.kind === 'pants') lab.fit.leg = +(.5 + v * 1.3).toFixed(2); else lab.fit.flare = Math.round(-2 + v * 72); fitChanged(); });
   $('#fitWaist').addEventListener('change', e => { lab.fit.waist = e.target.checked ? 1 : 0; fitChanged(); });
-  $('#fitReset').addEventListener('click', () => { if (lab.fitAuto) { lab.fit = { ...lab.fitAuto }; fitChanged(); } });
+  $('#fitLines').addEventListener('change', e => { if (!lab.tr) return; lab.tr.lines = e.target.checked; buildTrace(); fitChanged(); });
+  $('#fitReset').addEventListener('click', () => { if (lab.tr) { Object.assign(lab.tr, { kind: lab.tr.auto, ease: 1, len: 1, lines: !(lab.res && lab.res.mode === 'pattern') }); buildTrace(); fitChanged(); return; } if (lab.fitAuto) { lab.fit = { ...lab.fitAuto }; fitChanged(); } });
   $('#labModes').addEventListener('click', e => { const b = e.target.closest('[data-ui]'); if (b && b.dataset.ui !== lab.ui) setLabUI(b.dataset.ui); });
   $('#swatchRow').innerHTML = '<span>直接选颜色：</span>' + SWATCHES.map(c => `<button class="sw" type="button" data-sw="${c}" aria-pressed="false" aria-label="${colorName(c)}" style="background:${c}"></button>`).join('');
   $('#swatchRow').addEventListener('click', e => { const b = e.target.closest('[data-sw]'); if (b) useSwatch(b.dataset.sw); });
@@ -560,7 +585,7 @@ if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.c
 const NEWS = [
   ['西部 / 冬日 / 田园系列细节升级：领子、门襟、口袋、流苏、蕾丝边、麻花纹、袖口逐件还原', 'set'],
   ['姿势大改：重心腿 + 放松腿、上身倾斜，新增踮脚、跳起来、走路、转圈圈等 11 个姿势', 'shot'],
-  ['照片识别版型：放一张衣服照片，自动量出袖长、衣长、领口、下摆，裁一件新的', 'diy'],
+  ['照片识别版型升级：直接描照片里衣服的轮廓，荷叶边、泡泡袖、不规则下摆都照着来', 'diy'],
   ['拍照小屋上新 5 个主题：蝴蝶标本、水钻大头贴、天使和纸、薄荷手账、泪滴星夜', 'shot'],
   ['田园针织上新：费尔岛背心、贝雷帽、麻花毛衣等 8 套', 'set'],
   ['冬日甜心上新：豹纹毛领、棕色花苞裙、雪花缎面裙等 4 套 + 西部 2 套', 'set'],

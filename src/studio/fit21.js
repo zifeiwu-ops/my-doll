@@ -60,7 +60,8 @@ const FIT = (() => {
     const L = (y1 - sh) / tw;
     /* 半裙：没有袖子、没有领口凹陷、上口明显比下摆窄、整体不高 */
     const mono = [.05, .3, .6, .95].map(t => hw(at(t))), up = mono.every((v, i) => v != null && (!i || v >= mono[i - 1] * .97));
-    const skirt = up && !strap && notch < h * .05 && wTop < wHem * .82 && h / wTop < 6.5 && Math.abs(topY(cx - wTop * .8) - topY(cx + wTop * .8)) < h * .06;
+    const wMax = Math.max(...band(.5, .98, hw).filter(v => v != null), 0), flatTop = Math.abs(topY(cx - wTop * .8) - topY(cx + wTop * .8)) < h * .06;
+    const skirt = (up || (!sleeved && wMax > wTop * 1.25 && flatTop)) && !strap && notch < h * .05 && wTop < Math.max(wHem, wMax) * .82 && h / wTop < 6.5 && Math.abs(topY(cx - wTop * .8) - topY(cx + wTop * .8)) < h * .06;
     if (skirt) return { kind: 'skirt', L: h / wTop, flare: wHem / wTop, conf: .7 };
     return {
       kind: L > 3.6 ? 'dress' : 'top', L, tw, strap, sleeved,

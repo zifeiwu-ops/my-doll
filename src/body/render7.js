@@ -123,7 +123,7 @@ const OPEN_HATS = new Set(['a95']);
 const ACC_LEVELS = [[1.5, '后发后面'], [19, '衣服下面'], [33, '外套下面'], [45, '外套外面'], [49, '刘海下面'], [60, '最上面']];                                                                    // 没有帽顶的帽子（遮阳帽）
 const HELD = { a47: 'L', a34: 'R', a73: 'L', a90: 'L' };                                               // 拎在手上的包跟着那只手走
 /* 照片识别出来的裤子按长度当成短裤 / 长裤处理 */
-const pantsKey = it => (it && it.fit ? (it.fit.kind === 'pants' ? (it.fit.hem > 480 ? 'widePants' : 'shorts') : '') : it && it.tpl);
+const pantsKey = it => (it && it.pantsShape ? 'widePants' : it && it.fit ? (it.fit.kind === 'pants' ? (it.fit.hem > 480 ? 'widePants' : 'shorts') : '') : it && it.tpl);
 const PANTS_TPL = new Set(['widePants', 'cargo', 'flareJeans', 'skinnyJeans', 'slacks', 'sashPants', 'skirtJeans', 'wideFlare', 'wrapCargo', 'balloonPants', 'shorts', 'capris', 'bermuda', 'culottes', 'beltShorts']);
 const RIG = (() => {
   const yE = 266, yK = 432;
