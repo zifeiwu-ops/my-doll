@@ -218,9 +218,14 @@ const V = (() => {
     cl = cl.filter(c => c.w >= .04); const tw = cl.reduce((s, c) => s + c.w, 0); cl.forEach(c => c.w /= tw);
     const dom = cl[0];
     let far = 0; cl.forEach(c => { if (dist(c, dom, .35) > 20) far += c.w; });
-    const mode = far > .08 ? 'pattern' : 'solid';
+    // 纹理密度：衣服内部相邻像素颜色差得多的比例。小碎花在缩小的照片里颜色会糊成一片，只看调色板会误判成纯色
+    let tex = 0, tn = 0; for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) { const i = y * W + x; if (!M[i] || !M[i - 2] || !M[i + 2] || !M[i - 2 * W] || !M[i + 2 * W]) continue; tn++;
+      const g = Math.max(Math.hypot((LAB[(i - 1) * 3] - LAB[(i + 1) * 3]) * .7, LAB[(i - 1) * 3 + 1] - LAB[(i + 1) * 3 + 1], LAB[(i - 1) * 3 + 2] - LAB[(i + 1) * 3 + 2]), Math.hypot((LAB[(i - W) * 3] - LAB[(i + W) * 3]) * .7, LAB[(i - W) * 3 + 1] - LAB[(i + W) * 3 + 1], LAB[(i - W) * 3 + 2] - LAB[(i + W) * 3 + 2]));
+      if (g > 14) tex++; }
+    const texture = tn ? tex / tn : 0;
+    const mode = far > .08 || texture > .22 ? 'pattern' : 'solid';
     const palette = cl.map(enhance);
-    return { mode, color: palette[0], palette, tile: makeTile(P, M, cl) };
+    return { mode, texture, color: palette[0], palette, tile: makeTile(P, M, cl) };
   }
 
   function makeTile(P, M, cl) {

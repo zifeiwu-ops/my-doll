@@ -197,6 +197,7 @@ const KIND_TEXT = {
   closeup: '看起来是布料特写，整张都当作面料',
   fallback: '没找到明显的衣服轮廓，先取了照片中间',
   tap: '按你点的位置重新框好了',
+  ml: '已经用抠图模型框出了衣服',
   swatch: '用了你选的颜色'
 };
 function previewItem() {
@@ -226,7 +227,12 @@ function closeLab() {
 function loadSource(src, sample) {
   lab.P = V.prep(src); lab.sample = sample || '';
   const r = V.autoMask(lab.P); lab.M = r.M; lab.kind = r.kind;
+  // 先用颜色抠图马上出一个结果；抠图模型算完（约 1–3 秒）再换成更准的轮廓
+  const tok = lab.tok = (lab.tok || 0) + 1; lab.segBusy = !SEG.failed; lab.undo = []; if ($('#maskUndo')) $('#maskUndo').disabled = true;
   runExtract();
+  if (SEG.failed) return;
+  SEG.mask(src, lab.P.W, lab.P.H).then(M => { if (tok !== lab.tok) return; lab.segBusy = false; if (M) { lab.M = M; lab.kind = 'ml'; runExtract(); } else refreshLab(); })
+    .catch(() => { if (tok !== lab.tok) return; lab.segBusy = false; refreshLab(); });
 }
 function loadSample(kind) { loadSource(sampleImage(kind), kind); }
 function useSwatch(c) {
@@ -247,7 +253,10 @@ function runFit() {
   else { lab.fit = FIT.params(null); lab.fitInfo = ok ? 'none' : lab.kind === 'closeup' ? 'closeup' : 'none'; const k = { top: 'top', outer: 'outer', dress: 'dress', bottom: 'skirt' }[lab.catHint]; if (k && k !== 'top') fitKind(k); }
   lab.fitAuto = { ...lab.fit };
   // 有照片轮廓：直接描照片里那件衣服的形状（参数版只在看不到整件衣服时兜底）
-  lab.tr = ok && f ? { kind: f.kind, auto: f.kind, ease: 1, len: 1, lines: !(lab.res && lab.res.mode === 'pattern') } : null;   // 印花布上到处都是边，默认不描线
+  // 类型：先用真实照片学出来的参考库（k 近邻）认，认不出再用轮廓规则
+  let ck = null; try { ck = ok ? CLS.predict(lab.M, lab.P.W, lab.P.H) : null; } catch (e) { ck = null; }
+  const K0 = ck ? ck.kind : f && f.kind; lab.clsGuess = ck;
+  lab.tr = ok && f ? { kind: K0, auto: K0, ease: 1, len: 1, lines: !(lab.res && lab.res.mode === 'pattern') } : null;   // 印花布上到处都是边，默认不描线
   buildTrace();
 }
 function buildTrace() {
@@ -343,14 +352,14 @@ function refreshLab() {
   if (fit) renderFit(); else if (!draw) renderTplRow();
   const has = !!lab.res;
   $('#btnAdd').disabled = !has || (draw && !dr.shape);
-  $('#tapHint').hidden = !has || !lab.P;
+  $('#tapHint').hidden = !has || !lab.P; $('#maskTools').hidden = !has || !lab.P;
   document.querySelectorAll('#swatchRow [data-sw]').forEach(b => b.setAttribute('aria-pressed', lab.kind === 'swatch' && lab.res && lab.res.color === b.dataset.sw));
   $('#sampleTag').hidden = !lab.sample;
   if (!has) return;
   drawPhoto();
   const nColors = lab.res.palette.length;
   $('#status').className = 'status';
-  $('#status').textContent = lab.kind === 'swatch' ? `用了你选的颜色「${colorName(lab.res.color)}」。想要印花的话，放一张照片进来。` : `${KIND_TEXT[lab.kind]}，提取到 ${nColors} 种颜色，判断为${lab.res.mode === 'pattern' ? '印花' : '纯色'}。`;
+  $('#status').textContent = (lab.segBusy ? '正在用抠图模型精细识别衣服轮廓…（先给你看颜色抠图的结果）' : lab.kind !== 'swatch' && lab.kind !== 'ml' && lab.kind !== 'tap' && SEG.failed ? '（抠图模型没加载上，用的是颜色抠图，背景越干净越准）' : '') + (lab.kind === 'swatch' ? `用了你选的颜色「${colorName(lab.res.color)}」。想要印花的话，放一张照片进来。` : `${KIND_TEXT[lab.kind]}，提取到 ${nColors} 种颜色，判断为${lab.res.mode === 'pattern' ? '印花' : '纯色'}。`);
   $('#palette').innerHTML = lab.res.palette.map(c => `<span class="chip" style="background:${c}" title="${c}"></span>`).join('');
   document.querySelectorAll('#fabricSeg button').forEach(b => { b.setAttribute('aria-checked', b.dataset.mode === lab.mode); if (b.dataset.mode === 'pattern') b.disabled = !lab.res.tile; });
   $('#scaleRow').hidden = lab.mode !== 'pattern' || !lab.res.tile;
@@ -439,13 +448,21 @@ function bind() {
   ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
   drop.addEventListener('drop', e => readFile(e.dataTransfer.files[0]));
   document.querySelectorAll('[data-sample]').forEach(b => b.addEventListener('click', () => { lab.nameTouched = false; loadSample(b.dataset.sample); }));
-  $('#photoCv').addEventListener('click', e => {
-    if (!lab.P) return;
-    const r = e.currentTarget.getBoundingClientRect();
-    const tx = Math.max(0, Math.min(lab.P.W - 1, Math.floor((e.clientX - r.left) / r.width * lab.P.W)));
-    const ty = Math.max(0, Math.min(lab.P.H - 1, Math.floor((e.clientY - r.top) / r.height * lab.P.H)));
-    const m = V.tapMask(lab.P, tx, ty); lab.M = m.M; lab.kind = m.kind; runExtract();
+  // 照片上修正框选：点选重框 / 画笔补上 / 橡皮擦掉（直接改衣服蒙版，松手后重新识别）
+  const pcv = $('#photoCv'), mxy = e => { const r = pcv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * lab.P.W, (e.clientY - r.top) / r.height * lab.P.H]; };
+  let painting = null;
+  const dab = (x, y) => { const R = Math.max(1.6, lab.P.W / 45), v = lab.mt === 'add' ? 1 : 0; for (let yy = Math.floor(y - R); yy <= y + R; yy++) for (let xx = Math.floor(x - R); xx <= x + R; xx++) if (xx >= 0 && yy >= 0 && xx < lab.P.W && yy < lab.P.H && (xx + .5 - x) ** 2 + (yy + .5 - y) ** 2 <= R * R) lab.M[yy * lab.P.W + xx] = v; };
+  pcv.addEventListener('pointerdown', e => {
+    if (!lab.P || !lab.M) return; e.preventDefault(); const [x, y] = mxy(e);
+    lab.tok = (lab.tok || 0) + 1; lab.segBusy = false;   // 手动改过，后台模型的结果不再覆盖
+    lab.undo = (lab.undo || []).slice(-9); lab.undo.push(lab.M.slice()); $('#maskUndo').disabled = false;
+    if ((lab.mt || 'tap') === 'tap') { const m = V.tapMask(lab.P, Math.max(0, Math.min(lab.P.W - 1, Math.floor(x))), Math.max(0, Math.min(lab.P.H - 1, Math.floor(y)))); lab.M = m.M; lab.kind = m.kind; runExtract(); return; }
+    painting = [x, y]; pcv.setPointerCapture(e.pointerId); dab(x, y); drawPhoto();
   });
+  pcv.addEventListener('pointermove', e => { if (!painting) return; const [x, y] = mxy(e), [px, py] = painting, n = Math.ceil(Math.hypot(x - px, y - py) / .8); for (let i = 1; i <= n; i++) dab(px + (x - px) * i / n, py + (y - py) * i / n); painting = [x, y]; drawPhoto(); });
+  ['pointerup', 'pointercancel'].forEach(ev => pcv.addEventListener(ev, () => { if (!painting) return; painting = null; lab.kind = 'tap'; runExtract(); }));
+  $('#maskTool').addEventListener('click', e => { const b = e.target.closest('[data-mt]'); if (!b) return; lab.mt = b.dataset.mt; document.querySelectorAll('#maskTool [data-mt]').forEach(x => x.setAttribute('aria-checked', x === b)); pcv.classList.toggle('paint', lab.mt !== 'tap'); });
+  $('#maskUndo').addEventListener('click', () => { if (!lab.undo || !lab.undo.length) return; lab.M = lab.undo.pop(); $('#maskUndo').disabled = !lab.undo.length; lab.kind = 'tap'; runExtract(); });
   document.querySelectorAll('#fabricSeg button').forEach(b => b.addEventListener('click', () => { lab.mode = b.dataset.mode; if (!lab.nameTouched) lab.name = autoName(); refreshLab(); }));
   $('#fitKind').addEventListener('click', e => { const b = e.target.closest('[data-fk]'); if (b && lab.trace) { lab.tr.kind = b.dataset.fk; buildTrace(); fitChanged(); return; } if (b) { fitKind(b.dataset.fk); fitChanged(); } });
   $('#fitNeck').addEventListener('click', e => { const b = e.target.closest('[data-fn]'); if (b) { lab.fit.neck = b.dataset.fn; fitChanged(); } });
@@ -589,7 +606,7 @@ if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.c
 const NEWS = [
   ['西部 / 冬日 / 田园系列细节升级：领子、门襟、口袋、流苏、蕾丝边、麻花纹、袖口逐件还原', 'set'],
   ['姿势大改：重心腿 + 放松腿、上身倾斜，新增踮脚、跳起来、走路、转圈圈等 11 个姿势', 'shot'],
-  ['照片识别版型升级：直接描照片里衣服的轮廓，荷叶边、泡泡袖、不规则下摆都照着来', 'diy'],
+  ['照片识别版型升级：抠图模型 + 真实照片训练的类型识别，照片铺在床上、地上也能框准', 'diy'],
   ['拍照小屋上新 5 个主题：蝴蝶标本、水钻大头贴、天使和纸、薄荷手账、泪滴星夜', 'shot'],
   ['田园针织上新：费尔岛背心、贝雷帽、麻花毛衣等 8 套', 'set'],
   ['冬日甜心上新：豹纹毛领、棕色花苞裙、雪花缎面裙等 4 套 + 西部 2 套', 'set'],

@@ -28,22 +28,30 @@ const FIT2 = (() => {
     return { M, W, H, x0, x1, y0, y1, h, n, cx, segs, cen, hw, band, topY, gapAt, at };
   }
   /* 衣服类型沿用量版型那一套（fit21）的判断 */
-  const kindOf = (M, W, H) => { const f = FIT.analyze(M, W, H); return f ? f.kind : 'top'; };
+  const kindOf = (M, W, H) => { const c = typeof CLS !== 'undefined' && CLS.predict(M, W, H); if (c) return c.kind; const f = FIT.analyze(M, W, H); return f ? f.kind : 'top'; };
 
   /* ---------- 照片坐标 → 娃娃坐标 ---------- */
   function mapper(m, kind, opt) {
     const { cx, y0, y1, band, hw, topY, gapAt } = m, ease = opt.ease ?? 1, lenK = opt.len ?? 1;
     if (kind === 'skirt' || kind === 'pants') {
-      const wt = med(band(.01, .06, hw)) || (m.x1 - m.x0) / 2, top = 282, dW = 150 - outerX(top) + 2.6, s = dW / wt * ease;
-      let cr = null; if (kind === 'pants') { for (let y = y1; y >= y0; y--) if (!gapAt(y)) { cr = y + 1; break; } if (cr == null || cr - y0 < 3) cr = y0 + (y1 - y0) * .3; }
+      const wt = Math.max(med(band(.03, .14, hw)) || 0, (m.x1 - m.x0) / 6) || (m.x1 - m.x0) / 2,   // 腰头宽：往下量一小段，不被腰带扣、挂钩带偏
+        top = 282, dW = 150 - outerX(top) + 2.6, s = dW / wt * ease;
+      let cr = null; if (kind === 'pants') {   // 裆：从这一行往下，大部分行都分成了两条腿
+        const G = []; for (let y = y0; y <= y1; y++) G.push(gapAt(y) ? 1 : 0); let after = G.reduce((a, b) => a + b, 0);
+        for (let i = 0; i < G.length; i++) { if (G[i] && after / (G.length - i) > .72) { cr = y0 + i; break; } after -= G[i]; }
+        if (cr == null || cr - y0 < 3) cr = y0 + (y1 - y0) * .3; }
       const sv = kind === 'pants' ? cl(45 / Math.max(1, cr - y0), s * .6, s * 1.6) : s;
-      const Y = y => { if (kind === 'pants') return y <= cr ? top + (y - y0) * sv : Math.min(574, 327 + (y - cr) * s * LEG_K * lenK);
+      // 裤腿按「裆深」的比例拉：真人裤腿约是裆深的 2.8 倍，娃娃约 5.3 倍
+      const Y = y => { if (kind === 'pants') return y <= cr ? top + (y - y0) * sv : Math.min(574, 327 + (y - cr) * sv * 2.6 * lenK);
         const b = top + (y - y0) * s * lenK; return b > 316 ? Math.min(574, 316 + (b - 316) * 1.45) : b; };
       return { kind, s, Y, cr, pt: (x, y) => [150 + (x - cx) * s, Y(y)] };
     }
-    const tw = Math.min(med(band(.5, .8, hw)) ?? 1e9, med(band(.2, .4, hw)) ?? 1e9), TW = tw < 1e9 ? tw : (m.x1 - m.x0) / 4;
+    const t0 = Math.min(med(band(.5, .8, hw)) ?? 1e9, med(band(.2, .4, hw)) ?? 1e9), th = med(band(.86, .97, hw)) ?? 1e9;
+    // 挂着拍时袖子垂在两边、和衣身连在一起：下摆附近只有衣身，量出来更准；但下摆起皱会偏窄，最多比腰身窄 20%
+    const tw = th < t0 ? Math.max(th, t0 * .8) : t0, TW = tw < 1e9 ? tw : (m.x1 - m.x0) / 4;
     const sh = Math.min(...[-.75, -.6, -.45, .45, .6, .75].map(k => topY(cx + k * TW) ?? 1e9)), dTw = 150 - sideX(232) + 3.2, s = dTw / TW * ease;
-    const A = 164, Y = y => { const b = A + (y - sh) * s * 1.12 * lenK; return b > 316 ? Math.min(574, 316 + (b - 316) * LEG_K) : b; };
+    // 娃娃的躯干比真人修长（肩到裆约是胸宽的 5.6 倍，真人约 2.9 倍）：竖向多拉一些
+    const A = 164, Y = y => { const b = A + (y - sh) * s * 1.65 * lenK; return b > 316 ? Math.min(574, 316 + (b - 316) * LEG_K) : b; };
     // 袖子：肩点、照片里袖子的方向 → 娃娃手臂的方向
     const sleeve = side => {
       const px = cx + side * TW, py = topY(px) ?? sh; let sxs = 0, sys = 0, k = 0, far = 0;
@@ -63,7 +71,13 @@ const FIT2 = (() => {
   /* ---------- 画到娃娃画布上的蒙版 → 描成矢量轮廓 ---------- */
   function build(P, M, kindIn, opt = {}) {
     const m = measure(M, P.W, P.H); if (!m) return null;
-    const kind = kindIn || kindOf(M, P.W, P.H), mp = mapper(m, kind === 'outer' || kind === 'dress' ? (kind === 'outer' ? 'top' : 'dress') : kind, opt);
+    let kind = kindIn || kindOf(M, P.W, P.H);
+    // 认成裤子，但照片里下半截根本没有分成两条腿：按半裙裁，不然会被拆成一条一条的
+    if (kind === 'pants') { let g = 0, r = 0; for (let y = m.y0 + Math.round(m.h * .55); y <= m.y1; y++) { r++; if (m.gapAt(y)) g++; } if (!r || g / r < .3) kind = 'skirt'; }
+    const mp = mapper(m, kind === 'outer' || kind === 'dress' ? (kind === 'outer' ? 'top' : 'dress') : kind, opt);
+    // 衣架 / 挂钩：上衣肩线以上只留领口那一小块
+    if (mp.sh != null && mp.TW) { const M2 = M.slice(); let cut = 0; for (let y = m.y0; y < mp.sh - 1; y++) for (let x = 0; x < P.W; x++) { const i = y * P.W + x; if (M2[i] && !(Math.abs(x - m.cx) < mp.TW * .45 && y > mp.sh - mp.TW * .3)) { M2[i] = 0; cut++; } }
+      if (cut) { const m2 = measure(M2, P.W, P.H); if (m2) { M = M2; Object.assign(m, m2); } } }
     const cv = mkC(DW, DH), g = cv.getContext('2d'); g.fillStyle = '#fff'; g.scale(DS, DS);
     const px = Math.max(.7, mp.s * 1.15), body = Y => (Y < 316 ? 150 - torsoD(Y) : 150 - (kind === 'pants' ? legO(Y) : outerX(Y)));
     let reach = { L: 0, R: 0 };
@@ -85,7 +99,8 @@ const FIT2 = (() => {
         const ax = a / U, bx = Xu / U; a = -1;   // 这一行里的一段布 [ax, bx)（照片坐标）
         if (kind === 'pants' && y > mp.cr) {   // 裤腿：每条腿对齐到娃娃的腿
           const left = (ax + bx) / 2 < m.cx, pm = (ax + bx) / 2, Ym = (Y0 + Y1) / 2, lo = legO(Ym), li = Math.min(149.4, legID(Ym));
-          let A = (lo + li) / 2 + (ax - pm) * mp.s, B = (lo + li) / 2 + (bx - pm) * mp.s; A = Math.min(A, lo - 2.2); B = Math.max(B, li + 1.2); B = Math.min(B, 149.6);
+          const ls = mp.s * .72;   // 娃娃的腿比真人细，裤腿宽度按比例收一点
+          let A = (lo + li) / 2 + (ax - pm) * ls, B = (lo + li) / 2 + (bx - pm) * ls; A = Math.min(A, lo - 2.2); B = Math.max(B, li + 1.2); B = Math.min(B, 149.6);
           if (!left) [A, B] = [300 - B, 300 - A];
           g.fillRect(A, Y0, B - A, hh); continue;
         }
@@ -125,9 +140,9 @@ const FIT2 = (() => {
     for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) { const i = y * W + x; if (!ins(i)) continue; const d = (a, b) => Math.hypot(LAB[a * 3] - LAB[b * 3], (LAB[a * 3 + 1] - LAB[b * 3 + 1]) * .6, (LAB[a * 3 + 2] - LAB[b * 3 + 2]) * .6);
       G[i] = Math.max(d(i - 1, i + 1), d(i - W, i + W)); gs.push(G[i]); }
     if (gs.length < 50) return [];
-    gs.sort((a, b) => a - b); const T = Math.max(14, gs[Math.floor(gs.length * .9)]);
+    if (gs.filter(v => v > 14).length > gs.length * .22) return [];   // 布面纹理很密（印花、格子、针织纹）：到处都是边，不描
+    gs.sort((a, b) => a - b); const T = Math.max(18, gs[Math.floor(gs.length * .9)]);
     let cnt = 0; for (let i = 0; i < W * H; i++) if (G[i] > T) { E[i] = 1; cnt++; }
-    if (cnt > gs.length * .16) return [];       // 到处都是边：是印花 / 格子，不描
     const seen = new Uint8Array(W * H), out = [];
     for (let s0 = 0; s0 < W * H; s0++) { if (!E[s0] || seen[s0]) continue;
       const st = [s0], C = []; seen[s0] = 1;
