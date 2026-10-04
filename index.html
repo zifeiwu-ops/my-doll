@@ -8203,7 +8203,10 @@ const SEG = (() => {
     if (!loading) loading = (async () => {
       if (!window.ort) await loadScript(BASE + 'ort.wasm.min.js');
       ort.env.wasm.wasmPaths = new URL(BASE, location.href).href; ort.env.wasm.numThreads = 1;
-      sess = await ort.InferenceSession.create(BASE + 'u2netp.onnx', { executionProviders: ['wasm'] });
+      // 模型文件：优先 ml/u2netp.onnx；有的托管环境不能放 .onnx，就读同一份模型的 base64 版（ml/u2netp.js）
+      let model = null; try { const r = await fetch(BASE + 'u2netp.onnx'); if (r.ok) model = new Uint8Array(await r.arrayBuffer()); } catch (e) { }
+      if (!model) { await loadScript(BASE + 'u2netp.js'); const b = atob(window.U2NETP_B64); model = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) model[i] = b.charCodeAt(i); }
+      sess = await ort.InferenceSession.create(model, { executionProviders: ['wasm'] });
       return sess;
     })().catch(e => { failed = true; loading = null; throw e; });
     return loading;
