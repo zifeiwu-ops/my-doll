@@ -2,8 +2,8 @@
    界面
    ===================================================================== */
 const $ = s => document.querySelector(s);
-const TABS = [['hair', '发型'], ['face', '五官'], ['top', '上衣'], ['outer', '外套'], ['bottom', '下装'], ['dress', '连衣裙'], ['legs', '袜子'], ['shoes', '鞋子'], ['acc', '小物'], ['set', '套装'], ['diy', 'DIY']];
-const TAB_HINT = { set: '点一下整套换上（发型、发色、衣服、鞋子、包一起换）', hair: '选一个发型', face: '换眼睛、瞳色、眉毛、嘴巴和腮红', top: '点一下穿上，再点一次脱下', outer: '外套叠在上衣外面', bottom: '点一下穿上，再点一次脱下', dress: '穿连衣裙会自动脱掉上衣和下装', legs: '袜子和腿套可以一起穿', shoes: '点一下穿上，再点一次脱下', acc: '每个位置一次戴一件：帽子 / 发箍、发饰、耳饰、眼镜、项链、包包、手饰、腰饰、贴纸各选一件，换一件会自动摘下原来那件', diy: '用照片做的、自己画的衣服都在这里，也会出现在对应分类里' };
+const TABS = [['hair', '发型'], ['face', '五官'], ['top', '上衣'], ['outer', '外套'], ['bottom', '下装'], ['dress', '连衣裙'], ['legs', '袜子'], ['shoes', '鞋子'], ['acc', '小物'], ['set', '套装'], ['bg', '背景'], ['diy', 'DIY']];
+const TAB_HINT = { bg: '换舞台背景：选现成的场景、上传一张照片，或者自己画一张（拍照小屋也会用上）', set: '点一下整套换上（发型、发色、衣服、鞋子、包一起换）', hair: '选一个发型', face: '换眼睛、瞳色、眉毛、嘴巴和腮红', top: '点一下穿上，再点一次脱下', outer: '外套叠在上衣外面', bottom: '点一下穿上，再点一次脱下', dress: '穿连衣裙会自动脱掉上衣和下装', legs: '袜子和腿套可以一起穿', shoes: '点一下穿上，再点一次脱下', acc: '每个位置一次戴一件：帽子 / 发箍、发饰、耳饰、眼镜、项链、包包、手饰、腰饰、贴纸各选一件，换一件会自动摘下原来那件', diy: '用照片做的、自己画的衣服都在这里，也会出现在对应分类里' };
 const KEY = 'y2k-closet-v7';
 const HATS = ['a1', 'a5', 'a8', 'a12', 'a13', 'a14', 'a15', ...HATS10, ...HATS11, ...HATS13, ...HATS16];
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -74,7 +74,7 @@ function burst() {
 }
 function renderTabs() {
   $('#tabs').innerHTML = TABS.map(([k, label]) => {
-    const n = k === 'diy' ? state.custom.length : k === 'face' ? '' : k === 'set' ? LOOKS.length : allItems().filter(i => i.cat === k).length;
+    const n = k === 'bg' ? (typeof BG !== 'undefined' ? BG.count() : '') : k === 'diy' ? state.custom.length : k === 'face' ? '' : k === 'set' ? LOOKS.length : allItems().filter(i => i.cat === k).length;
     return `<button class="tab${k === 'diy' ? ' diy' : ''}" role="tab" type="button" data-tab="${k}" aria-selected="${state.tab === k}">${label}${n === '' ? '' : `<span class="n">${n}</span>`}</button>`;
   }).join('');
   $('#tabHint').textContent = TAB_HINT[state.tab];
@@ -107,6 +107,7 @@ function renderGrid() {
   else if (t === 'hair') html = hairColorRow() + filterBarHTML(t) + allItems().filter(i => i.cat === t && passFilter(i)).map(cardHTML).join('');
   else if (t === 'acc') html = accPanelHTML();
   else if (t === 'set') html = setPanelHTML();
+  else if (t === 'bg') html = typeof BG !== 'undefined' ? BG.panelHTML() : '';
   else if (t === 'diy') html = ADD_CARD('top') + (state.custom.length ? state.custom.map(cardHTML).join('') : '<p class="empty">还没有 DIY 的衣服。用一张照片做一件，或者直接在娃娃身上画一件。</p>');
   else {
     html = filterBarHTML(t) + WARDROBE.filter(i => i.cat === t && passFilter(i)).map(cardHTML).join('') + state.custom.filter(i => i.cat === t && passFilter(i)).map(cardHTML).join('');
@@ -604,6 +605,7 @@ if (window.claude?.hot?.ready) window.claude.hot.ready(boot); else boot(window.c
 
 /* ---------------- 本期上新（滚动公告条）：改这里的清单就行；go = 点了跳到哪个分区，或者 shot 拍照 / adj 调位置 ---------------- */
 const NEWS = [
+  ['新分区「背景」：选场景、上传照片，或者用画板自己画一张（7 种笔刷、图层、油漆桶、渐变、文字）', 'bg'],
   ['西部 / 冬日 / 田园系列细节升级：领子、门襟、口袋、流苏、蕾丝边、麻花纹、袖口逐件还原', 'set'],
   ['姿势大改：重心腿 + 放松腿、上身倾斜，新增踮脚、跳起来、走路、转圈圈等 11 个姿势', 'shot'],
   ['照片识别版型升级：抠图模型 + 真实照片训练的类型识别，照片铺在床上、地上也能框准', 'diy'],
